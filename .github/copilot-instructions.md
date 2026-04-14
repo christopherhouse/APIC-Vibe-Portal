@@ -116,6 +116,32 @@ Leverage these MCP servers when you need current documentation, security insight
 - **Product Spec**: [docs/project/apic_portal_spec.md](../docs/project/apic_portal_spec.md)
 - **Implementation Plan**: [docs/project/plan/README.md](../docs/project/plan/README.md)
 
+## Living Documentation Requirements
+The implementation plan and all task documents are **living documents** that MUST be kept up-to-date as work progresses.
+
+### When Working on Implementation Tasks
+After completing any implementation task from the plan (tasks 001-032):
+
+1. **Update the individual task document** (`docs/project/plan/XXX-task-name.md`):
+   - Change the status banner at the top to reflect current state (🔄 In Progress or ✅ Complete)
+   - Add rows to the Status History table with dates and notes
+   - Record Technical Decisions made during implementation
+   - Note any Deviations from Plan with rationale
+   - Fill in Validation Results with test outcomes and metrics
+   - Check off completed items in Testing & Acceptance Criteria
+
+2. **Update the plan README** (`docs/project/plan/README.md`):
+   - Update the status icon in the task index table (🔲 → 🔄 → ✅)
+   - Keep the status synchronized with the individual task document
+
+### Status Icons
+- 🔲 Not Started
+- 🔄 In Progress
+- ✅ Complete
+- ⚠️ Blocked (with notes in task document)
+
+**This is NOT optional** — keeping these documents current ensures the entire team understands project status and decisions made along the way.
+
 ## Notes for Copilot
 - When suggesting Azure SDK usage, prefer the latest Azure SDK for Python or JavaScript/TypeScript
 - For Next.js 16, always use App Router conventions (app directory, Server Components by default, Client Components with "use client")

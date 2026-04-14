@@ -1,6 +1,6 @@
 # 003 - Sprint Zero: CI/CD Pipeline with GitHub Actions
 
-> **🔲 Status: Not Started**
+> **🔄 Status: In Progress**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
