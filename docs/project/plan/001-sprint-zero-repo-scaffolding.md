@@ -33,14 +33,14 @@ Create the following top-level directory layout:
 ├── scripts/               # Developer helper scripts
 ├── .editorconfig
 ├── .gitignore
-├── .nvmrc                 # Pin Node.js version (20 LTS)
+├── .nvmrc                 # Pin Node.js version (>=24)
 ├── package.json           # Root workspace package.json
 └── README.md
 ```
 
 ### 2. Root Workspace Configuration
 - Initialize a root `package.json` with npm workspaces pointing to `src/frontend`, `src/bff`, and `src/shared`.
-- Add a `.nvmrc` file pinning Node.js 20 LTS.
+- Add a `.nvmrc` file pinning Node.js >=24.
 - Add an `.editorconfig` for consistent formatting (2-space indent, UTF-8, LF line endings).
 - Add a comprehensive `.gitignore` for Node.js, Next.js, and Azure artifacts.
 
@@ -49,8 +49,8 @@ Create the following top-level directory layout:
 #### Copilot Instructions (`.github/copilot-instructions.md`)
 Create instructions that describe:
 - The project is an AI-powered API portal built on Azure services
-- Tech stack: Next.js 14+ (App Router), TypeScript, Node.js BFF, Azure API Center, Azure AI Search, Azure OpenAI, Foundry Agent Service
-- Coding conventions: TypeScript strict mode, ESLint + Prettier, functional React components with hooks
+- Tech stack: Next.js 16 (App Router), TypeScript 6.0, Node.js >=24 BFF, Azure API Center, Azure AI Search, Azure OpenAI, Foundry Agent Service
+- Coding conventions: TypeScript 6.0 strict mode, ESLint + Prettier, functional React components with hooks
 - Architecture: Frontend ↔ BFF ↔ Azure services (API Center, AI Search, Foundry Agents)
 - Security: Entra ID authentication, RBAC, security trimming
 - Testing: Jest + React Testing Library for frontend, Jest/Vitest for BFF, Playwright for E2E
@@ -62,10 +62,11 @@ Create agent definitions for:
 - **azure-infra-agent**: Specializes in Bicep templates, Azure resource configuration, deployment
 - **frontend-agent**: Next.js, React, TypeScript UI development, accessibility
 - **bff-agent**: BFF API design, Azure SDK integration, middleware patterns
+- **tech-writer-agent**: Writes engaging, well-organized documentation with emojis for flair, generates SVG images and diagrams, uses Mermaid for architecture/flow diagrams, and ensures all docs are visually appealing and developer-friendly
 
 ### 4. Developer Tooling
 - Add ESLint and Prettier configuration at the root level (shared across workspaces).
-- Add TypeScript base configuration (`tsconfig.base.json`) that workspaces extend.
+- Add TypeScript 6.0 base configuration (`tsconfig.base.json`) that workspaces extend.
 - Add a root `Makefile` or npm scripts for common operations: `lint`, `test`, `build`, `dev`.
 
 ### 5. PR Template
@@ -122,7 +123,7 @@ _No validation results yet._
 >
 > You are bootstrapping a new monorepo for the APIC Vibe Portal AI project. Reference the architecture at `docs/project/apic_architecture.md` and the charter at `docs/project/apic_product_charter.md` for context on the tech stack and project goals.
 >
-> Create the monorepo directory structure, root workspace configuration (npm workspaces, .nvmrc, .editorconfig, .gitignore), GitHub Copilot instructions and custom agent definitions, shared ESLint/Prettier/TypeScript configs, a PR template, and update the root README.
+> Create the monorepo directory structure, root workspace configuration (npm workspaces, .nvmrc pinning Node.js >=24, .editorconfig, .gitignore), GitHub Copilot instructions and custom agent definitions (including tech-writer-agent), shared ESLint/Prettier/TypeScript 6.0 configs, a PR template, and update the root README.
 >
 > Do NOT scaffold the Next.js or BFF projects themselves — that is handled in later tasks. Just create the directory structure, placeholder package.json files for each workspace, and all the developer tooling described in the plan.
 >

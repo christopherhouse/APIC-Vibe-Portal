@@ -122,7 +122,7 @@ _No validation results yet._
 >
 > Reference the architecture at `docs/project/apic_architecture.md` (Frontend: Next.js SPA) and the repo structure from `docs/project/plan/001-sprint-zero-repo-scaffolding.md`.
 >
-> Scaffold a Next.js 14+ application in `src/frontend/` using `create-next-app` with App Router, TypeScript, and Tailwind CSS. Create the application shell (root layout, header, sidebar, footer), base UI components (Button, Input, Card, Badge, Skeleton) with tests, a typed BFF API client, and configure testing with Jest + React Testing Library.
+> Scaffold a Next.js 16 application in `src/frontend/` using `create-next-app` with App Router, TypeScript 6.0, and Tailwind CSS. Create the application shell (root layout, header, sidebar, footer), base UI components (Button, Input, Card, Badge, Skeleton) with tests, a typed BFF API client, and configure testing with Jest + React Testing Library.
 >
 > Ensure the project integrates with the root npm workspace. Verify the dev server starts, the build succeeds, linting passes, and all tests pass.
 >

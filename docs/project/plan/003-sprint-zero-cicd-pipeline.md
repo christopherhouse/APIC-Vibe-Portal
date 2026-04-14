@@ -76,7 +76,7 @@ Create Dockerfiles for the frontend and BFF:
 /src/bff/Dockerfile
 ```
 - Multi-stage builds (build stage + production stage)
-- Use `node:20-alpine` as base
+- Use `node:24-alpine` as base
 - Non-root user for production stage
 - Health check endpoints
 
