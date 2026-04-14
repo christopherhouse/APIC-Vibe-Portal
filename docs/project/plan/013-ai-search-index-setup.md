@@ -53,9 +53,9 @@ Define the AI Search index with fields:
 ### 4. Indexing Pipeline
 Create an indexing service in the BFF:
 ```
-src/bff/src/services/
-├── search-indexer.service.ts       # Indexing pipeline
-└── search-indexer.service.test.ts
+src/bff/src/bff/services/
+├── search_indexer_service.py       # Indexing pipeline
+└── test_search_indexer_service.py
 ```
 
 Operations:
@@ -74,8 +74,8 @@ Operations:
 Create scripts for operational tasks:
 ```
 scripts/
-├── reindex.ts          # Full reindex trigger
-└── index-stats.ts      # Print index statistics
+├── reindex.py          # Full reindex trigger
+└── index_stats.py      # Print index statistics
 ```
 
 ### 7. Bicep Updates
@@ -125,9 +125,9 @@ Read the full task specification at `docs/project/plan/013-ai-search-index-setup
 
 Reference the architecture at `docs/project/apic_architecture.md` (Search Layer: AI Search, hybrid search), `docs/project/plan/002-sprint-zero-azure-infra-bicep.md` for the AI Search resource, and `docs/project/plan/007-api-center-data-layer.md` for the data source.
 
-In the BFF, create the search index schema definition (fields, semantic config, vector config), an indexing service that syncs API Center data into the AI Search index with Azure OpenAI embeddings, and operational scripts for full/incremental reindexing. Write unit tests with mocked Azure SDK calls.
+In the BFF, create the search index schema definition (fields, semantic config, vector config), an indexing service that syncs API Center data into the AI Search index with Azure OpenAI embeddings, and operational Python scripts for full/incremental reindexing. Write unit tests with mocked Azure SDK calls using pytest.
 
-Verify the build succeeds and all tests pass.
+Verify all tests pass with `uv run pytest`.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/013-ai-search-index-setup.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

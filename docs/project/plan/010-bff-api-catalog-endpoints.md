@@ -13,17 +13,17 @@
 Implement the REST API endpoints in the BFF that expose API catalog data to the frontend. These endpoints serve as the contract between the Next.js frontend and the Azure API Center data layer.
 
 ## Dependencies
-- **009** — BFF API project setup (Express app, routing)
-- **009** — Shared types package (DTOs)
+- **006** — BFF API project setup (FastAPI app, routing)
+- **007** — Shared types package (DTOs)
 - **009** — API Center data layer (service and client)
 
 ## Implementation Details
 
 ### 1. Route Definitions
 ```
-src/bff/src/routes/
-├── api-catalog.routes.ts       # API catalog endpoints
-├── api-catalog.routes.test.ts
+src/bff/src/bff/routers/
+├── api_catalog.py              # API catalog endpoints
+├── test_api_catalog.py
 ```
 
 Endpoints:
@@ -37,10 +37,10 @@ Endpoints:
 | `GET` | `/api/environments` | List environments |
 
 ### 2. Request Validation
-- Use a validation library (e.g., `zod` or `joi`) for:
-  - Query parameters: `page`, `pageSize`, `sort`, `filter`, `lifecycle`
-  - Path parameters: `apiId`, `versionId`
-- Return `400` with structured errors for invalid inputs
+- Use Pydantic models and FastAPI's built-in validation for:
+  - Query parameters: `page`, `page_size`, `sort`, `filter`, `lifecycle`
+  - Path parameters: `api_id`, `version_id`
+- Return `422` with structured errors for invalid inputs (FastAPI default behavior)
 
 ### 3. Response Format
 All responses follow a consistent envelope:
@@ -94,7 +94,7 @@ Create controller functions that:
 - [ ] `GET /api/catalog/:apiId/versions/:versionId/definition` returns spec document
 - [ ] Invalid query parameters return `400` with validation errors
 - [ ] All endpoints return consistent response envelopes
-- [ ] All routes have supertest integration tests
+- [ ] All routes have pytest integration tests (using `httpx.AsyncClient`)
 - [ ] API response times are logged
 
 ## Implementation Notes
@@ -126,11 +126,11 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/010-bff-api-catalog-endpoints.md`.
 
-Reference `docs/project/plan/007-api-center-data-layer.md` for the service layer these endpoints call, and `docs/project/plan/006-shared-types-package.md` for the DTOs.
+Reference `docs/project/plan/009-api-center-data-layer.md` for the service layer these endpoints call, and `docs/project/plan/007-shared-types-package.md` for the DTOs.
 
-In `src/bff/src/routes/`, create Express route handlers for the API catalog endpoints (list, detail, versions, definition, deployments, environments). Add request validation using zod, consistent response envelopes, pagination support, and filtering/sorting.
+In `src/bff/src/bff/routers/`, create FastAPI route handlers for the API catalog endpoints (list, detail, versions, definition, deployments, environments). Add request validation using Pydantic models, consistent response envelopes, pagination support, and filtering/sorting.
 
-Write supertest integration tests for all endpoints with mocked service layer. Verify the build succeeds and all tests pass.
+Write pytest integration tests for all endpoints with mocked service layer. Verify all tests pass with `uv run pytest`.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/010-bff-api-catalog-endpoints.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

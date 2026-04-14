@@ -21,15 +21,15 @@ Integrate Azure Application Insights across both the frontend and BFF for compre
 
 ### 1. BFF Instrumentation
 ```
-src/bff/src/
+src/bff/src/bff/
 ├── telemetry/
-│   ├── app-insights.ts         # App Insights initialization
-│   ├── custom-metrics.ts       # Custom metric definitions
-│   └── correlation.ts          # Request correlation middleware
+│   ├── app_insights.py         # App Insights initialization
+│   ├── custom_metrics.py       # Custom metric definitions
+│   └── correlation.py          # Request correlation middleware
 ```
 
-- Use `applicationinsights` npm package
-- Initialize before Express app starts
+- Use `opencensus-ext-azure` or `azure-monitor-opentelemetry` Python package
+- Initialize before FastAPI app starts (lifespan event)
 - Auto-collect: requests, dependencies, exceptions, performance
 - Add correlation ID middleware (propagate from frontend)
 - Custom metrics:
@@ -40,7 +40,7 @@ src/bff/src/
   - `auth_failures` — Failed authentication attempts
 
 ### 2. BFF Structured Logging Enhancement
-- Integrate logger (from task 006) with App Insights
+- Integrate structlog (from task 006) with App Insights
 - Trace-level logs for debugging
 - Include correlation ID in all log entries
 - Log critical operations: search queries, chat completions, auth events
@@ -134,7 +134,7 @@ Read the full task specification at `docs/project/plan/019-observability-app-ins
 
 Reference the architecture at `docs/project/apic_architecture.md` (Observability: App Insights) and `docs/project/plan/002-sprint-zero-azure-infra-bicep.md` for the App Insights resource.
 
-In the BFF, integrate the `applicationinsights` SDK with auto-collection, custom metrics (search, chat, cache, auth), correlation ID middleware, and enhanced structured logging. In the frontend, integrate the browser Application Insights SDK with page views, custom events, and error tracking. Implement distributed tracing via correlation ID propagation.
+In the BFF, integrate the `azure-monitor-opentelemetry` (or `opencensus-ext-azure`) Python SDK with auto-collection, custom metrics (search, chat, cache, auth), correlation ID middleware, and enhanced structured logging via structlog. In the frontend, integrate the browser Application Insights SDK with page views, custom events, and error tracking. Implement distributed tracing via correlation ID propagation.
 
 Write tests verifying custom metrics are recorded. Verify the build succeeds and all tests pass.
 

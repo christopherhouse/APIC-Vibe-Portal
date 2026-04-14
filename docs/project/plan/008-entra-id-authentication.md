@@ -58,28 +58,28 @@ src/frontend/
 
 ### 4. BFF Authentication Middleware
 ```
-src/bff/src/middleware/
-├── auth.ts                 # JWT validation middleware (replace placeholder)
-└── auth.test.ts
+src/bff/src/bff/middleware/
+├── auth.py                 # JWT validation middleware (replace placeholder)
+└── test_auth.py
 ```
 
-- Validate JWT tokens from Entra ID using `jsonwebtoken` and JWKS
-- Use `jwks-rsa` to fetch signing keys from Entra ID discovery endpoint
+- Validate JWT tokens from Entra ID using `python-jose` (or `PyJWT`) and JWKS
+- Fetch signing keys from Entra ID discovery endpoint
 - Validate: issuer, audience, expiration, signature
 - Extract user claims: `oid`, `name`, `email`, `roles`
-- Attach user context to request object
+- Attach user context to request state (FastAPI dependency injection)
 - Return `401` for missing/invalid tokens
 - Return `403` for insufficient roles
 
 ### 5. Role-Based Access Control (BFF)
 ```
-src/bff/src/middleware/
-├── rbac.ts                 # Role checking middleware
-└── rbac.test.ts
+src/bff/src/bff/middleware/
+├── rbac.py                 # Role checking middleware (FastAPI dependencies)
+└── test_rbac.py
 ```
 
-- `requireRole(role: string)` middleware factory
-- `requireAnyRole(roles: string[])` middleware factory
+- `require_role(role: str)` FastAPI dependency factory
+- `require_any_role(roles: list[str])` FastAPI dependency factory
 - Apply to routes as needed (most routes require `Portal.User`)
 - Admin endpoints require `Portal.Admin`
 
@@ -139,9 +139,9 @@ Read the full task specification at `docs/project/plan/008-entra-id-authenticati
 
 Reference the architecture at `docs/project/apic_architecture.md` (Security: Entra ID, RBAC), `docs/project/plan/005-frontend-nextjs-setup.md` for the frontend layout, and `docs/project/plan/006-bff-api-setup.md` for the BFF middleware placeholder.
 
-In the frontend, integrate MSAL React for Entra ID authentication with login/logout UI, protected routes via AuthGuard, a useAuth hook, and update the API client to inject Bearer tokens. In the BFF, implement JWT validation middleware using JWKS, role-based access control middleware, and apply auth to all API routes.
+In the frontend, integrate MSAL React for Entra ID authentication with login/logout UI, protected routes via AuthGuard, a useAuth hook, and update the API client to inject Bearer tokens. In the BFF, implement JWT validation middleware using JWKS (via `python-jose` or `PyJWT`), role-based access control as FastAPI dependencies, and apply auth to all API routes.
 
-Write unit tests for auth middleware, RBAC middleware, and auth-related frontend components. Verify the build succeeds and all tests pass.
+Write unit tests for auth middleware, RBAC middleware, and auth-related frontend components. Verify all tests pass.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/008-entra-id-authentication.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

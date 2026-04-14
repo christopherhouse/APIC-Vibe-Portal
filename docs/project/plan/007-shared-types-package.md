@@ -10,12 +10,12 @@
 - [Product Spec](../apic_portal_spec.md) — Data model requirements
 
 ## Overview
-Create the shared TypeScript package containing type definitions, interfaces, and utility functions used by both the frontend and BFF. This ensures type safety and consistency across the full stack.
+Create the shared TypeScript package containing type definitions, interfaces, and utility functions used by the frontend. The BFF is a Python 3.14 / FastAPI application and will define its own Pydantic models mirroring these contracts. This package ensures type safety on the frontend side, and the type definitions serve as the canonical reference for the frontend-BFF API contract.
 
 ## Dependencies
 - **001** — Repository scaffolding (monorepo workspace structure)
-- **006** — Frontend project (consumer of shared types)
-- **006** — BFF project (consumer of shared types)
+- **005** — Frontend project (consumer of shared types)
+- **006** — BFF project (defines corresponding Pydantic models for the same contracts)
 
 ## Implementation Details
 
@@ -119,11 +119,13 @@ interface ChatMessage {
 ### 6. Package Configuration
 - Compile to CommonJS and ESM (dual package)
 - Export via `package.json` `exports` field
-- Both frontend and BFF reference this as a workspace dependency
+- The frontend references this as a workspace dependency
+- The BFF (Python) will define corresponding Pydantic models — these TypeScript types serve as the source of truth for the API contract
 
 ## Testing & Acceptance Criteria
 - [ ] Package compiles without errors
-- [ ] Package is importable from both frontend and BFF workspaces
+- [ ] Package is importable from the frontend workspace
+- [ ] Type definitions serve as reference for BFF Pydantic models
 - [ ] All type guards have corresponding tests
 - [ ] All utility functions have tests
 - [ ] Barrel export (`index.ts`) exports all public types and utilities
@@ -161,7 +163,7 @@ Read the full task specification at `docs/project/plan/007-shared-types-package.
 
 Reference the architecture at `docs/project/apic_architecture.md` for the data flow between Frontend and BFF, and `docs/project/apic_product_charter.md` for the domain concepts (API discovery, governance, AI assistance).
 
-Create the shared TypeScript package in `src/shared/` with domain models (API definitions, versions, deployments, search results, chat messages), DTOs for frontend-BFF communication, enum types for API lifecycle and governance states, error types, type guards, and utility functions. Ensure dual CJS/ESM build output and that both `src/frontend` and `src/bff` can import from the shared package.
+Create the shared TypeScript package in `src/shared/` with domain models (API definitions, versions, deployments, search results, chat messages), DTOs for frontend-BFF communication, enum types for API lifecycle and governance states, error types, type guards, and utility functions. Ensure dual CJS/ESM build output and that `src/frontend` can import from the shared package. These types also serve as the canonical reference for the BFF's corresponding Pydantic models (Python).
 
 Write tests for type guards and utility functions. Verify the package builds and is importable from both consumer workspaces.
 

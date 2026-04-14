@@ -21,9 +21,9 @@ Build an intelligent metadata completeness scoring system with AI-powered recomm
 
 ### 1. Completeness Scoring Service
 ```
-src/bff/src/services/
-├── metadata-completeness.service.ts
-└── metadata-completeness.service.test.ts
+src/bff/src/bff/services/
+├── metadata_completeness_service.py
+└── test_metadata_completeness_service.py
 ```
 
 #### Scoring Dimensions
@@ -45,9 +45,9 @@ Score each API across multiple dimensions (0-100 each):
 
 ### 2. AI Recommendation Engine
 ```
-src/bff/src/services/
-├── metadata-recommendations.service.ts
-└── metadata-recommendations.service.test.ts
+src/bff/src/bff/services/
+├── metadata_recommendations_service.py
+└── test_metadata_recommendations_service.py
 ```
 
 - Analyze metadata gaps for a specific API
@@ -61,9 +61,9 @@ src/bff/src/services/
 
 ### 3. BFF Endpoints
 ```
-src/bff/src/routes/
-├── metadata.routes.ts
-└── metadata.routes.test.ts
+src/bff/src/bff/routers/
+├── metadata.py
+└── test_metadata.py
 ```
 
 | Method | Path | Description |
@@ -151,7 +151,7 @@ Reference `docs/project/plan/009-api-center-data-layer.md` for API metadata acce
 
 Create a multi-dimensional completeness scoring service (Basic Info, Versioning, Specification, Documentation, Classification, Security), an AI recommendation engine using OpenAI, BFF endpoints, and integrate into both the API detail page (new Metadata Quality tab) and the governance dashboard (completeness overview and leaderboard).
 
-Write unit tests for all scoring rules, recommendation generation, and components. Verify the build succeeds and all tests pass.
+Write unit tests for all scoring rules, recommendation generation, and components using pytest (BFF) and Jest (frontend). Verify all tests pass.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/030-metadata-completeness.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

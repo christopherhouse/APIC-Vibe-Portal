@@ -21,26 +21,26 @@ Set up Azure Foundry Agent Service and create the first agent — the API Discov
 
 ### 1. Foundry Agent Service Client
 ```
-src/bff/src/clients/
-├── foundry-agent-client.ts        # Foundry Agent Service client
-└── foundry-agent-client.test.ts
+src/bff/src/bff/clients/
+├── foundry_agent_client.py        # Foundry Agent Service client
+└── test_foundry_agent_client.py
 ```
 
-- Use the Azure AI Agent Service SDK / REST API
+- Use the Azure AI Agent Service SDK for Python / REST API via `httpx`
 - Authenticate with DefaultAzureCredential
 - Configure for the deployed Foundry Agent Service instance
 - Wrapper with retry logic and error handling
 
 ### 2. Agent Definitions
 ```
-src/bff/src/agents/
-├── agent-registry.ts              # Agent registration and lookup
-├── base-agent.ts                  # Base agent interface/abstract class
-├── api-discovery-agent/
-│   ├── definition.ts              # Agent definition and tools
-│   ├── prompts.ts                 # System prompt and few-shot examples
-│   └── handler.ts                 # Response processing
-└── types.ts                       # Agent-related type definitions
+src/bff/src/bff/agents/
+├── agent_registry.py              # Agent registration and lookup
+├── base_agent.py                  # Base agent interface/abstract class
+├── api_discovery_agent/
+│   ├── definition.py              # Agent definition and tools
+│   ├── prompts.py                 # System prompt and few-shot examples
+│   └── handler.py                 # Response processing
+└── types.py                       # Agent-related type definitions (Pydantic models)
 ```
 
 ### 3. API Discovery Agent
@@ -68,9 +68,9 @@ Design a focused system prompt that:
 
 ### 4. Agent Router
 ```
-src/bff/src/agents/
-├── agent-router.ts                # Routes requests to appropriate agent
-└── agent-router.test.ts
+src/bff/src/bff/agents/
+├── agent_router.py                # Routes requests to appropriate agent
+└── test_agent_router.py
 ```
 
 - Analyze user intent to determine which agent should handle the request
@@ -132,7 +132,7 @@ Reference the architecture at `docs/project/apic_architecture.md` (Agent Layer: 
 
 In `src/bff/`, create a Foundry Agent Service client, define the API Discovery Agent with tools (search, get details, get spec), an agent router, and integrate with the existing chat endpoints. Design system prompts with few-shot examples.
 
-Write unit tests for the agent, router, and tool execution. Verify the build succeeds and all tests pass.
+Write unit tests for the agent, router, and tool execution using pytest. Verify all tests pass with `uv run pytest`.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/022-foundry-agent-setup.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
