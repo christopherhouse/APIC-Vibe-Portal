@@ -1,0 +1,2 @@
+# Ignore compiled Bicep JSON files
+*.json
