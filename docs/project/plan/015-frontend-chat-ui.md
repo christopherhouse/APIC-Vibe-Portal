@@ -1,5 +1,9 @@
 # 015 - Phase 1 MVP: AI Chat Interface (Frontend)
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — AI-powered discovery through conversational interface
 - [Product Charter](../apic_product_charter.md) — Enable AI-assisted workflows; reduce time to find APIs
@@ -101,6 +105,28 @@ app/chat/
 - [ ] All components have unit tests
 - [ ] Responsive layout works on mobile, tablet, and desktop
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 015 — AI Chat Interface.
@@ -112,3 +138,10 @@ app/chat/
 > Build the full-page chat view at `/chat` and an embedded collapsible chat side panel accessible from all pages. Implement message rendering with markdown support, SSE streaming integration, citation chips that link to API detail pages, suggested starter prompts, session management via React context, and responsive layout.
 >
 > Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/015-frontend-chat-ui.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

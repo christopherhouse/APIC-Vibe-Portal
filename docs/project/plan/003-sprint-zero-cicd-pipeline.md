@@ -1,5 +1,9 @@
 # 003 - Sprint Zero: CI/CD Pipeline with GitHub Actions
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — Deployment: Azure Container Apps, ACR
 - [Product Charter](../apic_product_charter.md) — Rapid iteration and phased delivery
@@ -92,6 +96,28 @@ Create Dockerfiles for the frontend and BFF:
 - [ ] GitHub environments are documented in README
 - [ ] All workflow files pass `actionlint` validation
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 003 — CI/CD Pipeline with GitHub Actions.
@@ -103,3 +129,10 @@ Create Dockerfiles for the frontend and BFF:
 > Create GitHub Actions workflow files under `.github/workflows/` for CI (lint, test, build), infrastructure deployment (Bicep), application deployment (Docker build + Container Apps), and PR quality gates. Create multi-stage Dockerfiles for the frontend and BFF services.
 >
 > Ensure workflows use OIDC-based Azure authentication and GitHub environments for approval gates. Validate workflow YAML is syntactically correct. Do NOT configure actual Azure credentials or trigger deployments.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/003-sprint-zero-cicd-pipeline.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

@@ -1,5 +1,9 @@
 # 018 - Phase 1 MVP: Security Trimming Implementation
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — Security: RBAC + security trimming
 - [Product Charter](../apic_product_charter.md) — Stakeholders: Developers, API Owners, Platform Teams (different access levels)
@@ -73,6 +77,28 @@ Update `ai-chat.service.ts` (from task 014):
 - [ ] Performance impact of security trimming is minimal (< 50ms added latency)
 - [ ] Unit tests cover all trimming scenarios
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 018 — Security Trimming Implementation.
@@ -84,3 +110,10 @@ Update `ai-chat.service.ts` (from task 014):
 > Create a user context service that resolves group membership from Entra ID tokens. Update the catalog service, search service, and chat service to apply security trimming based on user permissions. Add admin bypass for `Portal.Admin` role. Implement group membership caching.
 >
 > Write unit tests covering all trimming scenarios (different users, admin bypass, inaccessible APIs). Verify the build succeeds and all tests pass.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/018-security-trimming.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

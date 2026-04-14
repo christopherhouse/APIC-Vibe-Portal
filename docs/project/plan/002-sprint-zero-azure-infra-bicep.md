@@ -1,5 +1,9 @@
 # 002 - Sprint Zero: Azure Infrastructure as Code (Bicep)
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — Deployment: Azure Container Apps, ACR, Key Vault; Components: AI Search, OpenAI, App Insights
 - [Product Charter](../apic_product_charter.md) — Phased delivery timeline; MVP through Analytics
@@ -85,6 +89,28 @@ The main template should output:
 - [ ] Outputs are correctly defined and populated after deployment
 - [ ] No secrets are hardcoded; all sensitive values reference Key Vault or parameters
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 002 — Azure Infrastructure as Code (Bicep).
@@ -96,3 +122,10 @@ The main template should output:
 > Create the Bicep template structure under `/infra/` with a main orchestrator and individual modules for each Azure resource. Include parameterization for multi-environment deployment (dev, staging, prod). Configure managed identity with appropriate RBAC role assignments for each service. Include all outputs needed by the CI/CD pipeline (task 003).
 >
 > Validate the templates compile with `az bicep build --file infra/main.bicep`. Do NOT actually deploy to Azure.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/002-sprint-zero-azure-infra-bicep.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

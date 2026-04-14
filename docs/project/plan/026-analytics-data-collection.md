@@ -1,5 +1,9 @@
 # 026 - Phase 3: Usage Analytics Data Collection
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — Observability: App Insights; data collection layer
 - [Product Charter](../apic_product_charter.md) — Phase 3: Analytics; success metrics (portal adoption, API discovery time)
@@ -104,6 +108,28 @@ Design schema for querying:
 - [ ] Unit tests cover event collection, batching, and storage
 - [ ] Performance impact of analytics is negligible (< 10ms per event)
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 026 — Usage Analytics Data Collection.
@@ -115,3 +141,10 @@ Design schema for querying:
 > Create typed analytics event models in the shared package. In the BFF, create an analytics service for event storage and admin query endpoints. In the frontend, create an analytics provider with a useAnalytics hook, automatic page view tracking, event batching, and privacy controls.
 >
 > Write unit tests for event collection, batching, storage, and aggregation. Verify the build succeeds and all tests pass.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/026-analytics-data-collection.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

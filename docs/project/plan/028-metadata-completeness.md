@@ -1,5 +1,9 @@
 # 028 - Phase 3: Metadata Completeness Scoring & Recommendations
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — AI-powered insights; multi-agent capabilities
 - [Product Charter](../apic_product_charter.md) — Improved metadata completeness as success metric
@@ -114,6 +118,28 @@ Add to the governance dashboard (from task 023):
 - [ ] Unit tests cover all scoring rules and edge cases
 - [ ] Recommendations handle APIs with varying levels of completeness
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 028 — Metadata Completeness Scoring & Recommendations.
@@ -125,3 +151,10 @@ Add to the governance dashboard (from task 023):
 > Create a multi-dimensional completeness scoring service (Basic Info, Versioning, Specification, Documentation, Classification, Security), an AI recommendation engine using OpenAI, BFF endpoints, and integrate into both the API detail page (new Metadata Quality tab) and the governance dashboard (completeness overview and leaderboard).
 >
 > Write unit tests for all scoring rules, recommendation generation, and components. Verify the build succeeds and all tests pass.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/028-metadata-completeness.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

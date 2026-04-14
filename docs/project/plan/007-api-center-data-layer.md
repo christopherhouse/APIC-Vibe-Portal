@@ -1,5 +1,9 @@
 # 007 - Phase 1 MVP: Azure API Center Data Layer Integration
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — Azure API Center as the core API catalog data source
 - [Product Charter](../apic_product_charter.md) — Improve API discovery; API metadata completeness
@@ -74,6 +78,28 @@ Add to BFF settings:
 - [ ] All service methods have unit tests with mocked API Center responses
 - [ ] Data mapping correctly handles missing/nullable fields
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 007 — Azure API Center Data Layer Integration.
@@ -85,3 +111,10 @@ Add to BFF settings:
 > In `src/bff/`, create an Azure API Center client using the Azure SDK with DefaultAzureCredential, a service layer with operations for listing/getting APIs, versions, deployments, and specifications, a data mapping layer to convert SDK responses to shared types, and an in-memory caching layer.
 >
 > Write comprehensive unit tests with mocked API Center responses. Verify the build succeeds and all tests pass.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/007-api-center-data-layer.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

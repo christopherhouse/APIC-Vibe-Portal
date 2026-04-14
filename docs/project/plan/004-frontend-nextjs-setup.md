@@ -1,5 +1,9 @@
 # 004 - Phase 1 MVP: Next.js Frontend Project Setup
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — Frontend: Next.js SPA
 - [Product Charter](../apic_product_charter.md) — Portal UI in scope
@@ -88,6 +92,28 @@ Create a typed fetch wrapper in `lib/api-client.ts`:
 - [ ] API client module exports typed fetch functions
 - [ ] `localhost:3000` shows the landing page with layout
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 004 — Next.js Frontend Project Setup.
@@ -99,3 +125,10 @@ Create a typed fetch wrapper in `lib/api-client.ts`:
 > Scaffold a Next.js 14+ application in `src/frontend/` using `create-next-app` with App Router, TypeScript, and Tailwind CSS. Create the application shell (root layout, header, sidebar, footer), base UI components (Button, Input, Card, Badge, Skeleton) with tests, a typed BFF API client, and configure testing with Jest + React Testing Library.
 >
 > Ensure the project integrates with the root npm workspace. Verify the dev server starts, the build succeeds, linting passes, and all tests pass.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/004-frontend-nextjs-setup.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

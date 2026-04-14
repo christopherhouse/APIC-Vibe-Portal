@@ -1,5 +1,9 @@
 # 010 - Phase 1 MVP: API Detail View Page (Frontend)
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — Frontend: Next.js SPA; comprehensive API information display
 - [Product Charter](../apic_product_charter.md) — Enable developers to understand and use APIs faster
@@ -83,6 +87,28 @@ app/catalog/[apiId]/
 - [ ] All components have unit tests
 - [ ] Navigating from catalog card lands on correct detail page
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 010 — API Detail View Page.
@@ -94,3 +120,10 @@ app/catalog/[apiId]/
 > Create the `/catalog/[apiId]` dynamic route page with: API header, tabbed sections (Overview, Versions, Specification, Deployments), an OpenAPI specification viewer component, version selector, spec download, and deployment table. Use SSR for initial data and client-side fetching for dynamic content.
 >
 > Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/010-frontend-api-detail-page.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

@@ -1,5 +1,9 @@
 # 016 - Phase 1 MVP: Entra ID Authentication Integration
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — Security: Entra ID; RBAC + security trimming
 - [Product Charter](../apic_product_charter.md) — Stakeholders: Developers, API Owners, Platform Teams (role-based access)
@@ -104,6 +108,28 @@ BFF environment variables:
 - [ ] Auth middleware has comprehensive unit tests (valid token, expired token, wrong audience, missing roles)
 - [ ] Protected routes redirect unauthenticated users
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 016 — Entra ID Authentication Integration.
@@ -115,3 +141,10 @@ BFF environment variables:
 > In the frontend, integrate MSAL React for Entra ID authentication with login/logout UI, protected routes via AuthGuard, a useAuth hook, and update the API client to inject Bearer tokens. In the BFF, implement JWT validation middleware using JWKS, role-based access control middleware, and apply auth to all API routes.
 >
 > Write unit tests for auth middleware, RBAC middleware, and auth-related frontend components. Verify the build succeeds and all tests pass.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/016-entra-id-authentication.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

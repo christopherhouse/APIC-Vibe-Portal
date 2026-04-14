@@ -1,5 +1,9 @@
 # 017 - Phase 1 MVP: Application Insights Observability
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — Observability: App Insights
 - [Product Charter](../apic_product_charter.md) — Operational excellence; success metrics tracking
@@ -99,6 +103,28 @@ Define an App Insights workbook or dashboard:
 - [ ] Telemetry initialization doesn't impact application startup time
 - [ ] Unit tests verify custom metric recording (with mocked telemetry client)
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 017 — Application Insights Observability.
@@ -110,3 +136,10 @@ Define an App Insights workbook or dashboard:
 > In the BFF, integrate the `applicationinsights` SDK with auto-collection, custom metrics (search, chat, cache, auth), correlation ID middleware, and enhanced structured logging. In the frontend, integrate the browser Application Insights SDK with page views, custom events, and error tracking. Implement distributed tracing via correlation ID propagation.
 >
 > Write tests verifying custom metrics are recorded. Verify the build succeeds and all tests pass.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/017-observability-app-insights.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

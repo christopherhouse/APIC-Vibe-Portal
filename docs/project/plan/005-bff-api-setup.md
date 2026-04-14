@@ -1,5 +1,9 @@
 # 005 - Phase 1 MVP: BFF API Project Setup
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — Backend (BFF); BFF required for orchestration
 - [Product Charter](../apic_product_charter.md) — AI-assisted workflows require server-side orchestration
@@ -110,6 +114,28 @@ src/bff/
 - [ ] All tests pass (health, middleware, config)
 - [ ] CORS properly allows frontend origin and rejects others
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 005 — BFF API Project Setup.
@@ -121,3 +147,10 @@ src/bff/
 > Scaffold a Node.js + Express + TypeScript BFF API in `src/bff/`. Create the Express app with middleware (CORS, error handling, request logging, auth placeholder), health check endpoints, environment-based configuration with validation, structured logging, and a comprehensive test suite using Jest + supertest.
 >
 > Ensure the project integrates with the root npm workspace. Verify the dev server starts, the build succeeds, linting passes, and all tests pass.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/005-bff-api-setup.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

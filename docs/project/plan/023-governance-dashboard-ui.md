@@ -1,5 +1,9 @@
 # 023 - Phase 2: Governance Dashboard UI
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — Frontend: Next.js SPA; governance visibility
 - [Product Charter](../apic_product_charter.md) — Provide governance visibility; metadata completeness as success metric
@@ -112,6 +116,28 @@ Top-level KPI cards:
 - [ ] All components have unit tests
 - [ ] BFF governance endpoints return correct aggregated data
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 023 — Governance Dashboard UI.
@@ -123,3 +149,10 @@ Top-level KPI cards:
 > Create BFF endpoints for governance summary, scores, and compliance data. Build the `/governance` dashboard page with KPI cards, score distribution chart, rule compliance chart, trend chart, sortable API scores table, and single-API compliance drill-down with remediation guidance. Use a charting library (recharts or similar).
 >
 > Write unit tests for all components and BFF endpoints. Verify the build succeeds, linting passes, and all tests pass.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/023-governance-dashboard-ui.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

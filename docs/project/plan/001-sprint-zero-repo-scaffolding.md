@@ -1,5 +1,9 @@
 # 001 - Sprint Zero: Repository Scaffolding & GitHub Copilot Assets
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Product Charter](../apic_product_charter.md) — Project scope, goals, and phased timeline
 - [Architecture Document](../apic_architecture.md) — Component overview: Next.js SPA, BFF, Agent Layer, Search Layer, Observability
@@ -88,6 +92,28 @@ Update the root `README.md` with:
 - [ ] `.gitignore` properly excludes `node_modules`, build artifacts, `.env` files
 - [ ] `README.md` contains accurate project overview and links
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 001 — Sprint Zero: Repository Scaffolding & GitHub Copilot Assets.
@@ -101,3 +127,10 @@ Update the root `README.md` with:
 > Do NOT scaffold the Next.js or BFF projects themselves — that is handled in later tasks. Just create the directory structure, placeholder package.json files for each workspace, and all the developer tooling described in the plan.
 >
 > Verify that `npm install` succeeds at the root and the workspace structure is correct.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/001-sprint-zero-repo-scaffolding.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

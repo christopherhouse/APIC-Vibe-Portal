@@ -1,5 +1,9 @@
 # 014 - Phase 1 MVP: Azure OpenAI Service Integration (BFF)
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — Azure OpenAI for AI features
 - [Product Charter](../apic_product_charter.md) — Enable AI-assisted workflows
@@ -115,6 +119,28 @@ interface Citation {
 - [ ] Unit tests cover chat service with mocked OpenAI and Search responses
 - [ ] Session cleanup works after expiry
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 014 — Azure OpenAI Service Integration.
@@ -126,3 +152,10 @@ interface Citation {
 > In `src/bff/`, create an Azure OpenAI client wrapper, a RAG-powered chat service (retrieve from AI Search → augment prompt → generate with OpenAI), chat endpoints with both synchronous and SSE streaming responses, conversation session management, and token/rate limiting. Design the system prompt for an API discovery assistant.
 >
 > Write unit tests with mocked OpenAI and AI Search responses. Verify the build succeeds and all tests pass.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/014-openai-integration.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"

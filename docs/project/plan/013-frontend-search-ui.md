@@ -1,5 +1,9 @@
 # 013 - Phase 1 MVP: Search UI (Frontend)
 
+> **🔲 Status: Not Started**
+>
+> _This is a living document. Status and implementation notes are updated as work progresses._
+
 ## References
 - [Architecture Document](../apic_architecture.md) — Frontend: Next.js SPA; Search Layer integration
 - [Product Charter](../apic_product_charter.md) — Reduce time to find APIs; primary success metric
@@ -98,6 +102,28 @@ Each result card shows:
 - [ ] Keyboard navigation works in autocomplete dropdown
 - [ ] All components have unit tests
 
+## Implementation Notes
+<!-- 
+  This section is a living record updated by the implementing agent.
+  Update status, log decisions, and record validation results as work progresses.
+  When complete, change the Status at the top of this document to ✅ Complete.
+-->
+
+### Status History
+| Date | Status | Author | Notes |
+|------|--------|--------|-------|
+| — | 🔲 Not Started | — | Task created |
+
+### Technical Decisions
+_No technical decisions recorded yet._
+
+### Deviations from Plan
+_No deviations from the original plan._
+
+### Validation Results
+_No validation results yet._
+
+
 ## Coding Agent Prompt
 
 > **Task**: Implement plan step 013 — Search UI.
@@ -109,3 +135,10 @@ Each result card shows:
 > Build the global search bar with autocomplete in the header, the `/search` results page with faceted filtering, search result cards with highlights and semantic captions, search mode toggle, no-results state, and URL-based search state. Use React Query or SWR for data fetching with debouncing and request cancellation.
 >
 > Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+>
+> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/013-frontend-search-ui.md`):
+> 1. Change the status banner at the top to `> **✅ Status: Complete**`
+> 2. Add a row to the Status History table with the completion date and a summary
+> 3. Record any technical decisions made under "Technical Decisions"
+> 4. Note any deviations from the plan under "Deviations from Plan"
+> 5. Record test/validation results under "Validation Results"
