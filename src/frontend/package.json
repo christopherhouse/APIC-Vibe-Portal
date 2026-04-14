@@ -1,0 +1,15 @@
+{
+  "name": "@apic-vibe-portal/frontend",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Next.js frontend for APIC Vibe Portal",
+  "scripts": {
+    "dev": "echo 'Next.js setup pending - see task 005'",
+    "build": "echo 'Next.js setup pending - see task 005'",
+    "start": "echo 'Next.js setup pending - see task 005'",
+    "lint": "echo 'Next.js setup pending - see task 005'",
+    "test": "echo 'Next.js setup pending - see task 005'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

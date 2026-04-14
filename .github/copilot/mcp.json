@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "microsoft-docs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-microsoft-docs"
+      ]
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@context7/mcp-server"
+      ]
+    },
+    "next-devtools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@next/mcp-server"
+      ]
+    },
+    "snyk": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@snyk/mcp-server"
+      ]
+    }
+  }
+}
