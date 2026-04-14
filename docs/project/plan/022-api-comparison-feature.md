@@ -22,9 +22,9 @@ Build the API comparison feature that allows developers to compare two or more A
 
 ### 1. Comparison BFF Endpoints
 ```
-src/bff/src/routes/
-├── api-compare.routes.ts           # Comparison endpoints
-└── api-compare.routes.test.ts
+src/bff/src/bff/routers/
+├── api_compare.py                  # Comparison endpoints (FastAPI router)
+└── test_api_compare.py
 ```
 
 Endpoints:
@@ -60,9 +60,9 @@ interface CompareResponse {
 
 ### 2. Comparison Service
 ```
-src/bff/src/services/
-├── api-compare.service.ts          # Comparison logic
-└── api-compare.service.test.ts
+src/bff/src/bff/services/
+├── api_compare_service.py          # Comparison logic
+└── test_api_compare_service.py
 ```
 
 - Fetch full details for all requested APIs
@@ -152,9 +152,9 @@ Read the full task specification at `docs/project/plan/022-api-comparison-featur
 
 Reference `docs/project/plan/008-bff-api-catalog-endpoints.md` for the catalog API contract, `docs/project/plan/020-foundry-agent-setup.md` for the agent system powering AI analysis, and `docs/project/plan/010-frontend-api-detail-page.md` for the detail page integration.
 
-In the BFF, create comparison endpoints and a service that generates structured multi-API comparisons with optional AI-powered narrative analysis. In the frontend, create the `/compare` page with side-by-side table, API selector, AI analysis section, and integrate "Add to Compare" buttons in catalog cards and detail pages.
+In the BFF, create comparison FastAPI endpoints and a service that generates structured multi-API comparisons with optional AI-powered narrative analysis. In the frontend, create the `/compare` page with side-by-side table, API selector, AI analysis section, and integrate "Add to Compare" buttons in catalog cards and detail pages.
 
-Write unit tests for the comparison service and all frontend components. Verify the build succeeds and all tests pass.
+Write unit tests for the comparison service (pytest) and all frontend components (Jest). Verify all tests pass.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/022-api-comparison-feature.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

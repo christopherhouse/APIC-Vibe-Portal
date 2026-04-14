@@ -20,16 +20,16 @@ Create a Governance & Compliance Agent that can assess API governance status, ch
 
 ### 1. Governance Agent Definition
 ```
-src/bff/src/agents/governance-agent/
-├── definition.ts              # Agent definition and tools
-├── prompts.ts                 # System prompt for governance focus
-├── handler.ts                 # Response processing
+src/bff/src/bff/agents/governance_agent/
+├── definition.py              # Agent definition and tools
+├── prompts.py                 # System prompt for governance focus
+├── handler.py                 # Response processing
 ├── rules/
-│   ├── governance-rules.ts    # Governance rule definitions
-│   └── compliance-checker.ts  # Rule evaluation engine
-└── __tests__/
-    ├── governance-agent.test.ts
-    └── compliance-checker.test.ts
+│   ├── governance_rules.py    # Governance rule definitions
+│   └── compliance_checker.py  # Rule evaluation engine
+└── tests/
+    ├── test_governance_agent.py
+    └── test_compliance_checker.py
 ```
 
 ### 2. Governance Rules Engine
@@ -63,7 +63,7 @@ Design prompt that:
 - References specific governance rules by name
 
 ### 5. Agent Router Update
-Update `agent-router.ts` to:
+Update `agent_router.py` to:
 - Detect governance-related intents (e.g., "Is this API compliant?", "Show governance issues")
 - Route governance queries to the Governance Agent
 - Route discovery queries to the Discovery Agent
@@ -119,7 +119,7 @@ Reference `docs/project/plan/020-foundry-agent-setup.md` for the agent framework
 
 Create the Governance Agent with a configurable rules engine (metadata completeness, versioning, spec quality, lifecycle, security, documentation rules), governance score calculation, and tools for compliance checking and remediation guidance. Update the agent router to dispatch governance-related queries.
 
-Write unit tests for all governance rules, score calculation, and agent routing. Verify the build succeeds and all tests pass.
+Write unit tests for all governance rules, score calculation, and agent routing using pytest. Verify all tests pass with `uv run pytest`.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/021-governance-agent.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

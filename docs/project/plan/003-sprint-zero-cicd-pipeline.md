@@ -31,14 +31,14 @@ Set up GitHub Actions workflows for continuous integration and continuous deploy
 Triggers: `push` to `main`, `pull_request` to `main`
 
 Jobs:
-1. **lint** — Run ESLint across all workspaces
+1. **lint** — Run ESLint across frontend/shared workspaces, run Ruff on BFF Python code
 2. **test-frontend** — Run frontend unit tests (Jest + RTL)
-3. **test-bff** — Run BFF unit tests
+3. **test-bff** — Run BFF unit tests (pytest)
 4. **build-frontend** — Build Next.js app
-5. **build-bff** — Build BFF service
-6. **typecheck** — Run TypeScript compiler in `--noEmit` mode across workspaces
+5. **build-bff** — Build/validate BFF service (Python/FastAPI)
+6. **typecheck** — Run TypeScript compiler in `--noEmit` mode across frontend/shared workspaces
 
-Use npm workspace commands and matrix strategy where appropriate.
+Use npm workspace commands for frontend/shared and UV commands for the BFF where appropriate.
 
 ### 3. Infrastructure Deployment (`deploy-infra.yml`)
 Triggers: `push` to `main` (changes in `/infra/**`), `workflow_dispatch`
@@ -76,7 +76,8 @@ Create Dockerfiles for the frontend and BFF:
 /src/bff/Dockerfile
 ```
 - Multi-stage builds (build stage + production stage)
-- Use `node:24-alpine` as base
+- Frontend: Use `node:24-alpine` as base
+- BFF: Use a Python 3.14 base image, install UV, and use `uv sync` for dependency installation
 - Non-root user for production stage
 - Health check endpoints
 

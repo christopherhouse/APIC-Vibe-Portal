@@ -21,20 +21,20 @@ Implement the search API endpoints in the BFF that perform hybrid search (keywor
 
 ### 1. Search Client
 ```
-src/bff/src/clients/
-├── ai-search-client.ts        # Azure AI Search client wrapper
-└── ai-search-client.test.ts
+src/bff/src/bff/clients/
+├── ai_search_client.py        # Azure AI Search client wrapper
+└── test_ai_search_client.py
 ```
 
-- Use `@azure/search-documents` SDK
+- Use `azure-search-documents` SDK for Python
 - Authenticate with DefaultAzureCredential
 - Configure for hybrid search (keyword + semantic + vector)
 
 ### 2. Search Service
 ```
-src/bff/src/services/
-├── search.service.ts           # Search business logic
-└── search.service.test.ts
+src/bff/src/bff/services/
+├── search_service.py           # Search business logic
+└── test_search_service.py
 ```
 
 Operations:
@@ -153,9 +153,9 @@ Read the full task specification at `docs/project/plan/012-search-api-implementa
 
 Reference `docs/project/plan/011-ai-search-index-setup.md` for the index schema and `docs/project/plan/006-shared-types-package.md` for the search DTOs.
 
-In `src/bff/`, create an Azure AI Search client wrapper, a search service implementing hybrid search (keyword + semantic + vector with RRF), and Express route handlers for search and suggest endpoints. Include faceted results, hit highlights, semantic captions, and pagination.
+In `src/bff/`, create an Azure AI Search client wrapper, a search service implementing hybrid search (keyword + semantic + vector with RRF), and FastAPI route handlers for search and suggest endpoints. Include faceted results, hit highlights, semantic captions, and pagination.
 
-Write unit tests with mocked AI Search SDK responses. Verify the build succeeds and all tests pass.
+Write unit tests with mocked AI Search SDK responses using pytest. Verify all tests pass with `uv run pytest`.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/012-search-api-implementation.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

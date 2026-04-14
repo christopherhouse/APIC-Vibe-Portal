@@ -21,9 +21,9 @@ Build the governance dashboard in the frontend that provides a visual overview o
 
 ### 1. Governance BFF Endpoints
 ```
-src/bff/src/routes/
-├── governance.routes.ts            # Governance dashboard endpoints
-└── governance.routes.test.ts
+src/bff/src/bff/routers/
+├── governance.py                   # Governance dashboard endpoints (FastAPI router)
+└── test_governance.py
 ```
 
 Endpoints:
@@ -37,9 +37,9 @@ Endpoints:
 
 ### 2. Governance Summary Service
 ```
-src/bff/src/services/
-├── governance-dashboard.service.ts
-└── governance-dashboard.service.test.ts
+src/bff/src/bff/services/
+├── governance_dashboard_service.py
+└── test_governance_dashboard_service.py
 ```
 
 - Aggregate governance scores across all APIs

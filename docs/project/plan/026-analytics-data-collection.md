@@ -41,9 +41,9 @@ type AnalyticsEvent =
 
 ### 2. BFF Analytics Service
 ```
-src/bff/src/services/
-├── analytics.service.ts            # Analytics collection and storage
-└── analytics.service.test.ts
+src/bff/src/bff/services/
+├── analytics_service.py            # Analytics collection and storage
+└── test_analytics_service.py
 ```
 
 - Collect events from frontend via API endpoint
@@ -54,9 +54,9 @@ src/bff/src/services/
 
 ### 3. Analytics API Endpoints
 ```
-src/bff/src/routes/
-├── analytics.routes.ts             # Analytics endpoints
-└── analytics.routes.test.ts
+src/bff/src/bff/routers/
+├── analytics.py                    # Analytics endpoints (FastAPI router)
+└── test_analytics.py
 ```
 
 | Method | Path | Description |
@@ -142,7 +142,7 @@ Reference `docs/project/plan/017-observability-app-insights.md` for the existing
 
 Create typed analytics event models in the shared package. In the BFF, create an analytics service for event storage and admin query endpoints. In the frontend, create an analytics provider with a useAnalytics hook, automatic page view tracking, event batching, and privacy controls.
 
-Write unit tests for event collection, batching, storage, and aggregation. Verify the build succeeds and all tests pass.
+Write unit tests for event collection, batching, storage, and aggregation using pytest (BFF) and Jest (frontend). Verify all tests pass.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/026-analytics-data-collection.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

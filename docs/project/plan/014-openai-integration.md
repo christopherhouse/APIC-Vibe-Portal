@@ -22,21 +22,21 @@ Integrate Azure OpenAI into the BFF to power AI-assisted API discovery through a
 
 ### 1. OpenAI Client
 ```
-src/bff/src/clients/
-├── openai-client.ts           # Azure OpenAI client wrapper
-└── openai-client.test.ts
+src/bff/src/bff/clients/
+├── openai_client.py           # Azure OpenAI client wrapper
+└── test_openai_client.py
 ```
 
-- Use `@azure/openai` SDK or `openai` npm package with Azure configuration
-- Authenticate with DefaultAzureCredential
+- Use `openai` Python package with Azure configuration
+- Authenticate with DefaultAzureCredential (via `azure-identity`)
 - Configure for the deployed GPT model (e.g., gpt-4o)
 - Support streaming responses
 
 ### 2. RAG (Retrieval-Augmented Generation) Service
 ```
-src/bff/src/services/
-├── ai-chat.service.ts          # RAG-powered chat service
-└── ai-chat.service.test.ts
+src/bff/src/bff/services/
+├── ai_chat_service.py          # RAG-powered chat service
+└── test_ai_chat_service.py
 ```
 
 Implement a RAG pipeline:
@@ -96,7 +96,7 @@ interface Citation {
 - Each session has a unique ID returned to the frontend
 
 ### 6. Streaming Support
-- Use Server-Sent Events (SSE) for streaming responses
+- Use Server-Sent Events (SSE) for streaming responses (via FastAPI `StreamingResponse`)
 - Stream tokens as they are generated
 - Include a final event with citations and metadata
 - Frontend can show incremental text rendering
@@ -150,9 +150,9 @@ Read the full task specification at `docs/project/plan/014-openai-integration.md
 
 Reference the architecture at `docs/project/apic_architecture.md` (Azure OpenAI for AI features), `docs/project/plan/012-search-api-implementation.md` for the search service used in RAG retrieval, and `docs/project/plan/006-shared-types-package.md` for chat DTOs.
 
-In `src/bff/`, create an Azure OpenAI client wrapper, a RAG-powered chat service (retrieve from AI Search → augment prompt → generate with OpenAI), chat endpoints with both synchronous and SSE streaming responses, conversation session management, and token/rate limiting. Design the system prompt for an API discovery assistant.
+In `src/bff/`, create an Azure OpenAI client wrapper (using the `openai` Python package with Azure config), a RAG-powered chat service (retrieve from AI Search → augment prompt → generate with OpenAI), FastAPI chat endpoints with both synchronous and SSE streaming responses, conversation session management, and token/rate limiting. Design the system prompt for an API discovery assistant.
 
-Write unit tests with mocked OpenAI and AI Search responses. Verify the build succeeds and all tests pass.
+Write unit tests with mocked OpenAI and AI Search responses using pytest. Verify all tests pass with `uv run pytest`.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/014-openai-integration.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
