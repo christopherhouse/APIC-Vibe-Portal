@@ -173,19 +173,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 030 — Final Integration Testing, Documentation & Launch Readiness.
->
-> Read the full task specification at `docs/project/plan/030-final-integration-launch.md`.
->
-> This is the final task that validates the complete APIC Vibe Portal AI platform. Reference all plan documents at `docs/project/plan/` for the complete feature set.
->
-> Organize and complete the E2E test suite with smoke tests, feature tests, user journey tests, and cross-cutting tests (security, performance, accessibility). Create comprehensive documentation: user guides, operations runbooks, and developer docs. Complete the launch readiness checklist. Update the root README with the final project overview.
->
-> Run the full regression suite and fix any issues. Ensure all documentation is accurate and complete.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/030-final-integration-launch.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 030 — Final Integration Testing, Documentation & Launch Readiness.
+
+Read the full task specification at `docs/project/plan/030-final-integration-launch.md`.
+
+This is the final task that validates the complete APIC Vibe Portal AI platform. Reference all plan documents at `docs/project/plan/` for the complete feature set.
+
+Organize and complete the E2E test suite with smoke tests, feature tests, user journey tests, and cross-cutting tests (security, performance, accessibility). Create comprehensive documentation: user guides, operations runbooks, and developer docs. Complete the launch readiness checklist. Update the root README with the final project overview.
+
+Run the full regression suite and fix any issues. Ensure all documentation is accurate and complete.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/030-final-integration-launch.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

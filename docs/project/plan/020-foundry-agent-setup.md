@@ -123,19 +123,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 020 — Foundry Agent Service Setup & First Agent.
->
-> Read the full task specification at `docs/project/plan/020-foundry-agent-setup.md`.
->
-> Reference the architecture at `docs/project/apic_architecture.md` (Agent Layer: Foundry, Multi-agent design), `docs/project/plan/014-openai-integration.md` for the existing chat service to integrate with, and `docs/project/plan/012-search-api-implementation.md` for the search service the agent will use as a tool.
->
-> In `src/bff/`, create a Foundry Agent Service client, define the API Discovery Agent with tools (search, get details, get spec), an agent router, and integrate with the existing chat endpoints. Design system prompts with few-shot examples.
->
-> Write unit tests for the agent, router, and tool execution. Verify the build succeeds and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/020-foundry-agent-setup.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 020 — Foundry Agent Service Setup & First Agent.
+
+Read the full task specification at `docs/project/plan/020-foundry-agent-setup.md`.
+
+Reference the architecture at `docs/project/apic_architecture.md` (Agent Layer: Foundry, Multi-agent design), `docs/project/plan/014-openai-integration.md` for the existing chat service to integrate with, and `docs/project/plan/012-search-api-implementation.md` for the search service the agent will use as a tool.
+
+In `src/bff/`, create a Foundry Agent Service client, define the API Discovery Agent with tools (search, get details, get spec), an agent router, and integrate with the existing chat endpoints. Design system prompts with few-shot examples.
+
+Write unit tests for the agent, router, and tool execution. Verify the build succeeds and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/020-foundry-agent-setup.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

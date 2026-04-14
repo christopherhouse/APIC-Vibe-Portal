@@ -126,19 +126,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 013 — Search UI.
->
-> Read the full task specification at `docs/project/plan/013-frontend-search-ui.md`.
->
-> Reference `docs/project/plan/012-search-api-implementation.md` for the BFF search API contract, `docs/project/plan/004-frontend-nextjs-setup.md` for the header layout component (where the search bar goes), and `docs/project/plan/006-shared-types-package.md` for the search types.
->
-> Build the global search bar with autocomplete in the header, the `/search` results page with faceted filtering, search result cards with highlights and semantic captions, search mode toggle, no-results state, and URL-based search state. Use React Query or SWR for data fetching with debouncing and request cancellation.
->
-> Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/013-frontend-search-ui.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 013 — Search UI.
+
+Read the full task specification at `docs/project/plan/013-frontend-search-ui.md`.
+
+Reference `docs/project/plan/012-search-api-implementation.md` for the BFF search API contract, `docs/project/plan/004-frontend-nextjs-setup.md` for the header layout component (where the search bar goes), and `docs/project/plan/006-shared-types-package.md` for the search types.
+
+Build the global search bar with autocomplete in the header, the `/search` results page with faceted filtering, search result cards with highlights and semantic captions, search mode toggle, no-results state, and URL-based search state. Use React Query or SWR for data fetching with debouncing and request cancellation.
+
+Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/013-frontend-search-ui.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

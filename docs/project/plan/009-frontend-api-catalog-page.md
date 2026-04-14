@@ -116,19 +116,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 009 — API Catalog Listing Page.
->
-> Read the full task specification at `docs/project/plan/009-frontend-api-catalog-page.md`.
->
-> Reference `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, `docs/project/plan/008-bff-api-catalog-endpoints.md` for the BFF API contract, and `docs/project/plan/006-shared-types-package.md` for the shared types.
->
-> Create the `/catalog` page in the Next.js app with: an API card grid/list view, lifecycle and kind filters, sorting controls, pagination, view mode toggle, URL-based filter state, loading skeletons, empty states, and responsive layout. Use server components for initial SSR and client-side data fetching for filter/sort/page changes.
->
-> Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/009-frontend-api-catalog-page.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 009 — API Catalog Listing Page.
+
+Read the full task specification at `docs/project/plan/009-frontend-api-catalog-page.md`.
+
+Reference `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, `docs/project/plan/008-bff-api-catalog-endpoints.md` for the BFF API contract, and `docs/project/plan/006-shared-types-package.md` for the shared types.
+
+Create the `/catalog` page in the Next.js app with: an API card grid/list view, lifecycle and kind filters, sorting controls, pagination, view mode toggle, URL-based filter state, loading skeletons, empty states, and responsive layout. Use server components for initial SSR and client-side data fetching for filter/sort/page changes.
+
+Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/009-frontend-api-catalog-page.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

@@ -117,21 +117,23 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 001 — Sprint Zero: Repository Scaffolding & GitHub Copilot Assets.
->
-> Read the full task specification at `docs/project/plan/001-sprint-zero-repo-scaffolding.md`.
->
-> You are bootstrapping a new monorepo for the APIC Vibe Portal AI project. Reference the architecture at `docs/project/apic_architecture.md` and the charter at `docs/project/apic_product_charter.md` for context on the tech stack and project goals.
->
-> Create the monorepo directory structure, root workspace configuration (npm workspaces, .nvmrc pinning Node.js >=24, .editorconfig, .gitignore), GitHub Copilot instructions and custom agent definitions (including tech-writer-agent), shared ESLint/Prettier/TypeScript 6.0 configs, a PR template, and update the root README.
->
-> Do NOT scaffold the Next.js or BFF projects themselves — that is handled in later tasks. Just create the directory structure, placeholder package.json files for each workspace, and all the developer tooling described in the plan.
->
-> Verify that `npm install` succeeds at the root and the workspace structure is correct.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/001-sprint-zero-repo-scaffolding.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 001 — Sprint Zero: Repository Scaffolding & GitHub Copilot Assets.
+
+Read the full task specification at `docs/project/plan/001-sprint-zero-repo-scaffolding.md`.
+
+You are bootstrapping a new monorepo for the APIC Vibe Portal AI project. Reference the architecture at `docs/project/apic_architecture.md` and the charter at `docs/project/apic_product_charter.md` for context on the tech stack and project goals.
+
+Create the monorepo directory structure, root workspace configuration (npm workspaces, .nvmrc pinning Node.js >=24, .editorconfig, .gitignore), GitHub Copilot instructions and custom agent definitions (including tech-writer-agent), shared ESLint/Prettier/TypeScript 6.0 configs, a PR template, and update the root README.
+
+Do NOT scaffold the Next.js or BFF projects themselves — that is handled in later tasks. Just create the directory structure, placeholder package.json files for each workspace, and all the developer tooling described in the plan.
+
+Verify that `npm install` succeeds at the root and the workspace structure is correct.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/001-sprint-zero-repo-scaffolding.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

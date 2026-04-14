@@ -131,19 +131,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 024 — Multi-Agent Orchestration & Agent Management.
->
-> Read the full task specification at `docs/project/plan/024-multi-agent-orchestration.md`.
->
-> Reference `docs/project/plan/020-foundry-agent-setup.md` for the base agent framework and router, `docs/project/plan/021-governance-agent.md` for the second agent, and `docs/project/plan/016-entra-id-authentication.md` for admin role gating.
->
-> Implement a multi-agent orchestrator with intent classification, agent hand-off protocol with context preservation, cross-agent conversation context management, admin API endpoints for agent management, and an admin UI for viewing/configuring agents.
->
-> Write unit tests for the orchestrator, intent classifier, context manager, and admin endpoints. Verify the build succeeds and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/024-multi-agent-orchestration.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 024 — Multi-Agent Orchestration & Agent Management.
+
+Read the full task specification at `docs/project/plan/024-multi-agent-orchestration.md`.
+
+Reference `docs/project/plan/020-foundry-agent-setup.md` for the base agent framework and router, `docs/project/plan/021-governance-agent.md` for the second agent, and `docs/project/plan/016-entra-id-authentication.md` for admin role gating.
+
+Implement a multi-agent orchestrator with intent classification, agent hand-off protocol with context preservation, cross-agent conversation context management, admin API endpoints for agent management, and an admin UI for viewing/configuring agents.
+
+Write unit tests for the orchestrator, intent classifier, context manager, and admin endpoints. Verify the build succeeds and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/024-multi-agent-orchestration.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

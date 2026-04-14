@@ -102,19 +102,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 007 — Azure API Center Data Layer Integration.
->
-> Read the full task specification at `docs/project/plan/007-api-center-data-layer.md`.
->
-> Reference the architecture at `docs/project/apic_architecture.md` for how the BFF connects to Azure API Center, and `docs/project/plan/006-shared-types-package.md` for the shared models to map to.
->
-> In `src/bff/`, create an Azure API Center client using the Azure SDK with DefaultAzureCredential, a service layer with operations for listing/getting APIs, versions, deployments, and specifications, a data mapping layer to convert SDK responses to shared types, and an in-memory caching layer.
->
-> Write comprehensive unit tests with mocked API Center responses. Verify the build succeeds and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/007-api-center-data-layer.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 007 — Azure API Center Data Layer Integration.
+
+Read the full task specification at `docs/project/plan/007-api-center-data-layer.md`.
+
+Reference the architecture at `docs/project/apic_architecture.md` for how the BFF connects to Azure API Center, and `docs/project/plan/006-shared-types-package.md` for the shared models to map to.
+
+In `src/bff/`, create an Azure API Center client using the Azure SDK with DefaultAzureCredential, a service layer with operations for listing/getting APIs, versions, deployments, and specifications, a data mapping layer to convert SDK responses to shared types, and an in-memory caching layer.
+
+Write comprehensive unit tests with mocked API Center responses. Verify the build succeeds and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/007-api-center-data-layer.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

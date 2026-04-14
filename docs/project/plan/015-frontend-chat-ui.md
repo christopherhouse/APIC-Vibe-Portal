@@ -129,19 +129,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 015 — AI Chat Interface.
->
-> Read the full task specification at `docs/project/plan/015-frontend-chat-ui.md`.
->
-> Reference `docs/project/plan/014-openai-integration.md` for the BFF chat API contract (endpoints, request/response shapes, SSE streaming), `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/plan/006-shared-types-package.md` for the chat types.
->
-> Build the full-page chat view at `/chat` and an embedded collapsible chat side panel accessible from all pages. Implement message rendering with markdown support, SSE streaming integration, citation chips that link to API detail pages, suggested starter prompts, session management via React context, and responsive layout.
->
-> Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/015-frontend-chat-ui.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 015 — AI Chat Interface.
+
+Read the full task specification at `docs/project/plan/015-frontend-chat-ui.md`.
+
+Reference `docs/project/plan/014-openai-integration.md` for the BFF chat API contract (endpoints, request/response shapes, SSE streaming), `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/plan/006-shared-types-package.md` for the chat types.
+
+Build the full-page chat view at `/chat` and an embedded collapsible chat side panel accessible from all pages. Implement message rendering with markdown support, SSE streaming integration, citation chips that link to API detail pages, suggested starter prompts, session management via React context, and responsive layout.
+
+Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/015-frontend-chat-ui.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

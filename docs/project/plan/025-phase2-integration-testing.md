@@ -118,19 +118,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 025 — Phase 2 Integration Testing & Polish.
->
-> Read the full task specification at `docs/project/plan/025-phase2-integration-testing.md`.
->
-> This task validates all Phase 2 features (tasks 020-024) work together with Phase 1. Reference the full plan directory at `docs/project/plan/` for all features to test.
->
-> Extend the Playwright E2E suite with tests for: governance dashboard, API comparison, multi-agent chat with hand-offs, and admin features. Add a complete Phase 2 user journey test. Update navigation to include Phase 2 pages. Polish loading/error states and responsive design.
->
-> Run all E2E tests (Phase 1 + Phase 2) and fix any issues. Verify no regressions in Phase 1 functionality.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/025-phase2-integration-testing.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 025 — Phase 2 Integration Testing & Polish.
+
+Read the full task specification at `docs/project/plan/025-phase2-integration-testing.md`.
+
+This task validates all Phase 2 features (tasks 020-024) work together with Phase 1. Reference the full plan directory at `docs/project/plan/` for all features to test.
+
+Extend the Playwright E2E suite with tests for: governance dashboard, API comparison, multi-agent chat with hand-offs, and admin features. Add a complete Phase 2 user journey test. Update navigation to include Phase 2 pages. Polish loading/error states and responsive design.
+
+Run all E2E tests (Phase 1 + Phase 2) and fix any issues. Verify no regressions in Phase 1 functionality.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/025-phase2-integration-testing.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

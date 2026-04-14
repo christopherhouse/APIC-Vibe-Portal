@@ -133,19 +133,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 026 — Usage Analytics Data Collection.
->
-> Read the full task specification at `docs/project/plan/026-analytics-data-collection.md`.
->
-> Reference `docs/project/plan/017-observability-app-insights.md` for the existing telemetry foundation and `docs/project/plan/016-entra-id-authentication.md` for user identity.
->
-> Create typed analytics event models in the shared package. In the BFF, create an analytics service for event storage and admin query endpoints. In the frontend, create an analytics provider with a useAnalytics hook, automatic page view tracking, event batching, and privacy controls.
->
-> Write unit tests for event collection, batching, storage, and aggregation. Verify the build succeeds and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/026-analytics-data-collection.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 026 — Usage Analytics Data Collection.
+
+Read the full task specification at `docs/project/plan/026-analytics-data-collection.md`.
+
+Reference `docs/project/plan/017-observability-app-insights.md` for the existing telemetry foundation and `docs/project/plan/016-entra-id-authentication.md` for user identity.
+
+Create typed analytics event models in the shared package. In the BFF, create an analytics service for event storage and admin query endpoints. In the frontend, create an analytics provider with a useAnalytics hook, automatic page view tracking, event batching, and privacy controls.
+
+Write unit tests for event collection, batching, storage, and aggregation. Verify the build succeeds and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/026-analytics-data-collection.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

@@ -110,19 +110,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 021 — Multi-Agent Architecture: Governance & Compliance Agent.
->
-> Read the full task specification at `docs/project/plan/021-governance-agent.md`.
->
-> Reference `docs/project/plan/020-foundry-agent-setup.md` for the agent framework and router, `docs/project/plan/007-api-center-data-layer.md` for the API data source, and `docs/project/apic_product_charter.md` for the governance goals.
->
-> Create the Governance Agent with a configurable rules engine (metadata completeness, versioning, spec quality, lifecycle, security, documentation rules), governance score calculation, and tools for compliance checking and remediation guidance. Update the agent router to dispatch governance-related queries.
->
-> Write unit tests for all governance rules, score calculation, and agent routing. Verify the build succeeds and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/021-governance-agent.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 021 — Multi-Agent Architecture: Governance & Compliance Agent.
+
+Read the full task specification at `docs/project/plan/021-governance-agent.md`.
+
+Reference `docs/project/plan/020-foundry-agent-setup.md` for the agent framework and router, `docs/project/plan/007-api-center-data-layer.md` for the API data source, and `docs/project/apic_product_charter.md` for the governance goals.
+
+Create the Governance Agent with a configurable rules engine (metadata completeness, versioning, spec quality, lifecycle, security, documentation rules), governance score calculation, and tools for compliance checking and remediation guidance. Update the agent router to dispatch governance-related queries.
+
+Write unit tests for all governance rules, score calculation, and agent routing. Verify the build succeeds and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/021-governance-agent.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```
