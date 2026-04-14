@@ -1,6 +1,6 @@
 # 001 - Sprint Zero: Repository Scaffolding & GitHub Copilot Assets
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -119,15 +119,64 @@ Update the root `README.md` with:
 | Date | Status | Author | Notes |
 |------|--------|--------|-------|
 | — | 🔲 Not Started | — | Task created |
+| 2026-04-14 | ✅ Complete | Claude Code Agent | Successfully scaffolded monorepo structure, tooling, and GitHub Copilot assets |
 
 ### Technical Decisions
-_No technical decisions recorded yet._
+
+1. **UV Dependency Management**: Updated `pyproject.toml` to use `[dependency-groups]` instead of the deprecated `[tool.uv]` section for dev dependencies, following UV 0.11+ conventions.
+
+2. **TypeScript 6.0**: Configured strict TypeScript 6.0 with modern compiler options (ESNext module resolution, bundler mode) for frontend and shared workspaces.
+
+3. **ESLint Flat Config**: Used ESLint 9.x flat config format (`eslint.config.js`) instead of legacy `.eslintrc` for improved configuration and plugin management.
+
+4. **MCP Server Configuration**: Documented four MCP servers (Microsoft Learn, Context7, Next.js DevTools, Snyk) in both `.github/copilot/mcp.json` and copilot instructions for discoverability.
+
+5. **Minimal BFF Package**: Created a minimal `apic_vibe_portal_bff` Python package with `__init__.py` to satisfy Hatchling build requirements. Full BFF implementation is deferred to Task 006.
 
 ### Deviations from Plan
-_No deviations from the original plan._
+
+**None**. All requirements from the plan were implemented as specified. The only additions were:
+- Created minimal `apic_vibe_portal_bff/__init__.py` package to satisfy UV/Hatchling build requirements (not explicitly mentioned in plan but necessary for `uv sync` to succeed)
 
 ### Validation Results
-_No validation results yet._
+
+✅ **All acceptance criteria passed:**
+
+1. ✅ Repository clones cleanly and `npm install` succeeds at the root (frontend + shared)
+   - Installed 239 packages successfully with 0 vulnerabilities
+
+2. ✅ Workspace structure resolves correctly (`npm ls` shows frontend and shared)
+   - Both `@apic-vibe-portal/frontend` and `@apic-vibe-portal/shared` workspaces are correctly linked
+
+3. ✅ BFF Python project initializes correctly with `uv sync` in `src/bff/`
+   - UV successfully installed Python 3.14.4
+   - Created virtual environment at `.venv`
+   - Installed 2 packages: `apic-vibe-portal-bff` and `ruff`
+
+4. ✅ `.github/copilot-instructions.md` exists and is well-formed
+   - Comprehensive instructions covering tech stack, conventions, architecture, security, testing, and MCP servers
+
+5. ✅ Custom agent definitions exist under `.github/agents/`
+   - Created 5 agent definitions: `api-portal-architect`, `azure-infra-agent`, `frontend-agent`, `bff-agent`, `tech-writer-agent`
+
+6. ✅ MCP servers documented
+   - Documented in `.github/copilot/mcp.json`
+   - Referenced in `.github/copilot-instructions.md`
+   - Referenced in individual agent definition files
+
+7. ✅ ESLint, Prettier, and TypeScript configurations exist and are valid
+   - `eslint.config.js` (ESLint 9.x flat config)
+   - `.prettierrc.json`
+   - `tsconfig.base.json` (TypeScript 6.0)
+
+8. ✅ Ruff configuration exists and is valid (BFF Python)
+   - Configured in `src/bff/pyproject.toml` with appropriate linting rules
+
+9. ✅ `.gitignore` properly excludes artifacts
+   - Excludes `node_modules`, `__pycache__`, `.venv`, build artifacts, `.env` files, and more
+
+10. ✅ `README.md` contains accurate project overview and links
+    - Includes architecture diagram (Mermaid), getting started instructions, tech stack, and documentation links
 
 
 ## Coding Agent Prompt
