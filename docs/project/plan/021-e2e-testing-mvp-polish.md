@@ -1,4 +1,4 @@
-# 019 - Phase 1 MVP: End-to-End Integration Testing & MVP Polish
+# 021 - Phase 1 MVP: End-to-End Integration Testing & MVP Polish
 
 > **🔲 Status: Not Started**
 >
@@ -132,9 +132,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 019 — End-to-End Integration Testing & MVP Polish.
+**Task**: Implement plan step 021 — End-to-End Integration Testing & MVP Polish.
 
-Read the full task specification at `docs/project/plan/019-e2e-testing-mvp-polish.md`.
+Read the full task specification at `docs/project/plan/021-e2e-testing-mvp-polish.md`.
 
 This task validates all Phase 1 MVP features (tasks 001-018) work together. Reference the full plan directory at `docs/project/plan/` for the features that should be tested.
 
@@ -142,7 +142,7 @@ Set up Playwright in the `e2e/` directory with tests for: authentication flow, c
 
 Run all E2E tests and fix any issues. Measure and document Lighthouse scores and Core Web Vitals. Update the root README with MVP documentation.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/019-e2e-testing-mvp-polish.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/021-e2e-testing-mvp-polish.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

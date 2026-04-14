@@ -1,4 +1,4 @@
-# 015 - Phase 1 MVP: AI Chat Interface (Frontend)
+# 018 - Phase 1 MVP: AI Chat Interface (Frontend)
 
 > **🔲 Status: Not Started**
 >
@@ -13,9 +13,9 @@
 Build the AI-powered chat interface in the frontend that allows developers to discover and learn about APIs through natural language conversation. The chat connects to the BFF's OpenAI-powered RAG endpoints.
 
 ## Dependencies
-- **004** — Frontend project setup (components, layout)
-- **006** — Shared types package (chat models)
-- **014** — OpenAI BFF integration (chat API endpoints)
+- **005** — Frontend project setup (components, layout)
+- **007** — Shared types package (chat models)
+- **017** — OpenAI BFF integration (chat API endpoints)
 
 ## Implementation Details
 
@@ -130,9 +130,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 015 — AI Chat Interface.
+**Task**: Implement plan step 018 — AI Chat Interface.
 
-Read the full task specification at `docs/project/plan/015-frontend-chat-ui.md`.
+Read the full task specification at `docs/project/plan/018-frontend-chat-ui.md`.
 
 Reference `docs/project/plan/014-openai-integration.md` for the BFF chat API contract (endpoints, request/response shapes, SSE streaming), `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/plan/006-shared-types-package.md` for the chat types.
 
@@ -140,7 +140,7 @@ Build the full-page chat view at `/chat` and an embedded collapsible chat side p
 
 Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/015-frontend-chat-ui.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/018-frontend-chat-ui.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

@@ -30,6 +30,7 @@ Establish the Azure infrastructure foundation using Bicep templates. This create
 │   ├── api-center.bicep            # Azure API Center
 │   ├── ai-search.bicep             # Azure AI Search
 │   ├── openai.bicep                # Azure OpenAI
+│   ├── foundry-agent.bicep         # Foundry Agent Service (for Phase 2)
 │   ├── app-insights.bicep          # Application Insights + Log Analytics
 │   ├── managed-identity.bicep      # User-assigned managed identity
 │   └── entra-config.bicep          # Entra ID app registration config
@@ -51,8 +52,9 @@ The orchestrator template should deploy the following modules in dependency orde
 7. **Azure API Center** — The API catalog data source
 8. **Azure AI Search** — Search service for hybrid retrieval
 9. **Azure OpenAI** — GPT model deployment for AI features
-10. **Container App (Frontend)** — Next.js app, initially with placeholder image
-11. **Container App (BFF)** — BFF API, initially with placeholder image
+10. **Foundry Agent Service** — Multi-agent platform for governance and compliance agents (Phase 2); provision infrastructure now, configure agents in task 022
+11. **Container App (Frontend)** — Next.js app, initially with placeholder image
+12. **Container App (BFF)** — BFF API, initially with placeholder image
 
 ### 3. Parameterization
 - Environment name (dev/staging/prod)
@@ -68,6 +70,7 @@ The orchestrator template should deploy the following modules in dependency orde
 - AI Search: managed identity has `Search Index Data Reader`
 - OpenAI: managed identity has `Cognitive Services OpenAI User`
 - API Center: managed identity has `Azure API Center Data Reader`
+- Foundry Agent Service: managed identity has appropriate roles for agent management and invocation; configure RBAC prerequisites for task 022
 - All resources use private endpoints where supported (parameterized, optional for dev)
 
 ### 5. Outputs
@@ -78,6 +81,7 @@ The main template should output:
 - AI Search endpoint
 - OpenAI endpoint
 - API Center endpoint
+- Foundry Agent Service endpoint (for task 022)
 - Application Insights connection string
 
 ## Testing & Acceptance Criteria

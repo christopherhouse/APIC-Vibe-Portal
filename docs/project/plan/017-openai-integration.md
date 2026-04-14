@@ -1,4 +1,4 @@
-# 014 - Phase 1 MVP: Azure OpenAI Service Integration (BFF)
+# 017 - Phase 1 MVP: Azure OpenAI Service Integration (BFF)
 
 > **🔲 Status: Not Started**
 >
@@ -14,9 +14,9 @@ Integrate Azure OpenAI into the BFF to power AI-assisted API discovery through a
 
 ## Dependencies
 - **002** — Azure infrastructure (OpenAI resource deployed)
-- **005** — BFF API project setup
-- **006** — Shared types package (chat DTOs)
-- **011** — AI Search index (used for RAG retrieval)
+- **007** — BFF API project setup
+- **007** — Shared types package (chat DTOs)
+- **013** — AI Search index (used for RAG retrieval)
 
 ## Implementation Details
 
@@ -144,9 +144,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 014 — Azure OpenAI Service Integration.
+**Task**: Implement plan step 017 — Azure OpenAI Service Integration.
 
-Read the full task specification at `docs/project/plan/014-openai-integration.md`.
+Read the full task specification at `docs/project/plan/017-openai-integration.md`.
 
 Reference the architecture at `docs/project/apic_architecture.md` (Azure OpenAI for AI features), `docs/project/plan/012-search-api-implementation.md` for the search service used in RAG retrieval, and `docs/project/plan/006-shared-types-package.md` for chat DTOs.
 
@@ -154,7 +154,7 @@ In `src/bff/`, create an Azure OpenAI client wrapper, a RAG-powered chat service
 
 Write unit tests with mocked OpenAI and AI Search responses. Verify the build succeeds and all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/014-openai-integration.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/017-openai-integration.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

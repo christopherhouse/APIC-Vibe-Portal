@@ -1,4 +1,4 @@
-# 009 - Phase 1 MVP: API Catalog Listing Page (Frontend)
+# 011 - Phase 1 MVP: API Catalog Listing Page (Frontend)
 
 > **🔲 Status: Not Started**
 >
@@ -13,9 +13,9 @@
 Build the API catalog listing page in the frontend — the primary landing experience for developers. This page displays all APIs from Azure API Center in a browsable, filterable, sortable grid/list view.
 
 ## Dependencies
-- **004** — Frontend project setup (Next.js, components)
-- **006** — Shared types package (API models)
-- **008** — BFF API catalog endpoints (data source)
+- **005** — Frontend project setup (Next.js, components)
+- **007** — Shared types package (API models)
+- **010** — BFF API catalog endpoints (data source)
 
 ## Implementation Details
 
@@ -117,9 +117,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 009 — API Catalog Listing Page.
+**Task**: Implement plan step 011 — API Catalog Listing Page.
 
-Read the full task specification at `docs/project/plan/009-frontend-api-catalog-page.md`.
+Read the full task specification at `docs/project/plan/011-frontend-api-catalog-page.md`.
 
 Reference `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, `docs/project/plan/008-bff-api-catalog-endpoints.md` for the BFF API contract, and `docs/project/plan/006-shared-types-package.md` for the shared types.
 
@@ -127,7 +127,7 @@ Create the `/catalog` page in the Next.js app with: an API card grid/list view, 
 
 Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/009-frontend-api-catalog-page.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/011-frontend-api-catalog-page.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

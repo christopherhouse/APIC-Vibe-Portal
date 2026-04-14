@@ -1,4 +1,4 @@
-# 017 - Phase 1 MVP: Application Insights Observability
+# 019 - Phase 1 MVP: Application Insights Observability
 
 > **🔲 Status: Not Started**
 >
@@ -14,8 +14,8 @@ Integrate Azure Application Insights across both the frontend and BFF for compre
 
 ## Dependencies
 - **002** — Azure infrastructure (App Insights resource deployed)
-- **004** — Frontend project setup
-- **005** — BFF API project setup
+- **006** — Frontend project setup
+- **006** — BFF API project setup
 
 ## Implementation Details
 
@@ -128,9 +128,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 017 — Application Insights Observability.
+**Task**: Implement plan step 019 — Application Insights Observability.
 
-Read the full task specification at `docs/project/plan/017-observability-app-insights.md`.
+Read the full task specification at `docs/project/plan/019-observability-app-insights.md`.
 
 Reference the architecture at `docs/project/apic_architecture.md` (Observability: App Insights) and `docs/project/plan/002-sprint-zero-azure-infra-bicep.md` for the App Insights resource.
 
@@ -138,7 +138,7 @@ In the BFF, integrate the `applicationinsights` SDK with auto-collection, custom
 
 Write tests verifying custom metrics are recorded. Verify the build succeeds and all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/017-observability-app-insights.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/019-observability-app-insights.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

@@ -1,4 +1,4 @@
-# 027 - Phase 3: Analytics Dashboard
+# 029 - Phase 3: Analytics Dashboard
 
 > **🔲 Status: Not Started**
 >
@@ -13,9 +13,9 @@
 Build the analytics dashboard that provides portal administrators and API owners with insights into portal usage, API popularity, search effectiveness, and user engagement patterns.
 
 ## Dependencies
-- **004** — Frontend project setup
-- **026** — Analytics data collection (data source)
-- **016** — Entra ID authentication (admin role for dashboard access)
+- **005** — Frontend project setup
+- **028** — Analytics data collection (data source)
+- **008** — Entra ID authentication (admin role for dashboard access)
 
 ## Implementation Details
 
@@ -135,9 +135,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 027 — Analytics Dashboard.
+**Task**: Implement plan step 029 — Analytics Dashboard.
 
-Read the full task specification at `docs/project/plan/027-analytics-dashboard.md`.
+Read the full task specification at `docs/project/plan/029-analytics-dashboard.md`.
 
 Reference `docs/project/plan/026-analytics-data-collection.md` for the analytics data source and endpoints, `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/plan/016-entra-id-authentication.md` for admin role gating.
 
@@ -145,7 +145,7 @@ Build the analytics dashboard with: overview page (KPI cards, usage trends, top 
 
 Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/027-analytics-dashboard.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/029-analytics-dashboard.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

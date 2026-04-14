@@ -1,4 +1,4 @@
-# 013 - Phase 1 MVP: Search UI (Frontend)
+# 015 - Phase 1 MVP: Search UI (Frontend)
 
 > **🔲 Status: Not Started**
 >
@@ -13,9 +13,9 @@
 Build the search UI components in the frontend, including the global search bar, search results page, and autocomplete functionality. This is the primary API discovery interface.
 
 ## Dependencies
-- **004** — Frontend project setup (components, layout)
-- **006** — Shared types package (search models)
-- **012** — Search API implementation (BFF endpoints)
+- **005** — Frontend project setup (components, layout)
+- **007** — Shared types package (search models)
+- **014** — Search API implementation (BFF endpoints)
 
 ## Implementation Details
 
@@ -127,9 +127,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 013 — Search UI.
+**Task**: Implement plan step 015 — Search UI.
 
-Read the full task specification at `docs/project/plan/013-frontend-search-ui.md`.
+Read the full task specification at `docs/project/plan/015-frontend-search-ui.md`.
 
 Reference `docs/project/plan/012-search-api-implementation.md` for the BFF search API contract, `docs/project/plan/004-frontend-nextjs-setup.md` for the header layout component (where the search bar goes), and `docs/project/plan/006-shared-types-package.md` for the search types.
 
@@ -137,7 +137,7 @@ Build the global search bar with autocomplete in the header, the `/search` resul
 
 Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/013-frontend-search-ui.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/015-frontend-search-ui.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

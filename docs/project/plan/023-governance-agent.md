@@ -1,4 +1,4 @@
-# 021 - Phase 2: Multi-Agent Architecture — Governance & Compliance Agent
+# 023 - Phase 2: Multi-Agent Architecture — Governance & Compliance Agent
 
 > **🔲 Status: Not Started**
 >
@@ -13,8 +13,8 @@
 Create a Governance & Compliance Agent that can assess API governance status, check compliance with organizational standards, and provide recommendations for improving API metadata quality. Extend the multi-agent router to dispatch governance-related queries to this agent.
 
 ## Dependencies
-- **020** — Foundry Agent Service setup (agent framework, router)
-- **007** — API Center data layer (governance metadata source)
+- **022** — Foundry Agent Service setup (agent framework, router)
+- **009** — API Center data layer (governance metadata source)
 
 ## Implementation Details
 
@@ -111,9 +111,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 021 — Multi-Agent Architecture: Governance & Compliance Agent.
+**Task**: Implement plan step 023 — Multi-Agent Architecture: Governance & Compliance Agent.
 
-Read the full task specification at `docs/project/plan/021-governance-agent.md`.
+Read the full task specification at `docs/project/plan/023-governance-agent.md`.
 
 Reference `docs/project/plan/020-foundry-agent-setup.md` for the agent framework and router, `docs/project/plan/007-api-center-data-layer.md` for the API data source, and `docs/project/apic_product_charter.md` for the governance goals.
 
@@ -121,7 +121,7 @@ Create the Governance Agent with a configurable rules engine (metadata completen
 
 Write unit tests for all governance rules, score calculation, and agent routing. Verify the build succeeds and all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/021-governance-agent.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/023-governance-agent.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

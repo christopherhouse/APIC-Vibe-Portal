@@ -1,4 +1,4 @@
-# 020 - Phase 2: Foundry Agent Service Setup & First Agent
+# 022 - Phase 2: Foundry Agent Service Setup & First Agent
 
 > **🔲 Status: Not Started**
 >
@@ -14,8 +14,8 @@ Set up Azure Foundry Agent Service and create the first agent — the API Discov
 
 ## Dependencies
 - **002** — Azure infrastructure (Foundry Agent Service resource)
-- **005** — BFF API project setup
-- **014** — OpenAI integration (existing chat service to integrate with)
+- **006** — BFF API project setup
+- **017** — OpenAI integration (existing chat service to integrate with)
 
 ## Implementation Details
 
@@ -124,9 +124,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 020 — Foundry Agent Service Setup & First Agent.
+**Task**: Implement plan step 022 — Foundry Agent Service Setup & First Agent.
 
-Read the full task specification at `docs/project/plan/020-foundry-agent-setup.md`.
+Read the full task specification at `docs/project/plan/022-foundry-agent-setup.md`.
 
 Reference the architecture at `docs/project/apic_architecture.md` (Agent Layer: Foundry, Multi-agent design), `docs/project/plan/014-openai-integration.md` for the existing chat service to integrate with, and `docs/project/plan/012-search-api-implementation.md` for the search service the agent will use as a tool.
 
@@ -134,7 +134,7 @@ In `src/bff/`, create a Foundry Agent Service client, define the API Discovery A
 
 Write unit tests for the agent, router, and tool execution. Verify the build succeeds and all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/020-foundry-agent-setup.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/022-foundry-agent-setup.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

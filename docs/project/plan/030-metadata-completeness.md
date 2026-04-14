@@ -1,4 +1,4 @@
-# 028 - Phase 3: Metadata Completeness Scoring & Recommendations
+# 030 - Phase 3: Metadata Completeness Scoring & Recommendations
 
 > **🔲 Status: Not Started**
 >
@@ -13,9 +13,9 @@
 Build an intelligent metadata completeness scoring system with AI-powered recommendations for improving API documentation quality. This feature helps API owners understand what's missing from their APIs and provides actionable guidance to improve discoverability.
 
 ## Dependencies
-- **007** — API Center data layer (API metadata)
-- **021** — Governance Agent (governance rules as foundation)
-- **014** — OpenAI integration (AI-powered recommendations)
+- **009** — API Center data layer (API metadata)
+- **023** — Governance Agent (governance rules as foundation)
+- **017** — OpenAI integration (AI-powered recommendations)
 
 ## Implementation Details
 
@@ -143,9 +143,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 028 — Metadata Completeness Scoring & Recommendations.
+**Task**: Implement plan step 030 — Metadata Completeness Scoring & Recommendations.
 
-Read the full task specification at `docs/project/plan/028-metadata-completeness.md`.
+Read the full task specification at `docs/project/plan/030-metadata-completeness.md`.
 
 Reference `docs/project/plan/007-api-center-data-layer.md` for API metadata access, `docs/project/plan/021-governance-agent.md` for the governance rules foundation, `docs/project/plan/014-openai-integration.md` for AI recommendation generation, `docs/project/plan/010-frontend-api-detail-page.md` for the API detail page integration, and `docs/project/plan/023-governance-dashboard-ui.md` for the governance dashboard integration.
 
@@ -153,7 +153,7 @@ Create a multi-dimensional completeness scoring service (Basic Info, Versioning,
 
 Write unit tests for all scoring rules, recommendation generation, and components. Verify the build succeeds and all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/028-metadata-completeness.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/030-metadata-completeness.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

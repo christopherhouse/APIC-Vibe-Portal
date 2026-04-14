@@ -1,4 +1,4 @@
-# 006 - Phase 1 MVP: Shared Types & Utilities Package
+# 007 - Phase 1 MVP: Shared Types & Utilities Package
 
 > **🔲 Status: Not Started**
 >
@@ -14,8 +14,8 @@ Create the shared TypeScript package containing type definitions, interfaces, an
 
 ## Dependencies
 - **001** — Repository scaffolding (monorepo workspace structure)
-- **004** — Frontend project (consumer of shared types)
-- **005** — BFF project (consumer of shared types)
+- **006** — Frontend project (consumer of shared types)
+- **006** — BFF project (consumer of shared types)
 
 ## Implementation Details
 
@@ -155,9 +155,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 006 — Shared Types & Utilities Package.
+**Task**: Implement plan step 007 — Shared Types & Utilities Package.
 
-Read the full task specification at `docs/project/plan/006-shared-types-package.md`.
+Read the full task specification at `docs/project/plan/007-shared-types-package.md`.
 
 Reference the architecture at `docs/project/apic_architecture.md` for the data flow between Frontend and BFF, and `docs/project/apic_product_charter.md` for the domain concepts (API discovery, governance, AI assistance).
 
@@ -165,7 +165,7 @@ Create the shared TypeScript package in `src/shared/` with domain models (API de
 
 Write tests for type guards and utility functions. Verify the package builds and is importable from both consumer workspaces.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/006-shared-types-package.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/007-shared-types-package.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"
