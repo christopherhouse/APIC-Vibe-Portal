@@ -1,4 +1,4 @@
-# 025 - Phase 2: Integration Testing & Phase 2 Polish
+# 027 - Phase 2: Integration Testing & Phase 2 Polish
 
 > **🔲 Status: Not Started**
 >
@@ -13,7 +13,7 @@
 Validate all Phase 2 features (governance, comparison, multi-agent) work together with the MVP features. Extend E2E tests, perform quality improvements, and ensure a cohesive user experience across all features.
 
 ## Dependencies
-- **019** — MVP E2E tests (extend existing test suite)
+- **021** — MVP E2E tests (extend existing test suite)
 - **020-024** — All Phase 2 features
 
 ## Implementation Details
@@ -119,9 +119,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 025 — Phase 2 Integration Testing & Polish.
+**Task**: Implement plan step 027 — Phase 2 Integration Testing & Polish.
 
-Read the full task specification at `docs/project/plan/025-phase2-integration-testing.md`.
+Read the full task specification at `docs/project/plan/027-phase2-integration-testing.md`.
 
 This task validates all Phase 2 features (tasks 020-024) work together with Phase 1. Reference the full plan directory at `docs/project/plan/` for all features to test.
 
@@ -129,7 +129,7 @@ Extend the Playwright E2E suite with tests for: governance dashboard, API compar
 
 Run all E2E tests (Phase 1 + Phase 2) and fix any issues. Verify no regressions in Phase 1 functionality.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/025-phase2-integration-testing.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/027-phase2-integration-testing.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

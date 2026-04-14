@@ -7,9 +7,10 @@ Multi-agent API portal built on:
 - Azure OpenAI
 - Foundry Agent Service
 - Azure Container Apps
+- Azure Cosmos DB (serverless)
 
 ## Architecture Diagram
-Browser -> Next.js -> BFF (Python/FastAPI) -> APIC + AI Search + Foundry Agents
+Browser -> Next.js -> BFF (Python/FastAPI) -> APIC + AI Search + Foundry Agents + Cosmos DB
 
 ## Components
 - Frontend (Next.js SPA)
@@ -17,6 +18,7 @@ Browser -> Next.js -> BFF (Python/FastAPI) -> APIC + AI Search + Foundry Agents
 - Agent Layer (Foundry)
 - Search Layer (AI Search)
 - Observability (App Insights)
+- Persistence (Cosmos DB serverless — chat sessions, governance snapshots, analytics)
 
 ## Key Decisions
 - BFF required for orchestration

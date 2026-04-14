@@ -1,4 +1,4 @@
-# 030 - Phase 3: Final Integration Testing, Documentation & Launch Readiness
+# 032 - Phase 3: Final Integration Testing, Documentation & Launch Readiness
 
 > **🔲 Status: Not Started**
 >
@@ -174,9 +174,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 030 — Final Integration Testing, Documentation & Launch Readiness.
+**Task**: Implement plan step 032 — Final Integration Testing, Documentation & Launch Readiness.
 
-Read the full task specification at `docs/project/plan/030-final-integration-launch.md`.
+Read the full task specification at `docs/project/plan/032-final-integration-launch.md`.
 
 This is the final task that validates the complete APIC Vibe Portal AI platform. Reference all plan documents at `docs/project/plan/` for the complete feature set.
 
@@ -184,7 +184,7 @@ Organize and complete the E2E test suite with smoke tests, feature tests, user j
 
 Run the full regression suite and fix any issues. Ensure all documentation is accurate and complete.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/030-final-integration-launch.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/032-final-integration-launch.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

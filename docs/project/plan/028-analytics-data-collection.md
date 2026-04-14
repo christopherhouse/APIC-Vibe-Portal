@@ -1,4 +1,4 @@
-# 026 - Phase 3: Usage Analytics Data Collection
+# 028 - Phase 3: Usage Analytics Data Collection
 
 > **🔲 Status: Not Started**
 >
@@ -13,9 +13,9 @@
 Implement a comprehensive analytics data collection layer that captures user interactions, search behavior, API usage patterns, and portal adoption metrics. This data feeds the analytics dashboards built in subsequent tasks.
 
 ## Dependencies
-- **017** — Application Insights observability (telemetry foundation)
-- **005** — BFF API project setup
-- **016** — Entra ID authentication (user identity for analytics)
+- **019** — Application Insights observability (telemetry foundation)
+- **006** — BFF API project setup
+- **008** — Entra ID authentication (user identity for analytics)
 
 ## Implementation Details
 
@@ -134,17 +134,17 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 026 — Usage Analytics Data Collection.
+**Task**: Implement plan step 028 — Usage Analytics Data Collection.
 
-Read the full task specification at `docs/project/plan/026-analytics-data-collection.md`.
+Read the full task specification at `docs/project/plan/028-analytics-data-collection.md`.
 
-Reference `docs/project/plan/017-observability-app-insights.md` for the existing telemetry foundation and `docs/project/plan/016-entra-id-authentication.md` for user identity.
+Reference `docs/project/plan/019-observability-app-insights.md` for the existing telemetry foundation and `docs/project/plan/008-entra-id-authentication.md` for user identity.
 
 Create typed analytics event models in the shared package. In the BFF, create an analytics service for event storage and admin query endpoints. In the frontend, create an analytics provider with a useAnalytics hook, automatic page view tracking, event batching, and privacy controls.
 
 Write unit tests for event collection, batching, storage, and aggregation using pytest (BFF) and Jest (frontend). Verify all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/026-analytics-data-collection.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/028-analytics-data-collection.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

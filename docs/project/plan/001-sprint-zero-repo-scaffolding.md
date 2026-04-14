@@ -27,6 +27,8 @@ Create the following top-level directory layout:
 │   ├── workflows/         # CI/CD pipelines
 │   ├── copilot-instructions.md
 │   ├── agents/            # Custom Copilot agents
+│   ├── copilot/
+│   │   └── mcp.json       # MCP server configuration (Microsoft Learn, Context7, Next.js DevTools, Snyk)
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── docs/
 │   └── project/           # Existing project docs
@@ -65,6 +67,13 @@ Create agent definitions for:
 - **bff-agent**: Python 3.14 / FastAPI BFF API design, Azure SDK for Python integration, middleware patterns, UV dependency management
 - **tech-writer-agent**: Writes engaging, well-organized documentation with emojis for flair, generates SVG images and diagrams, uses Mermaid for architecture/flow diagrams, and ensures all docs are visually appealing and developer-friendly
 
+#### MCP Servers
+Document the available MCP (Model Context Protocol) servers in copilot instructions and agent definitions so that Copilot and agents can leverage external context:
+- **Microsoft Learn** — Azure SDK docs, Azure service references, best practices
+- **Context7** — Up-to-date library documentation and API references
+- **Next.js DevTools** — Next.js-specific development tooling and guidance
+- **Snyk** — Security scanning for vulnerabilities in dependencies and code
+
 ### 4. Developer Tooling
 - Add ESLint and Prettier configuration at the root level (shared across frontend/shared TypeScript workspaces).
 - Add TypeScript 6.0 base configuration (`tsconfig.base.json`) that frontend and shared workspaces extend.
@@ -93,6 +102,7 @@ Update the root `README.md` with:
 - [ ] BFF Python project initializes correctly with `uv sync` in `src/bff/`
 - [ ] `.github/copilot-instructions.md` exists and is well-formed
 - [ ] Custom agent definitions exist under `.github/agents/`
+- [ ] MCP servers (Microsoft Learn, Context7, Next.js DevTools, Snyk) are documented in copilot instructions and/or agent definitions
 - [ ] ESLint, Prettier, and TypeScript configurations exist and are valid (frontend/shared)
 - [ ] Ruff configuration exists and is valid (BFF Python)
 - [ ] `.gitignore` properly excludes `node_modules`, `__pycache__`, `.venv`, build artifacts, `.env` files
@@ -129,7 +139,7 @@ Read the full task specification at `docs/project/plan/001-sprint-zero-repo-scaf
 
 You are bootstrapping a new monorepo for the APIC Vibe Portal AI project. Reference the architecture at `docs/project/apic_architecture.md` and the charter at `docs/project/apic_product_charter.md` for context on the tech stack and project goals.
 
-Create the monorepo directory structure, root workspace configuration (npm workspaces for frontend and shared, UV-managed Python project for BFF, .nvmrc pinning Node.js >=24, .python-version pinning Python 3.14, .editorconfig, .gitignore), GitHub Copilot instructions and custom agent definitions (including tech-writer-agent), shared ESLint/Prettier/TypeScript 6.0 configs for frontend/shared, Ruff config for BFF Python, a PR template, and update the root README.
+Create the monorepo directory structure, root workspace configuration (npm workspaces for frontend and shared, UV-managed Python project for BFF, .nvmrc pinning Node.js >=24, .python-version pinning Python 3.14, .editorconfig, .gitignore), GitHub Copilot instructions and custom agent definitions (including tech-writer-agent), shared ESLint/Prettier/TypeScript 6.0 configs for frontend/shared, Ruff config for BFF Python, a PR template, and update the root README. Document the available MCP servers (Microsoft Learn, Context7, Next.js DevTools, Snyk) in copilot instructions and/or agent definitions.
 
 Do NOT scaffold the Next.js or BFF projects themselves — that is handled in later tasks. Just create the directory structure, placeholder package.json files for frontend and shared workspaces, a placeholder pyproject.toml for the BFF (managed with UV, targeting Python 3.14), and all the developer tooling described in the plan.
 

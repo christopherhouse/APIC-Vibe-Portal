@@ -1,4 +1,4 @@
-# 029 - Phase 3: Performance Optimization & Accessibility
+# 031 - Phase 3: Performance Optimization & Accessibility
 
 > **🔲 Status: Not Started**
 >
@@ -153,9 +153,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 029 — Performance Optimization & Accessibility.
+**Task**: Implement plan step 031 — Performance Optimization & Accessibility.
 
-Read the full task specification at `docs/project/plan/029-performance-accessibility.md`.
+Read the full task specification at `docs/project/plan/031-performance-accessibility.md`.
 
 This is a cross-cutting optimization task. Reference the architecture at `docs/project/apic_architecture.md` and all frontend/BFF task docs for context on what needs optimization.
 
@@ -163,7 +163,7 @@ Frontend: Analyze and reduce bundles, add code splitting for large components, o
 
 Verify all Lighthouse scores meet targets and axe-core reports zero critical violations.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/029-performance-accessibility.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/031-performance-accessibility.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

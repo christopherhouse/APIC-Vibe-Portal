@@ -1,4 +1,4 @@
-# 020 - Phase 2: Foundry Agent Service Setup & First Agent
+# 022 - Phase 2: Foundry Agent Service Setup & First Agent
 
 > **🔲 Status: Not Started**
 >
@@ -14,8 +14,10 @@ Set up Azure Foundry Agent Service and create the first agent — the API Discov
 
 ## Dependencies
 - **002** — Azure infrastructure (Foundry Agent Service resource)
-- **005** — BFF API project setup
-- **014** — OpenAI integration (existing chat service to integrate with)
+- **006** — BFF API project setup
+- **017** — OpenAI integration (existing chat service to integrate with)
+- **014** — Search API (search integration for agent context)
+- **020** — Security Trimming (access control for agent responses)
 
 ## Implementation Details
 
@@ -78,7 +80,7 @@ src/bff/src/bff/agents/
 - Designed to be extended with additional agents (tasks 021-022)
 
 ### 5. Integration with Existing Chat
-- Update chat endpoints (from task 014) to use the agent system
+- Update chat endpoints (from task 017) to use the agent system
 - Maintain backward compatibility with the direct OpenAI chat
 - Add a flag to route through agent system vs. direct chat
 - Agent responses should follow the same `ChatResponse` format
@@ -124,17 +126,17 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 020 — Foundry Agent Service Setup & First Agent.
+**Task**: Implement plan step 022 — Foundry Agent Service Setup & First Agent.
 
-Read the full task specification at `docs/project/plan/020-foundry-agent-setup.md`.
+Read the full task specification at `docs/project/plan/022-foundry-agent-setup.md`.
 
-Reference the architecture at `docs/project/apic_architecture.md` (Agent Layer: Foundry, Multi-agent design), `docs/project/plan/014-openai-integration.md` for the existing chat service to integrate with, and `docs/project/plan/012-search-api-implementation.md` for the search service the agent will use as a tool.
+Reference the architecture at `docs/project/apic_architecture.md` (Agent Layer: Foundry, Multi-agent design), `docs/project/plan/017-openai-integration.md` for the existing chat service to integrate with, and `docs/project/plan/014-search-api-implementation.md` for the search service the agent will use as a tool.
 
 In `src/bff/`, create a Foundry Agent Service client, define the API Discovery Agent with tools (search, get details, get spec), an agent router, and integrate with the existing chat endpoints. Design system prompts with few-shot examples.
 
 Write unit tests for the agent, router, and tool execution using pytest. Verify all tests pass with `uv run pytest`.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/020-foundry-agent-setup.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/022-foundry-agent-setup.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

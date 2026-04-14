@@ -1,4 +1,4 @@
-# 018 - Phase 1 MVP: Security Trimming Implementation
+# 020 - Phase 1 MVP: Security Trimming Implementation
 
 > **🔲 Status: Not Started**
 >
@@ -13,10 +13,10 @@
 Implement security trimming so that API catalog results, search results, and AI chat responses only include APIs that the authenticated user is authorized to view. This ensures data isolation based on user roles and organizational boundaries.
 
 ## Dependencies
-- **007** — API Center data layer (data source)
-- **012** — Search API (needs trimming in search results)
-- **014** — OpenAI integration (needs trimming in RAG context)
-- **016** — Entra ID authentication (user identity and roles)
+- **009** — API Center data layer (data source)
+- **014** — Search API (needs trimming in search results)
+- **017** — OpenAI integration (needs trimming in RAG context)
+- **008** — Entra ID authentication (user identity and roles)
 
 ## Implementation Details
 
@@ -39,19 +39,19 @@ src/bff/src/bff/services/
 - Provide a `getAccessibleApiFilter(user)` for bulk filtering
 
 ### 3. API Center Trimming
-Update `api_catalog_service.py` (from task 007):
+Update `api_catalog_service.py` (from task 009):
 - Apply security filter before returning API lists
 - Filter individual API access checks on detail views
 - Return `403` if user requests an API they cannot access
 
 ### 4. Search Result Trimming
-Update `search_service.py` (from task 012):
+Update `search_service.py` (from task 017):
 - Add security filter to AI Search queries
 - Use AI Search's `$filter` parameter with user's accessible API IDs
 - Ensure facet counts reflect only accessible APIs
 
 ### 5. Chat Context Trimming
-Update `ai_chat_service.py` (from task 014):
+Update `ai_chat_service.py` (from task 017):
 - Filter RAG retrieval results to only include accessible APIs
 - Ensure the AI cannot reference APIs the user cannot see
 - Trim citations to accessible APIs only
@@ -102,17 +102,17 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 018 — Security Trimming Implementation.
+**Task**: Implement plan step 020 — Security Trimming Implementation.
 
-Read the full task specification at `docs/project/plan/018-security-trimming.md`.
+Read the full task specification at `docs/project/plan/020-security-trimming.md`.
 
-Reference `docs/project/plan/016-entra-id-authentication.md` for the auth middleware and user context, `docs/project/plan/007-api-center-data-layer.md` for the catalog service, `docs/project/plan/012-search-api-implementation.md` for the search service, and `docs/project/plan/014-openai-integration.md` for the chat service.
+Reference `docs/project/plan/008-entra-id-authentication.md` for the auth middleware and user context, `docs/project/plan/009-api-center-data-layer.md` for the catalog service, `docs/project/plan/014-search-api-implementation.md` for the search service, and `docs/project/plan/017-openai-integration.md` for the chat service.
 
 Create a user context service that resolves group membership from Entra ID tokens. Update the catalog service, search service, and chat service to apply security trimming based on user permissions. Add admin bypass for `Portal.Admin` role. Implement group membership caching.
 
 Write unit tests covering all trimming scenarios (different users, admin bypass, inaccessible APIs) using pytest. Verify all tests pass with `uv run pytest`.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/018-security-trimming.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/020-security-trimming.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

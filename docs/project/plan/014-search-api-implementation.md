@@ -1,4 +1,4 @@
-# 012 - Phase 1 MVP: Search API Implementation (BFF)
+# 014 - Phase 1 MVP: Search API Implementation (BFF)
 
 > **🔲 Status: Not Started**
 >
@@ -13,9 +13,9 @@
 Implement the search API endpoints in the BFF that perform hybrid search (keyword + semantic + vector) against Azure AI Search, providing intelligent API discovery capabilities.
 
 ## Dependencies
-- **005** — BFF API project setup
-- **006** — Shared types package (search DTOs)
-- **011** — AI Search index setup (index must exist with data)
+- **006** — BFF API project setup
+- **007** — Shared types package (search DTOs)
+- **013** — AI Search index setup (index must exist with data)
 
 ## Implementation Details
 
@@ -147,17 +147,17 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 012 — Search API Implementation.
+**Task**: Implement plan step 014 — Search API Implementation.
 
-Read the full task specification at `docs/project/plan/012-search-api-implementation.md`.
+Read the full task specification at `docs/project/plan/014-search-api-implementation.md`.
 
-Reference `docs/project/plan/011-ai-search-index-setup.md` for the index schema and `docs/project/plan/006-shared-types-package.md` for the search DTOs.
+Reference `docs/project/plan/013-ai-search-index-setup.md` for the index schema and `docs/project/plan/007-shared-types-package.md` for the search DTOs.
 
 In `src/bff/`, create an Azure AI Search client wrapper, a search service implementing hybrid search (keyword + semantic + vector with RRF), and FastAPI route handlers for search and suggest endpoints. Include faceted results, hit highlights, semantic captions, and pagination.
 
 Write unit tests with mocked AI Search SDK responses using pytest. Verify all tests pass with `uv run pytest`.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/012-search-api-implementation.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/014-search-api-implementation.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

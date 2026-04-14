@@ -1,4 +1,4 @@
-# 004 - Phase 1 MVP: Next.js Frontend Project Setup
+# 005 - Phase 1 MVP: Next.js Frontend Project Setup
 
 > **🔲 Status: Not Started**
 >
@@ -117,9 +117,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 004 — Next.js Frontend Project Setup.
+**Task**: Implement plan step 005 — Next.js Frontend Project Setup.
 
-Read the full task specification at `docs/project/plan/004-frontend-nextjs-setup.md`.
+Read the full task specification at `docs/project/plan/005-frontend-nextjs-setup.md`.
 
 Reference the architecture at `docs/project/apic_architecture.md` (Frontend: Next.js SPA) and the repo structure from `docs/project/plan/001-sprint-zero-repo-scaffolding.md`.
 
@@ -127,7 +127,7 @@ Scaffold a Next.js 16 application in `src/frontend/` using `create-next-app` wit
 
 Ensure the project integrates with the root npm workspace. Verify the dev server starts, the build succeeds, linting passes, and all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/004-frontend-nextjs-setup.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/005-frontend-nextjs-setup.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

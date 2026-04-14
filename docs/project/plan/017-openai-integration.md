@@ -1,4 +1,4 @@
-# 014 - Phase 1 MVP: Azure OpenAI Service Integration (BFF)
+# 017 - Phase 1 MVP: Azure OpenAI Service Integration (BFF)
 
 > **🔲 Status: Not Started**
 >
@@ -14,9 +14,10 @@ Integrate Azure OpenAI into the BFF to power AI-assisted API discovery through a
 
 ## Dependencies
 - **002** — Azure infrastructure (OpenAI resource deployed)
-- **005** — BFF API project setup
-- **006** — Shared types package (chat DTOs)
-- **011** — AI Search index (used for RAG retrieval)
+- **006** — BFF API project setup
+- **007** — Shared types package (chat DTOs)
+- **013** — AI Search index (used for RAG retrieval)
+- **014** — Search API implementation (RAG retrieval pipeline)
 
 ## Implementation Details
 
@@ -41,7 +42,7 @@ src/bff/src/bff/services/
 
 Implement a RAG pipeline:
 1. **Receive** user question
-2. **Retrieve** relevant API documents from AI Search (hybrid search from task 012)
+2. **Retrieve** relevant API documents from AI Search (hybrid search from task 014)
 3. **Augment** the prompt with retrieved context
 4. **Generate** response using Azure OpenAI with grounding data
 5. **Return** response with citations to source APIs
@@ -101,9 +102,16 @@ interface Citation {
 - Include a final event with citations and metadata
 - Frontend can show incremental text rendering
 
-### 7. Token Management & Safety
-- Count tokens in prompt + context to stay within model limits
-- Truncate context if it exceeds token budget
+### 7. Token Management, Estimation & Usage Metrics
+- Use `tiktoken` to estimate token counts before each OpenAI call:
+  - Encode system prompt, conversation history, RAG context, and user message
+  - Use `tiktoken.encoding_for_model(model)` for accurate model-specific counts
+  - Emit `apic.llm.tokens.estimated` OTel histogram (from task 019) with `component` attribute
+  - Enforce token budget: truncate RAG context or history if estimated tokens exceed model limit
+- After each OpenAI response, extract `usage.prompt_tokens`, `usage.completion_tokens`, `usage.total_tokens`
+  - Emit `apic.llm.tokens.prompt`, `apic.llm.tokens.completion`, `apic.llm.tokens.total` OTel histograms
+  - Emit `apic.llm.cost.estimated` based on token counts × configured per-token pricing
+  - Log warning if estimated tokens differ from actual by >10%
 - Implement content filtering (Azure OpenAI built-in + additional checks)
 - Rate limiting per session (e.g., 30 messages per minute)
 
@@ -114,7 +122,10 @@ interface Citation {
 - [ ] `POST /api/chat/stream` returns streaming SSE response
 - [ ] RAG pipeline retrieves relevant APIs from AI Search
 - [ ] System prompt keeps responses focused on API domain
-- [ ] Token limits are enforced; long contexts are truncated appropriately
+- [ ] Token limits are enforced; long contexts are truncated based on tiktoken estimates
+- [ ] `tiktoken` estimates are emitted as OTel metrics (`apic.llm.tokens.estimated`)
+- [ ] Actual token usage from OpenAI responses is emitted as OTel metrics (`apic.llm.tokens.prompt/completion/total`)
+- [ ] Estimated cost metric (`apic.llm.cost.estimated`) is emitted per chat request
 - [ ] Rate limiting prevents abuse
 - [ ] Unit tests cover chat service with mocked OpenAI and Search responses
 - [ ] Session cleanup works after expiry
@@ -144,17 +155,17 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 014 — Azure OpenAI Service Integration.
+**Task**: Implement plan step 017 — Azure OpenAI Service Integration.
 
-Read the full task specification at `docs/project/plan/014-openai-integration.md`.
+Read the full task specification at `docs/project/plan/017-openai-integration.md`.
 
-Reference the architecture at `docs/project/apic_architecture.md` (Azure OpenAI for AI features), `docs/project/plan/012-search-api-implementation.md` for the search service used in RAG retrieval, and `docs/project/plan/006-shared-types-package.md` for chat DTOs.
+Reference the architecture at `docs/project/apic_architecture.md` (Azure OpenAI for AI features), `docs/project/plan/014-search-api-implementation.md` for the search service used in RAG retrieval, and `docs/project/plan/007-shared-types-package.md` for chat DTOs.
 
-In `src/bff/`, create an Azure OpenAI client wrapper (using the `openai` Python package with Azure config), a RAG-powered chat service (retrieve from AI Search → augment prompt → generate with OpenAI), FastAPI chat endpoints with both synchronous and SSE streaming responses, conversation session management, and token/rate limiting. Design the system prompt for an API discovery assistant.
+In `src/bff/`, create an Azure OpenAI client wrapper (using the `openai` Python package with Azure config), a RAG-powered chat service (retrieve from AI Search → augment prompt → generate with OpenAI), FastAPI chat endpoints with both synchronous and SSE streaming responses, conversation session management, and token/rate limiting. Use `tiktoken` for pre-call token estimation and emit OTel metrics for both estimated and actual token usage (see task 019 for metric definitions). Design the system prompt for an API discovery assistant.
 
 Write unit tests with mocked OpenAI and AI Search responses using pytest. Verify all tests pass with `uv run pytest`.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/014-openai-integration.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/017-openai-integration.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

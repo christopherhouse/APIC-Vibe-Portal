@@ -1,4 +1,4 @@
-# 022 - Phase 2: API Comparison Feature
+# 024 - Phase 2: API Comparison Feature
 
 > **🔲 Status: Not Started**
 >
@@ -13,10 +13,11 @@
 Build the API comparison feature that allows developers to compare two or more APIs side-by-side. This includes both a structured data comparison and an AI-powered analysis that highlights key differences, similarities, and trade-offs.
 
 ## Dependencies
-- **007** — API Center data layer (API metadata)
-- **008** — BFF API catalog endpoints (API detail data)
-- **010** — Frontend API detail page (navigation source)
-- **020** — Foundry Agent setup (AI-powered analysis)
+- **009** — API Center data layer (API metadata)
+- **010** — BFF API catalog endpoints (API detail data)
+- **012** — Frontend API detail page (navigation source)
+- **022** — Foundry Agent setup (AI-powered analysis)
+- **023** — Governance Agent (governance-aware comparison)
 
 ## Implementation Details
 
@@ -146,17 +147,17 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 022 — API Comparison Feature.
+**Task**: Implement plan step 024 — API Comparison Feature.
 
-Read the full task specification at `docs/project/plan/022-api-comparison-feature.md`.
+Read the full task specification at `docs/project/plan/024-api-comparison-feature.md`.
 
-Reference `docs/project/plan/008-bff-api-catalog-endpoints.md` for the catalog API contract, `docs/project/plan/020-foundry-agent-setup.md` for the agent system powering AI analysis, and `docs/project/plan/010-frontend-api-detail-page.md` for the detail page integration.
+Reference `docs/project/plan/010-bff-api-catalog-endpoints.md` for the catalog API contract, `docs/project/plan/022-foundry-agent-setup.md` for the agent system powering AI analysis, and `docs/project/plan/012-frontend-api-detail-page.md` for the detail page integration.
 
 In the BFF, create comparison FastAPI endpoints and a service that generates structured multi-API comparisons with optional AI-powered narrative analysis. In the frontend, create the `/compare` page with side-by-side table, API selector, AI analysis section, and integrate "Add to Compare" buttons in catalog cards and detail pages.
 
 Write unit tests for the comparison service (pytest) and all frontend components (Jest). Verify all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/022-api-comparison-feature.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/024-api-comparison-feature.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

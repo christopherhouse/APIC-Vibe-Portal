@@ -1,4 +1,4 @@
-# 011 - Phase 1 MVP: Azure AI Search Index Setup & Indexing Pipeline
+# 013 - Phase 1 MVP: Azure AI Search Index Setup & Indexing Pipeline
 
 > **🔲 Status: Not Started**
 >
@@ -14,8 +14,8 @@ Set up Azure AI Search with an index schema for API metadata and an indexing pip
 
 ## Dependencies
 - **002** — Azure infrastructure (AI Search resource deployed)
-- **005** — BFF API project setup
-- **007** — API Center data layer (data source for indexing)
+- **006** — BFF API project setup
+- **009** — API Center data layer (data source for indexing)
 
 ## Implementation Details
 
@@ -119,17 +119,17 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 011 — Azure AI Search Index Setup & Indexing Pipeline.
+**Task**: Implement plan step 013 — Azure AI Search Index Setup & Indexing Pipeline.
 
-Read the full task specification at `docs/project/plan/011-ai-search-index-setup.md`.
+Read the full task specification at `docs/project/plan/013-ai-search-index-setup.md`.
 
-Reference the architecture at `docs/project/apic_architecture.md` (Search Layer: AI Search, hybrid search), `docs/project/plan/002-sprint-zero-azure-infra-bicep.md` for the AI Search resource, and `docs/project/plan/007-api-center-data-layer.md` for the data source.
+Reference the architecture at `docs/project/apic_architecture.md` (Search Layer: AI Search, hybrid search), `docs/project/plan/002-sprint-zero-azure-infra-bicep.md` for the AI Search resource, and `docs/project/plan/009-api-center-data-layer.md` for the data source.
 
 In the BFF, create the search index schema definition (fields, semantic config, vector config), an indexing service that syncs API Center data into the AI Search index with Azure OpenAI embeddings, and operational Python scripts for full/incremental reindexing. Write unit tests with mocked Azure SDK calls using pytest.
 
 Verify all tests pass with `uv run pytest`.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/011-ai-search-index-setup.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/013-ai-search-index-setup.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

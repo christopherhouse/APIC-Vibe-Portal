@@ -1,4 +1,4 @@
-# 007 - Phase 1 MVP: Azure API Center Data Layer Integration
+# 009 - Phase 1 MVP: Azure API Center Data Layer Integration
 
 > **🔲 Status: Not Started**
 >
@@ -14,8 +14,8 @@ Integrate the BFF with Azure API Center to read API definitions, versions, deplo
 
 ## Dependencies
 - **002** — Azure infrastructure (API Center resource deployed)
-- **005** — BFF API project setup
-- **006** — Shared types package (API models and DTOs)
+- **006** — BFF API project setup
+- **007** — Shared types package (API models and DTOs)
 
 ## Implementation Details
 
@@ -103,17 +103,17 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 007 — Azure API Center Data Layer Integration.
+**Task**: Implement plan step 009 — Azure API Center Data Layer Integration.
 
-Read the full task specification at `docs/project/plan/007-api-center-data-layer.md`.
+Read the full task specification at `docs/project/plan/009-api-center-data-layer.md`.
 
-Reference the architecture at `docs/project/apic_architecture.md` for how the BFF connects to Azure API Center, and `docs/project/plan/006-shared-types-package.md` for the shared models to map to.
+Reference the architecture at `docs/project/apic_architecture.md` for how the BFF connects to Azure API Center, and `docs/project/plan/007-shared-types-package.md` for the shared models to map to.
 
 In `src/bff/`, create an Azure API Center client using the Azure SDK for Python with DefaultAzureCredential, a service layer with operations for listing/getting APIs, versions, deployments, and specifications, a data mapping layer to convert SDK responses to Pydantic models (mirroring the shared TypeScript types), and an in-memory caching layer.
 
 Write comprehensive unit tests with mocked API Center responses using pytest. Verify all tests pass with `uv run pytest`.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/007-api-center-data-layer.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/009-api-center-data-layer.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

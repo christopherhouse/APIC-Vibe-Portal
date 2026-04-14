@@ -1,4 +1,4 @@
-# 008 - Phase 1 MVP: BFF API Catalog Endpoints
+# 010 - Phase 1 MVP: BFF API Catalog Endpoints
 
 > **🔲 Status: Not Started**
 >
@@ -13,9 +13,9 @@
 Implement the REST API endpoints in the BFF that expose API catalog data to the frontend. These endpoints serve as the contract between the Next.js frontend and the Azure API Center data layer.
 
 ## Dependencies
-- **005** — BFF API project setup (FastAPI app, routing)
-- **006** — Shared types package (DTOs)
-- **007** — API Center data layer (service and client)
+- **006** — BFF API project setup (FastAPI app, routing)
+- **007** — Shared types package (DTOs)
+- **009** — API Center data layer (service and client)
 
 ## Implementation Details
 
@@ -122,17 +122,17 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 008 — BFF API Catalog Endpoints.
+**Task**: Implement plan step 010 — BFF API Catalog Endpoints.
 
-Read the full task specification at `docs/project/plan/008-bff-api-catalog-endpoints.md`.
+Read the full task specification at `docs/project/plan/010-bff-api-catalog-endpoints.md`.
 
-Reference `docs/project/plan/007-api-center-data-layer.md` for the service layer these endpoints call, and `docs/project/plan/006-shared-types-package.md` for the DTOs.
+Reference `docs/project/plan/009-api-center-data-layer.md` for the service layer these endpoints call, and `docs/project/plan/007-shared-types-package.md` for the DTOs.
 
 In `src/bff/src/bff/routers/`, create FastAPI route handlers for the API catalog endpoints (list, detail, versions, definition, deployments, environments). Add request validation using Pydantic models, consistent response envelopes, pagination support, and filtering/sorting.
 
 Write pytest integration tests for all endpoints with mocked service layer. Verify all tests pass with `uv run pytest`.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/008-bff-api-catalog-endpoints.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/010-bff-api-catalog-endpoints.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

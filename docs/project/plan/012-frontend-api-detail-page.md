@@ -1,4 +1,4 @@
-# 010 - Phase 1 MVP: API Detail View Page (Frontend)
+# 012 - Phase 1 MVP: API Detail View Page (Frontend)
 
 > **🔲 Status: Not Started**
 >
@@ -13,10 +13,10 @@
 Build the API detail page that displays comprehensive information about a single API, including metadata, versions, deployments, and the rendered API specification (OpenAPI/Swagger).
 
 ## Dependencies
-- **004** — Frontend project setup (Next.js, components)
-- **006** — Shared types package
-- **008** — BFF API catalog endpoints (detail, versions, deployments, definition)
-- **009** — Catalog listing page (navigation source)
+- **005** — Frontend project setup (Next.js, components)
+- **007** — Shared types package
+- **010** — BFF API catalog endpoints (detail, versions, deployments, definition)
+- **011** — Catalog listing page (navigation source)
 
 ## Implementation Details
 
@@ -112,17 +112,17 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 010 — API Detail View Page.
+**Task**: Implement plan step 012 — API Detail View Page.
 
-Read the full task specification at `docs/project/plan/010-frontend-api-detail-page.md`.
+Read the full task specification at `docs/project/plan/012-frontend-api-detail-page.md`.
 
-Reference `docs/project/plan/008-bff-api-catalog-endpoints.md` for the BFF API endpoints that supply data to this page, and `docs/project/plan/009-frontend-api-catalog-page.md` for the catalog page that links here.
+Reference `docs/project/plan/010-bff-api-catalog-endpoints.md` for the BFF API endpoints that supply data to this page, and `docs/project/plan/011-frontend-api-catalog-page.md` for the catalog page that links here.
 
 Create the `/catalog/[apiId]` dynamic route page with: API header, tabbed sections (Overview, Versions, Specification, Deployments), an OpenAPI specification viewer component, version selector, spec download, and deployment table. Use SSR for initial data and client-side fetching for dynamic content.
 
 Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/010-frontend-api-detail-page.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/012-frontend-api-detail-page.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

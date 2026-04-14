@@ -1,4 +1,4 @@
-# 005 - Phase 1 MVP: BFF API Project Setup
+# 006 - Phase 1 MVP: BFF API Project Setup
 
 > **🔲 Status: Not Started**
 >
@@ -142,9 +142,9 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 005 — BFF API Project Setup.
+**Task**: Implement plan step 006 — BFF API Project Setup.
 
-Read the full task specification at `docs/project/plan/005-bff-api-setup.md`.
+Read the full task specification at `docs/project/plan/006-bff-api-setup.md`.
 
 Reference the architecture at `docs/project/apic_architecture.md` (Backend BFF, orchestration layer) and the repo structure from `docs/project/plan/001-sprint-zero-repo-scaffolding.md`.
 
@@ -152,7 +152,7 @@ Scaffold a Python 3.14 + FastAPI BFF API in `src/bff/` using UV for Python versi
 
 Ensure the project uses UV for all dependency management (`uv add`, `uv sync`, `uv run`). Verify the dev server starts, linting passes (Ruff), and all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/005-bff-api-setup.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/006-bff-api-setup.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

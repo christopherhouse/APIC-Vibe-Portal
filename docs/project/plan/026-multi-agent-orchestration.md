@@ -1,4 +1,4 @@
-# 024 - Phase 2: Multi-Agent Orchestration & Agent Management
+# 026 - Phase 2: Multi-Agent Orchestration & Agent Management
 
 > **🔲 Status: Not Started**
 >
@@ -13,9 +13,9 @@
 Enhance the multi-agent architecture with sophisticated orchestration, agent hand-off, and an admin interface for managing agent configurations. This enables seamless multi-turn conversations where multiple agents collaborate to answer complex queries.
 
 ## Dependencies
-- **020** — Foundry Agent setup (base agent framework)
-- **021** — Governance Agent (second agent in the system)
-- **016** — Entra ID authentication (admin-only management features)
+- **022** — Foundry Agent setup (base agent framework)
+- **023** — Governance Agent (second agent in the system)
+- **008** — Entra ID authentication (admin-only management features)
 
 ## Implementation Details
 
@@ -132,17 +132,17 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 024 — Multi-Agent Orchestration & Agent Management.
+**Task**: Implement plan step 026 — Multi-Agent Orchestration & Agent Management.
 
-Read the full task specification at `docs/project/plan/024-multi-agent-orchestration.md`.
+Read the full task specification at `docs/project/plan/026-multi-agent-orchestration.md`.
 
-Reference `docs/project/plan/020-foundry-agent-setup.md` for the base agent framework and router, `docs/project/plan/021-governance-agent.md` for the second agent, and `docs/project/plan/016-entra-id-authentication.md` for admin role gating.
+Reference `docs/project/plan/022-foundry-agent-setup.md` for the base agent framework and router, `docs/project/plan/023-governance-agent.md` for the second agent, and `docs/project/plan/008-entra-id-authentication.md` for admin role gating.
 
 Implement a multi-agent orchestrator with intent classification, agent hand-off protocol with context preservation, cross-agent conversation context management, admin API endpoints for agent management, and an admin UI for viewing/configuring agents.
 
 Write unit tests for the orchestrator, intent classifier, context manager, and admin endpoints using pytest (BFF) and Jest (frontend). Verify all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/024-multi-agent-orchestration.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/026-multi-agent-orchestration.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"

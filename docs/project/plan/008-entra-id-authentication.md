@@ -1,4 +1,4 @@
-# 016 - Phase 1 MVP: Entra ID Authentication Integration
+# 008 - Phase 1 MVP: Entra ID Authentication Integration
 
 > **🔲 Status: Not Started**
 >
@@ -14,8 +14,8 @@ Integrate Microsoft Entra ID (Azure AD) authentication across both the frontend 
 
 ## Dependencies
 - **002** — Azure infrastructure (Entra ID app registrations)
-- **004** — Frontend project setup (auth placeholder in layout)
-- **005** — BFF API project setup (auth middleware placeholder)
+- **005** — Frontend project setup (auth placeholder in layout)
+- **006** — BFF API project setup (auth middleware placeholder)
 
 ## Implementation Details
 
@@ -133,17 +133,17 @@ _No validation results yet._
 ## Coding Agent Prompt
 
 ```text
-**Task**: Implement plan step 016 — Entra ID Authentication Integration.
+**Task**: Implement plan step 008 — Entra ID Authentication Integration.
 
-Read the full task specification at `docs/project/plan/016-entra-id-authentication.md`.
+Read the full task specification at `docs/project/plan/008-entra-id-authentication.md`.
 
-Reference the architecture at `docs/project/apic_architecture.md` (Security: Entra ID, RBAC), `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend layout, and `docs/project/plan/005-bff-api-setup.md` for the BFF middleware placeholder.
+Reference the architecture at `docs/project/apic_architecture.md` (Security: Entra ID, RBAC), `docs/project/plan/005-frontend-nextjs-setup.md` for the frontend layout, and `docs/project/plan/006-bff-api-setup.md` for the BFF middleware placeholder.
 
 In the frontend, integrate MSAL React for Entra ID authentication with login/logout UI, protected routes via AuthGuard, a useAuth hook, and update the API client to inject Bearer tokens. In the BFF, implement JWT validation middleware using JWKS (via `python-jose` or `PyJWT`), role-based access control as FastAPI dependencies, and apply auth to all API routes.
 
 Write unit tests for auth middleware, RBAC middleware, and auth-related frontend components. Verify all tests pass.
 
-**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/016-entra-id-authentication.md`):
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/008-entra-id-authentication.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
 2. Add a row to the Status History table with the completion date and a summary
 3. Record any technical decisions made under "Technical Decisions"
