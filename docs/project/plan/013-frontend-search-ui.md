@@ -1,0 +1,111 @@
+# 013 - Phase 1 MVP: Search UI (Frontend)
+
+## References
+- [Architecture Document](../apic_architecture.md) — Frontend: Next.js SPA; Search Layer integration
+- [Product Charter](../apic_product_charter.md) — Reduce time to find APIs; primary success metric
+- [Product Spec](../apic_portal_spec.md) — Search interface requirements
+
+## Overview
+Build the search UI components in the frontend, including the global search bar, search results page, and autocomplete functionality. This is the primary API discovery interface.
+
+## Dependencies
+- **004** — Frontend project setup (components, layout)
+- **006** — Shared types package (search models)
+- **012** — Search API implementation (BFF endpoints)
+
+## Implementation Details
+
+### 1. Global Search Bar (Header)
+Enhance the header component from task 004:
+- Search input with magnifying glass icon
+- Debounced autocomplete dropdown (300ms debounce)
+- Autocomplete shows top 5 API name/title matches
+- Clicking a suggestion navigates to API detail page
+- Pressing Enter navigates to search results page with query
+- Keyboard navigation (arrow keys) through suggestions
+- Clear button to reset search
+- Search bar is always visible in the header
+
+### 2. Search Results Page
+```
+app/search/
+├── page.tsx            # Search results page
+├── loading.tsx         # Search loading state
+└── components/
+    ├── SearchResults.tsx          # Results list container
+    ├── SearchResultCard.tsx       # Individual result card
+    ├── SearchFilters.tsx          # Dynamic filter sidebar
+    ├── SearchSummary.tsx          # Query summary and count
+    ├── SearchModeToggle.tsx       # Keyword/Semantic/Hybrid toggle
+    └── NoResults.tsx              # Empty results state
+```
+
+Route: `/search?q={query}&kind={filter}&lifecycle={filter}&page={n}`
+
+### 3. Search Result Card
+Each result card shows:
+- API title with highlighted matching text
+- Description with highlighted snippets
+- Semantic caption (AI-generated relevance summary) when available
+- API kind badge
+- Lifecycle badge
+- Relevance score indicator (visual bar or percentage)
+- Click navigates to `/catalog/:apiId`
+
+### 4. Dynamic Filters
+- Faceted filters based on search results
+- Show counts next to each filter option (e.g., "REST (23)")
+- Lifecycle stage filter
+- API kind filter
+- Tags filter
+- Filters update results in real-time (client-side re-search)
+- URL query parameters update to reflect filter state
+
+### 5. Search Mode Toggle
+- Allow users to switch between: Keyword, Semantic, Hybrid (default)
+- Visual indicator of current mode
+- Brief tooltip explaining each mode
+
+### 6. Data Fetching
+- Use React Query / SWR for search requests
+- Debounce search input (300ms)
+- Cancel previous request on new search (AbortController)
+- Show loading state during search
+- Cache recent search results
+
+### 7. No Results State
+- Friendly message: "No APIs found matching your search"
+- Suggestions: "Try different keywords" or "Browse the catalog"
+- Link to catalog page
+
+### 8. Search Analytics (Client-side)
+- Track search queries (for future analytics, task 026)
+- Track click-through from results to API detail
+- Store in BFF endpoint (placeholder for now)
+
+## Testing & Acceptance Criteria
+- [ ] Global search bar appears in header on all pages
+- [ ] Autocomplete dropdown appears after typing 2+ characters
+- [ ] Autocomplete debounces correctly (300ms)
+- [ ] Enter key navigates to search results page
+- [ ] Search results page displays results with highlights
+- [ ] Semantic captions appear when hybrid search is used
+- [ ] Faceted filters show correct counts
+- [ ] Applying filters updates results in real-time
+- [ ] Search mode toggle switches search behavior
+- [ ] No results state displays with helpful suggestions
+- [ ] URL reflects search query and filter state
+- [ ] Keyboard navigation works in autocomplete dropdown
+- [ ] All components have unit tests
+
+## Coding Agent Prompt
+
+> **Task**: Implement plan step 013 — Search UI.
+>
+> Read the full task specification at `docs/project/plan/013-frontend-search-ui.md`.
+>
+> Reference `docs/project/plan/012-search-api-implementation.md` for the BFF search API contract, `docs/project/plan/004-frontend-nextjs-setup.md` for the header layout component (where the search bar goes), and `docs/project/plan/006-shared-types-package.md` for the search types.
+>
+> Build the global search bar with autocomplete in the header, the `/search` results page with faceted filtering, search result cards with highlights and semantic captions, search mode toggle, no-results state, and URL-based search state. Use React Query or SWR for data fetching with debouncing and request cancellation.
+>
+> Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
