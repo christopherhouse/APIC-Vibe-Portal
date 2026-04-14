@@ -115,7 +115,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/023-governance-agent.md`.
 
-Reference `docs/project/plan/020-foundry-agent-setup.md` for the agent framework and router, `docs/project/plan/007-api-center-data-layer.md` for the API data source, and `docs/project/apic_product_charter.md` for the governance goals.
+Reference `docs/project/plan/022-foundry-agent-setup.md` for the agent framework and router, `docs/project/plan/009-api-center-data-layer.md` for the API data source, and `docs/project/apic_product_charter.md` for the governance goals.
 
 Create the Governance Agent with a configurable rules engine (metadata completeness, versioning, spec quality, lifecycle, security, documentation rules), governance score calculation, and tools for compliance checking and remediation guidance. Update the agent router to dispatch governance-related queries.
 

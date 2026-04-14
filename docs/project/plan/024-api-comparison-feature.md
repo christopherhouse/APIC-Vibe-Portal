@@ -14,9 +14,10 @@ Build the API comparison feature that allows developers to compare two or more A
 
 ## Dependencies
 - **009** — API Center data layer (API metadata)
-- **012** — BFF API catalog endpoints (API detail data)
+- **010** — BFF API catalog endpoints (API detail data)
 - **012** — Frontend API detail page (navigation source)
 - **022** — Foundry Agent setup (AI-powered analysis)
+- **023** — Governance Agent (governance-aware comparison)
 
 ## Implementation Details
 
@@ -150,7 +151,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/024-api-comparison-feature.md`.
 
-Reference `docs/project/plan/008-bff-api-catalog-endpoints.md` for the catalog API contract, `docs/project/plan/020-foundry-agent-setup.md` for the agent system powering AI analysis, and `docs/project/plan/010-frontend-api-detail-page.md` for the detail page integration.
+Reference `docs/project/plan/010-bff-api-catalog-endpoints.md` for the catalog API contract, `docs/project/plan/022-foundry-agent-setup.md` for the agent system powering AI analysis, and `docs/project/plan/012-frontend-api-detail-page.md` for the detail page integration.
 
 In the BFF, create comparison FastAPI endpoints and a service that generates structured multi-API comparisons with optional AI-powered narrative analysis. In the frontend, create the `/compare` page with side-by-side table, API selector, AI analysis section, and integrate "Add to Compare" buttons in catalog cards and detail pages.
 

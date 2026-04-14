@@ -131,7 +131,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/015-frontend-search-ui.md`.
 
-Reference `docs/project/plan/012-search-api-implementation.md` for the BFF search API contract, `docs/project/plan/004-frontend-nextjs-setup.md` for the header layout component (where the search bar goes), and `docs/project/plan/006-shared-types-package.md` for the search types.
+Reference `docs/project/plan/014-search-api-implementation.md` for the BFF search API contract, `docs/project/plan/005-frontend-nextjs-setup.md` for the header layout component (where the search bar goes), and `docs/project/plan/007-shared-types-package.md` for the search types.
 
 Build the global search bar with autocomplete in the header, the `/search` results page with faceted filtering, search result cards with highlights and semantic captions, search mode toggle, no-results state, and URL-based search state. Use React Query or SWR for data fetching with debouncing and request cancellation.
 

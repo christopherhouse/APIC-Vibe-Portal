@@ -123,7 +123,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/013-ai-search-index-setup.md`.
 
-Reference the architecture at `docs/project/apic_architecture.md` (Search Layer: AI Search, hybrid search), `docs/project/plan/002-sprint-zero-azure-infra-bicep.md` for the AI Search resource, and `docs/project/plan/007-api-center-data-layer.md` for the data source.
+Reference the architecture at `docs/project/apic_architecture.md` (Search Layer: AI Search, hybrid search), `docs/project/plan/002-sprint-zero-azure-infra-bicep.md` for the AI Search resource, and `docs/project/plan/009-api-center-data-layer.md` for the data source.
 
 In the BFF, create the search index schema definition (fields, semantic config, vector config), an indexing service that syncs API Center data into the AI Search index with Azure OpenAI embeddings, and operational Python scripts for full/incremental reindexing. Write unit tests with mocked Azure SDK calls using pytest.
 

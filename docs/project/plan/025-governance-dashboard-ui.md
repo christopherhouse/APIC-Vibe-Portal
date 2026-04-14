@@ -16,6 +16,8 @@ Build the governance dashboard in the frontend that provides a visual overview o
 - **005** — Frontend project setup
 - **023** — Governance Agent (governance scoring and compliance data)
 - **010** — BFF API catalog endpoints (API listing data)
+- **008** — Entra ID authentication (role-based dashboard access)
+- **020** — Security Trimming (data visibility controls)
 
 ## Implementation Details
 

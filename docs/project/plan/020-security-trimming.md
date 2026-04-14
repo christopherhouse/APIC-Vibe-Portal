@@ -14,7 +14,7 @@ Implement security trimming so that API catalog results, search results, and AI 
 
 ## Dependencies
 - **009** — API Center data layer (data source)
-- **017** — Search API (needs trimming in search results)
+- **014** — Search API (needs trimming in search results)
 - **017** — OpenAI integration (needs trimming in RAG context)
 - **008** — Entra ID authentication (user identity and roles)
 

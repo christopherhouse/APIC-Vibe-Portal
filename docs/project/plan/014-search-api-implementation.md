@@ -13,7 +13,7 @@
 Implement the search API endpoints in the BFF that perform hybrid search (keyword + semantic + vector) against Azure AI Search, providing intelligent API discovery capabilities.
 
 ## Dependencies
-- **007** — BFF API project setup
+- **006** — BFF API project setup
 - **007** — Shared types package (search DTOs)
 - **013** — AI Search index setup (index must exist with data)
 
@@ -151,7 +151,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/014-search-api-implementation.md`.
 
-Reference `docs/project/plan/011-ai-search-index-setup.md` for the index schema and `docs/project/plan/006-shared-types-package.md` for the search DTOs.
+Reference `docs/project/plan/013-ai-search-index-setup.md` for the index schema and `docs/project/plan/007-shared-types-package.md` for the search DTOs.
 
 In `src/bff/`, create an Azure AI Search client wrapper, a search service implementing hybrid search (keyword + semantic + vector with RRF), and FastAPI route handlers for search and suggest endpoints. Include faceted results, hit highlights, semantic captions, and pagination.
 

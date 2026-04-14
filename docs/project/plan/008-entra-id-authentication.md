@@ -14,7 +14,7 @@ Integrate Microsoft Entra ID (Azure AD) authentication across both the frontend 
 
 ## Dependencies
 - **002** — Azure infrastructure (Entra ID app registrations)
-- **006** — Frontend project setup (auth placeholder in layout)
+- **005** — Frontend project setup (auth placeholder in layout)
 - **006** — BFF API project setup (auth middleware placeholder)
 
 ## Implementation Details

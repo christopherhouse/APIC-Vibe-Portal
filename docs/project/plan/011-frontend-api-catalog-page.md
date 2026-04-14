@@ -121,7 +121,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/011-frontend-api-catalog-page.md`.
 
-Reference `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, `docs/project/plan/008-bff-api-catalog-endpoints.md` for the BFF API contract, and `docs/project/plan/006-shared-types-package.md` for the shared types.
+Reference `docs/project/plan/005-frontend-nextjs-setup.md` for the frontend structure, `docs/project/plan/010-bff-api-catalog-endpoints.md` for the BFF API contract, and `docs/project/plan/007-shared-types-package.md` for the shared types.
 
 Create the `/catalog` page in the Next.js app with: an API card grid/list view, lifecycle and kind filters, sorting controls, pagination, view mode toggle, URL-based filter state, loading skeletons, empty states, and responsive layout. Use server components for initial SSR and client-side data fetching for filter/sort/page changes.
 

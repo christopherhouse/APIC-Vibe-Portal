@@ -16,6 +16,8 @@ Set up Azure Foundry Agent Service and create the first agent — the API Discov
 - **002** — Azure infrastructure (Foundry Agent Service resource)
 - **006** — BFF API project setup
 - **017** — OpenAI integration (existing chat service to integrate with)
+- **014** — Search API (search integration for agent context)
+- **020** — Security Trimming (access control for agent responses)
 
 ## Implementation Details
 
@@ -128,7 +130,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/022-foundry-agent-setup.md`.
 
-Reference the architecture at `docs/project/apic_architecture.md` (Agent Layer: Foundry, Multi-agent design), `docs/project/plan/014-openai-integration.md` for the existing chat service to integrate with, and `docs/project/plan/012-search-api-implementation.md` for the search service the agent will use as a tool.
+Reference the architecture at `docs/project/apic_architecture.md` (Agent Layer: Foundry, Multi-agent design), `docs/project/plan/017-openai-integration.md` for the existing chat service to integrate with, and `docs/project/plan/014-search-api-implementation.md` for the search service the agent will use as a tool.
 
 In `src/bff/`, create a Foundry Agent Service client, define the API Discovery Agent with tools (search, get details, get spec), an agent router, and integrate with the existing chat endpoints. Design system prompts with few-shot examples.
 

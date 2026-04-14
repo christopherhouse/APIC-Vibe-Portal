@@ -134,7 +134,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/018-frontend-chat-ui.md`.
 
-Reference `docs/project/plan/014-openai-integration.md` for the BFF chat API contract (endpoints, request/response shapes, SSE streaming), `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/plan/006-shared-types-package.md` for the chat types.
+Reference `docs/project/plan/017-openai-integration.md` for the BFF chat API contract (endpoints, request/response shapes, SSE streaming), `docs/project/plan/005-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/plan/007-shared-types-package.md` for the chat types.
 
 Build the full-page chat view at `/chat` and an embedded collapsible chat side panel accessible from all pages. Implement message rendering with markdown support, SSE streaming integration, citation chips that link to API detail pages, suggested starter prompts, session management via React context, and responsive layout.
 

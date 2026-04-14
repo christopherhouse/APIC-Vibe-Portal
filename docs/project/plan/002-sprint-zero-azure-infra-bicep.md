@@ -30,6 +30,7 @@ Establish the Azure infrastructure foundation using Bicep templates. This create
 │   ├── api-center.bicep            # Azure API Center
 │   ├── ai-search.bicep             # Azure AI Search
 │   ├── openai.bicep                # Azure OpenAI
+│   ├── cosmosdb.bicep              # Azure Cosmos DB (serverless, NoSQL)
 │   ├── foundry-agent.bicep         # Foundry Agent Service (for Phase 2)
 │   ├── app-insights.bicep          # Application Insights + Log Analytics
 │   ├── managed-identity.bicep      # User-assigned managed identity
@@ -52,9 +53,10 @@ The orchestrator template should deploy the following modules in dependency orde
 7. **Azure API Center** — The API catalog data source
 8. **Azure AI Search** — Search service for hybrid retrieval
 9. **Azure OpenAI** — GPT model deployment for AI features
-10. **Foundry Agent Service** — Multi-agent platform for governance and compliance agents (Phase 2); provision infrastructure now, configure agents in task 022
-11. **Container App (Frontend)** — Next.js app, initially with placeholder image
-12. **Container App (BFF)** — BFF API, initially with placeholder image
+10. **Azure Cosmos DB** — NoSQL database (serverless capacity mode) for chat sessions, governance snapshots, and analytics; provision database and containers with partition keys defined in task 016
+11. **Foundry Agent Service** — Multi-agent platform for governance and compliance agents (Phase 2); provision infrastructure now, configure agents in task 022
+12. **Container App (Frontend)** — Next.js app, initially with placeholder image
+13. **Container App (BFF)** — BFF API, initially with placeholder image
 
 ### 3. Parameterization
 - Environment name (dev/staging/prod)
@@ -71,6 +73,7 @@ The orchestrator template should deploy the following modules in dependency orde
 - OpenAI: managed identity has `Cognitive Services OpenAI User`
 - API Center: managed identity has `Azure API Center Data Reader`
 - Foundry Agent Service: managed identity has appropriate roles for agent management and invocation; configure RBAC prerequisites for task 022
+- Cosmos DB: managed identity has `Cosmos DB Built-in Data Contributor` role; serverless capacity mode (no provisioned throughput)
 - All resources use private endpoints where supported (parameterized, optional for dev)
 
 ### 5. Outputs
@@ -82,6 +85,7 @@ The main template should output:
 - OpenAI endpoint
 - API Center endpoint
 - Foundry Agent Service endpoint (for task 022)
+- Cosmos DB endpoint and database name
 - Application Insights connection string
 
 ## Testing & Acceptance Criteria

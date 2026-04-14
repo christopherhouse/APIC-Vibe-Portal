@@ -46,12 +46,12 @@ Integrate automated security scanning into the CI/CD pipeline:
 
 **SAST (Static Application Security Testing)**
 - Tool: GitHub CodeQL or Semgrep
-- Scan: TypeScript, JavaScript code for security issues
+- Scan: TypeScript, JavaScript (frontend/shared), Python (BFF) for security issues
 - Action: Block PR merge on high/critical findings
 
 **Dependency Scanning**
-- Tool: GitHub Dependabot or npm audit
-- Scan: npm dependencies for known vulnerabilities
+- Tool: GitHub Dependabot, npm audit (frontend/shared), UV/pip audit (BFF Python)
+- Scan: npm and Python dependencies for known vulnerabilities
 - Action: Auto-create PRs for security updates, block on critical CVEs
 
 **Container Scanning**
@@ -120,13 +120,15 @@ scripts/security/
 - Validate API Center query parameters to prevent injection
 
 ```
-src/bff/src/middleware/
-├── rate-limit.ts
-├── rate-limit.test.ts
-├── bot-detection.ts
-├── bot-detection.test.ts
-├── input-validation.ts
-└── input-validation.test.ts
+src/bff/src/bff/middleware/
+├── rate_limit.py
+├── bot_detection.py
+└── input_validation.py
+
+src/bff/tests/
+├── test_rate_limit.py
+├── test_bot_detection.py
+└── test_input_validation.py
 ```
 
 ### 5. Security Policy & Reporting

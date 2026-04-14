@@ -16,6 +16,8 @@ Build an intelligent metadata completeness scoring system with AI-powered recomm
 - **009** — API Center data layer (API metadata)
 - **023** — Governance Agent (governance rules as foundation)
 - **017** — OpenAI integration (AI-powered recommendations)
+- **012** — Frontend API detail page (UI integration point)
+- **025** — Governance Dashboard (dashboard integration)
 
 ## Implementation Details
 

@@ -10,14 +10,14 @@
 - [Product Spec](../apic_portal_spec.md) — Data persistence requirements
 
 ## Overview
-Establish the persistence and data governance baseline before implementing features that depend on storing chat history, governance snapshots, or analytics telemetry. This includes storage strategy, retention policies, schema management, and query optimization for trend workloads.
+Establish the persistence and data governance baseline before implementing features that depend on storing chat history, governance snapshots, or analytics telemetry. This includes storage strategy, retention policies, schema management, and query optimization for trend workloads. All Cosmos DB containers use **serverless capacity mode** (pay-per-request, no provisioned throughput) to optimize for the portal's variable-traffic pattern.
 
 ## Dependencies
-- **002** — Azure infrastructure (Cosmos DB, Storage Account)
-- **005** — BFF API setup (data layer integration points)
-- **006** — Shared types package (data models)
+- **002** — Azure infrastructure (Cosmos DB)
+- **006** — BFF API setup (data layer integration points)
+- **007** — Shared types package (data models)
 - **008** — Entra ID authentication (user identity for data ownership)
-- **011** — AI Search index (search data persistence)
+- **013** — AI Search index (search data persistence)
 - **014** — Search API (historical query storage)
 
 ## Implementation Details
@@ -26,31 +26,27 @@ Establish the persistence and data governance baseline before implementing featu
 Define and document storage choices for each data class:
 
 **Chat Session Data**
-- **Storage**: Azure Cosmos DB (NoSQL)
+- **Storage**: Azure Cosmos DB (NoSQL, serverless)
 - **Container**: `chat-sessions`
 - **Partition Key**: `/userId`
 - **Rationale**: High write throughput, flexible schema, global distribution, natural partitioning by user
 - **Schema**: Session ID, user ID, messages[], created, updated, metadata (model, tokens used)
 
 **Governance Snapshots**
-- **Storage**: Azure Cosmos DB (NoSQL)
+- **Storage**: Azure Cosmos DB (NoSQL, serverless)
 - **Container**: `governance-snapshots`
 - **Partition Key**: `/apiId`
 - **Rationale**: Structured compliance data, point-in-time queries, relationship to APIs
 - **Schema**: Snapshot ID, API ID, timestamp, findings[], compliance score, agent ID
 
 **Analytics Telemetry**
-- **Storage**: Azure Cosmos DB (NoSQL) or Azure Storage (hot/cool tiers)
+- **Storage**: Azure Cosmos DB (NoSQL, serverless) or Azure Storage (hot/cool tiers)
 - **Container**: `analytics-events`
 - **Partition Key**: `/eventType` or `/date` (e.g., `/2026-04-14`)
 - **Rationale**: High-volume writes, time-series queries, eventual archival to cold storage
 - **Schema**: Event ID, event type, timestamp, user ID, API ID, metadata (query, duration, result count)
 
-**Large Artifacts (SBOM, reports)**
-- **Storage**: Azure Blob Storage
-- **Container**: `artifacts`
-- **Rationale**: Cost-effective for large files, versioning support, immutable storage
-- **Schema**: Blob name = `{apiId}/{artifactType}/{version}/{filename}`
+> **Note**: Large artifact storage (SBOMs, reports) is deferred. If a need materializes, Azure Blob Storage can be added as a file mount on Container Apps or a standalone storage account. For now, Cosmos DB serverless covers all persistence needs.
 
 Document storage decisions:
 ```
@@ -66,7 +62,6 @@ Define retention policies for each data class:
 | Chat sessions | 90 days | Privacy, compliance | Soft delete, then purge via TTL |
 | Governance snapshots | 2 years | Audit, compliance | Archive to cold storage, then purge |
 | Analytics telemetry | 1 year hot, 3 years cold | Trend analysis, cost optimization | Auto-tier to cool/archive, then purge |
-| Large artifacts | Indefinite (versioned) | Compliance, traceability | Manual deletion only |
 
 **PII Handling**
 - Identify PII fields (user ID, email, IP address, query text)
@@ -83,9 +78,9 @@ Define retention policies for each data class:
 infra/functions/
 └── data-retention-cleanup.bicep   # Azure Function for retention enforcement
 
-src/bff/src/jobs/
-├── data-retention-job.ts          # Job logic
-└── data-retention-job.test.ts
+src/bff/src/bff/jobs/
+├── data_retention_job.py          # Job logic
+└── test_data_retention_job.py
 ```
 
 ### 3. Partition, Index & Query Strategy
@@ -117,7 +112,7 @@ docs/architecture/
 ### 4. Schema Ownership, Versioning & Migration
 **Schema Ownership**
 - Define TypeScript interfaces in `src/shared/types/data-models.ts`
-- Use Zod or Joi for runtime validation
+- Use Pydantic for runtime validation (BFF side); use Zod for frontend/shared TypeScript types
 - Document breaking changes in CHANGELOG
 
 **Schema Versioning**
@@ -172,18 +167,20 @@ docs/architecture/
 ### 5. Data Access Layer (BFF)
 Create a data access layer in the BFF:
 ```
-src/bff/src/data/
-├── cosmos-client.ts               # Cosmos DB client initialization
+src/bff/src/bff/data/
+├── cosmos_client.py               # Cosmos DB client initialization
 ├── repositories/
-│   ├── chat-session.repository.ts
-│   ├── governance.repository.ts
-│   └── analytics.repository.ts
+│   ├── __init__.py
+│   ├── chat_session_repository.py
+│   ├── governance_repository.py
+│   └── analytics_repository.py
 ├── models/
-│   ├── chat-session.model.ts      # Re-export from shared types
-│   ├── governance.model.ts
-│   └── analytics.model.ts
+│   ├── __init__.py
+│   ├── chat_session.py            # Pydantic models for chat sessions
+│   ├── governance.py              # Pydantic models for governance snapshots
+│   └── analytics.py               # Pydantic models for analytics events
 └── migrations/
-    └── lazy-migration.util.ts     # Lazy migration utility
+    └── lazy_migration.py          # Lazy migration utility
 ```
 
 **Repository Pattern**
@@ -256,9 +253,9 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/016-persistence-data-governance-baseline.md`.
 
-Reference the architecture at `docs/project/apic_architecture.md` (Data Architecture section), the infrastructure setup in `docs/project/plan/002-sprint-zero-azure-infra-bicep.md`, and the shared types in `docs/project/plan/006-shared-types-package.md`.
+Reference the architecture at `docs/project/apic_architecture.md` (Data Architecture section), the infrastructure setup in `docs/project/plan/002-sprint-zero-azure-infra-bicep.md`, and the shared types in `docs/project/plan/007-shared-types-package.md`.
 
-Define and document storage strategy for chat sessions, governance snapshots, analytics telemetry, and large artifacts. Create data retention and deletion policies with PII handling guidelines. Design Cosmos DB partitioning and indexing strategies. Implement schema versioning and lazy migration. Create repository pattern data access layer in the BFF with CRUD operations, soft delete, and pagination. Implement data retention cleanup job.
+Define and document storage strategy for chat sessions, governance snapshots, and analytics telemetry. Create data retention and deletion policies with PII handling guidelines. Design Cosmos DB partitioning and indexing strategies. Implement schema versioning and lazy migration. Create repository pattern data access layer in the BFF with CRUD operations, soft delete, and pagination. Implement data retention cleanup job.
 
 Write comprehensive unit and integration tests for all repositories and data access code. Verify Cosmos DB queries are optimized and follow best practices.
 

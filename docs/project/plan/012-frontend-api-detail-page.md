@@ -116,7 +116,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/012-frontend-api-detail-page.md`.
 
-Reference `docs/project/plan/008-bff-api-catalog-endpoints.md` for the BFF API endpoints that supply data to this page, and `docs/project/plan/009-frontend-api-catalog-page.md` for the catalog page that links here.
+Reference `docs/project/plan/010-bff-api-catalog-endpoints.md` for the BFF API endpoints that supply data to this page, and `docs/project/plan/011-frontend-api-catalog-page.md` for the catalog page that links here.
 
 Create the `/catalog/[apiId]` dynamic route page with: API header, tabbed sections (Overview, Versions, Specification, Deployments), an OpenAPI specification viewer component, version selector, spec download, and deployment table. Use SSR for initial data and client-side fetching for dynamic content.
 
