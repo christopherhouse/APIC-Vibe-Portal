@@ -87,7 +87,7 @@ app/governance/components/
 ```
 
 ### 5. API Detail Integration
-Add a "Metadata Quality" tab to the API detail page (from task 010):
+Add a "Metadata Quality" tab to the API detail page (from task 012):
 - Completeness score ring/gauge (with letter grade: A, B, C, D, F)
 - Dimension breakdown with progress bars
 - AI-generated recommendations list
@@ -147,7 +147,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/030-metadata-completeness.md`.
 
-Reference `docs/project/plan/007-api-center-data-layer.md` for API metadata access, `docs/project/plan/021-governance-agent.md` for the governance rules foundation, `docs/project/plan/014-openai-integration.md` for AI recommendation generation, `docs/project/plan/010-frontend-api-detail-page.md` for the API detail page integration, and `docs/project/plan/023-governance-dashboard-ui.md` for the governance dashboard integration.
+Reference `docs/project/plan/009-api-center-data-layer.md` for API metadata access, `docs/project/plan/023-governance-agent.md` for the governance rules foundation, `docs/project/plan/017-openai-integration.md` for AI recommendation generation, `docs/project/plan/012-frontend-api-detail-page.md` for the API detail page integration, and `docs/project/plan/025-governance-dashboard-ui.md` for the governance dashboard integration.
 
 Create a multi-dimensional completeness scoring service (Basic Info, Versioning, Specification, Documentation, Classification, Security), an AI recommendation engine using OpenAI, BFF endpoints, and integrate into both the API detail page (new Metadata Quality tab) and the governance dashboard (completeness overview and leaderboard).
 

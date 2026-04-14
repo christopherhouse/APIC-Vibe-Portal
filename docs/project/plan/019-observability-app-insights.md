@@ -40,7 +40,7 @@ src/bff/src/
   - `auth_failures` — Failed authentication attempts
 
 ### 2. BFF Structured Logging Enhancement
-- Integrate logger (from task 005) with App Insights
+- Integrate logger (from task 006) with App Insights
 - Trace-level logs for debugging
 - Include correlation ID in all log entries
 - Log critical operations: search queries, chat completions, auth events

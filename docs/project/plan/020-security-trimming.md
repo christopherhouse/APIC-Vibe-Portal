@@ -39,19 +39,19 @@ src/bff/src/services/
 - Provide a `getAccessibleApiFilter(user)` for bulk filtering
 
 ### 3. API Center Trimming
-Update `api-catalog.service.ts` (from task 007):
+Update `api-catalog.service.ts` (from task 009):
 - Apply security filter before returning API lists
 - Filter individual API access checks on detail views
 - Return `403` if user requests an API they cannot access
 
 ### 4. Search Result Trimming
-Update `search.service.ts` (from task 012):
+Update `search.service.ts` (from task 017):
 - Add security filter to AI Search queries
 - Use AI Search's `$filter` parameter with user's accessible API IDs
 - Ensure facet counts reflect only accessible APIs
 
 ### 5. Chat Context Trimming
-Update `ai-chat.service.ts` (from task 014):
+Update `ai-chat.service.ts` (from task 017):
 - Filter RAG retrieval results to only include accessible APIs
 - Ensure the AI cannot reference APIs the user cannot see
 - Trim citations to accessible APIs only
@@ -106,7 +106,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/020-security-trimming.md`.
 
-Reference `docs/project/plan/016-entra-id-authentication.md` for the auth middleware and user context, `docs/project/plan/007-api-center-data-layer.md` for the catalog service, `docs/project/plan/012-search-api-implementation.md` for the search service, and `docs/project/plan/014-openai-integration.md` for the chat service.
+Reference `docs/project/plan/008-entra-id-authentication.md` for the auth middleware and user context, `docs/project/plan/009-api-center-data-layer.md` for the catalog service, `docs/project/plan/014-search-api-implementation.md` for the search service, and `docs/project/plan/017-openai-integration.md` for the chat service.
 
 Create a user context service that resolves group membership from Entra ID tokens. Update the catalog service, search service, and chat service to apply security trimming based on user permissions. Add admin bypass for `Portal.Admin` role. Implement group membership caching.
 

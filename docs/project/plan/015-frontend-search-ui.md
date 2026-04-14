@@ -20,7 +20,7 @@ Build the search UI components in the frontend, including the global search bar,
 ## Implementation Details
 
 ### 1. Global Search Bar (Header)
-Enhance the header component from task 004:
+Enhance the header component from task 005:
 - Search input with magnifying glass icon
 - Debounced autocomplete dropdown (300ms debounce)
 - Autocomplete shows top 5 API name/title matches

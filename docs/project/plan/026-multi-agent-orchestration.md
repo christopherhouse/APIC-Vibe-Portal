@@ -136,7 +136,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/026-multi-agent-orchestration.md`.
 
-Reference `docs/project/plan/020-foundry-agent-setup.md` for the base agent framework and router, `docs/project/plan/021-governance-agent.md` for the second agent, and `docs/project/plan/016-entra-id-authentication.md` for admin role gating.
+Reference `docs/project/plan/022-foundry-agent-setup.md` for the base agent framework and router, `docs/project/plan/023-governance-agent.md` for the second agent, and `docs/project/plan/008-entra-id-authentication.md` for admin role gating.
 
 Implement a multi-agent orchestrator with intent classification, agent hand-off protocol with context preservation, cross-agent conversation context management, admin API endpoints for agent management, and an admin UI for viewing/configuring agents.
 

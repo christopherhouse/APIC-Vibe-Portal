@@ -138,7 +138,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/028-analytics-data-collection.md`.
 
-Reference `docs/project/plan/017-observability-app-insights.md` for the existing telemetry foundation and `docs/project/plan/016-entra-id-authentication.md` for user identity.
+Reference `docs/project/plan/019-observability-app-insights.md` for the existing telemetry foundation and `docs/project/plan/008-entra-id-authentication.md` for user identity.
 
 Create typed analytics event models in the shared package. In the BFF, create an analytics service for event storage and admin query endpoints. In the frontend, create an analytics provider with a useAnalytics hook, automatic page view tracking, event batching, and privacy controls.
 

@@ -78,7 +78,7 @@ src/bff/src/agents/
 - Designed to be extended with additional agents (tasks 021-022)
 
 ### 5. Integration with Existing Chat
-- Update chat endpoints (from task 014) to use the agent system
+- Update chat endpoints (from task 017) to use the agent system
 - Maintain backward compatibility with the direct OpenAI chat
 - Add a flag to route through agent system vs. direct chat
 - Agent responses should follow the same `ChatResponse` format

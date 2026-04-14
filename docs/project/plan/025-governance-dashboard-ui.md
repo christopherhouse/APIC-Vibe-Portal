@@ -145,7 +145,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/025-governance-dashboard-ui.md`.
 
-Reference `docs/project/plan/021-governance-agent.md` for the governance scoring system and rules, `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/apic_product_charter.md` for the governance visibility goals.
+Reference `docs/project/plan/023-governance-agent.md` for the governance scoring system and rules, `docs/project/plan/005-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/apic_product_charter.md` for the governance visibility goals.
 
 Create BFF endpoints for governance summary, scores, and compliance data. Build the `/governance` dashboard page with KPI cards, score distribution chart, rule compliance chart, trend chart, sortable API scores table, and single-API compliance drill-down with remediation guidance. Use a charting library (recharts or similar).
 

@@ -41,7 +41,7 @@ src/bff/src/services/
 
 Implement a RAG pipeline:
 1. **Receive** user question
-2. **Retrieve** relevant API documents from AI Search (hybrid search from task 012)
+2. **Retrieve** relevant API documents from AI Search (hybrid search from task 014)
 3. **Augment** the prompt with retrieved context
 4. **Generate** response using Azure OpenAI with grounding data
 5. **Return** response with citations to source APIs

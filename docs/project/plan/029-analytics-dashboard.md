@@ -139,7 +139,7 @@ _No validation results yet._
 
 Read the full task specification at `docs/project/plan/029-analytics-dashboard.md`.
 
-Reference `docs/project/plan/026-analytics-data-collection.md` for the analytics data source and endpoints, `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/plan/016-entra-id-authentication.md` for admin role gating.
+Reference `docs/project/plan/028-analytics-data-collection.md` for the analytics data source and endpoints, `docs/project/plan/005-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/plan/008-entra-id-authentication.md` for admin role gating.
 
 Build the analytics dashboard with: overview page (KPI cards, usage trends, top APIs), search analytics deep-dive (query volume, zero-result queries, click-through rates), API popularity analytics, user engagement analytics, time range selection, and CSV export. Use a charting library consistent with the governance dashboard (task 023). Gate access to admin/API-owner roles.
 
