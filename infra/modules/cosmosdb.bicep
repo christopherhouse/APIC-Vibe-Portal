@@ -23,6 +23,9 @@ param enablePrivateEndpoint bool
 @description('Private endpoint subnet ID')
 param privateEndpointSubnetId string
 
+@description('Disable local (key-based) authentication in favour of RBAC (recommended)')
+param disableLocalAuth bool = true
+
 @description('Resource tags')
 param tags object
 
@@ -67,7 +70,7 @@ resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2024-12-01-previ
     enableMultipleWriteLocations: false
     publicNetworkAccess: enablePrivateEndpoint ? 'Disabled' : 'Enabled'
     networkAclBypass: 'AzureServices'
-    disableLocalAuth: false // Set to true after RBAC is configured
+    disableLocalAuth: disableLocalAuth
     capabilities: [
       {
         name: 'EnableServerless' // Serverless capacity mode

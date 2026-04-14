@@ -73,7 +73,9 @@ output appInsightsId string = appInsights.id
 output appInsightsName string = appInsights.name
 
 @description('Application Insights Instrumentation Key')
+@secure()
 output appInsightsInstrumentationKey string = appInsights.properties.InstrumentationKey
 
 @description('Application Insights Connection String')
+@secure()
 output appInsightsConnectionString string = appInsights.properties.ConnectionString

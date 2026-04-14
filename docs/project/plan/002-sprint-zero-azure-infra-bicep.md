@@ -130,7 +130,7 @@ The main template should output:
 
 ### Deviations from Plan
 
-1. **Foundry Agent Service Module Name**: Used `foundry-agent.bicep` instead of the originally planned `foundry-agent.bicep` to better reflect that it provisions both the AIServices account AND the project (not just the service).
+1. **Foundry Agent Service Module Scope**: The `foundry-agent.bicep` module provisions both the AIServices account AND the project, not just the service as originally described in the plan.
 
 2. **Container App Modules Omitted**: Did not create `container-app.bicep` module as planned. Per project conventions documented after plan creation, Container Apps are deployed via bash script, not Bicep. Outputs in main.bicep provide app names and environment ID for subsequent deployment.
 

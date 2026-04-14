@@ -24,6 +24,9 @@ param enablePrivateEndpoint bool
 @description('Private endpoint subnet ID')
 param privateEndpointSubnetId string
 
+@description('Disable local (key-based) authentication in favour of RBAC (recommended)')
+param disableLocalAuth bool = true
+
 @description('Resource tags')
 param tags object
 
@@ -50,7 +53,7 @@ resource cognitiveService 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
       defaultAction: enablePrivateEndpoint ? 'Deny' : 'Allow'
       bypass: 'AzureServices'
     }
-    disableLocalAuth: false // Set to true in production after RBAC is configured
+    disableLocalAuth: disableLocalAuth
   }
 }
 

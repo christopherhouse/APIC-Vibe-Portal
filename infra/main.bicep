@@ -40,13 +40,6 @@ param tags object = {
   ManagedBy: 'Bicep'
 }
 
-// Container App settings
-@description('Frontend container image (defaults to placeholder)')
-param frontendContainerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-
-@description('BFF container image (defaults to placeholder)')
-param bffContainerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-
 // SKU settings (allow cheaper SKUs for dev)
 @description('Key Vault SKU')
 @allowed(['standard', 'premium'])
@@ -68,6 +61,9 @@ param enablePrivateEndpoints bool = environmentName == 'prod'
 
 @description('Subnet resource ID for private endpoints (required if enablePrivateEndpoints is true)')
 param privateEndpointSubnetId string = ''
+
+// Validate: subnet ID must be provided when private endpoints are enabled
+assert privateEndpointSubnetIdRequired = !enablePrivateEndpoints || !empty(privateEndpointSubnetId) : 'privateEndpointSubnetId must be provided when enablePrivateEndpoints is true.'
 
 // ============================================================================
 // VARIABLES
@@ -275,9 +271,11 @@ output managedIdentityPrincipalId string = managedIdentity.outputs.principalId
 output logAnalyticsWorkspaceId string = monitoring.outputs.logAnalyticsWorkspaceId
 
 @description('Application Insights Connection String')
+@secure()
 output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString
 
 @description('Application Insights Instrumentation Key')
+@secure()
 output appInsightsInstrumentationKey string = monitoring.outputs.appInsightsInstrumentationKey
 
 @description('Key Vault URI')

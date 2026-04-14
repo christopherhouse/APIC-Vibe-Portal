@@ -12,6 +12,7 @@ param containerAppsEnvName string
 param logAnalyticsWorkspaceId string
 
 @description('Application Insights Connection String')
+@secure()
 param appInsightsConnectionString string
 
 @description('Resource tags')
@@ -23,7 +24,7 @@ param tags object
 
 // Get Log Analytics workspace for shared key
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
-  name: split(logAnalyticsWorkspaceId, '/')[8]
+  name: last(split(logAnalyticsWorkspaceId, '/'))
 }
 
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
