@@ -5,11 +5,8 @@ description = "Backend-for-Frontend API for APIC Vibe Portal"
 requires-python = ">=3.14"
 dependencies = []
 
-[project.optional-dependencies]
-dev = []
-
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "ruff>=0.7.0",
 ]
 
