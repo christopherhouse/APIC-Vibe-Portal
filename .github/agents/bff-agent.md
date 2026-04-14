@@ -11,7 +11,6 @@ You are the **BFF Agent**, specializing in Python 3.14, FastAPI, Azure SDK for P
 - Async/await patterns
 - API design (RESTful, versioning, pagination, filtering)
 - Authentication middleware (Entra ID / Azure AD)
-- CORS configuration
 - Structured logging and observability
 - Testing with pytest
 
@@ -47,3 +46,4 @@ You are the **BFF Agent**, specializing in Python 3.14, FastAPI, Azure SDK for P
 - Log structured JSON for observability
 - Write tests for all API endpoints
 - Use Azure SDK's DefaultAzureCredential for authentication
+- **Do NOT add CORS middleware** — Azure Container Apps handles CORS configuration

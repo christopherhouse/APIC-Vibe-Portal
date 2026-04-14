@@ -32,7 +32,7 @@ This is an **AI-powered API portal** built on Azure services, designed to help d
 - **Azure SDK**: Azure SDK for Python
 - **Testing**: pytest
 - **Linting/Formatting**: Ruff
-- **Middleware**: CORS, authentication, logging, request validation
+- **Middleware**: Authentication, logging, request validation (CORS handled by Azure Container Apps)
 
 ### Shared
 - **Purpose**: Shared TypeScript types, utilities (frontend-only)
@@ -69,7 +69,7 @@ This is an **AI-powered API portal** built on Azure services, designed to help d
 - **Authorization**: RBAC with security trimming (filter results by user permissions)
 - **Secrets**: Store in Azure Key Vault, never commit to source control
 - **Input Validation**: Validate all user inputs (Pydantic models in BFF, Zod in frontend)
-- **CORS**: Configure CORS appropriately in BFF middleware
+- **CORS**: Handled by Azure Container Apps (do NOT add CORS middleware to BFF)
 - **Dependencies**: Regularly scan for vulnerabilities (Snyk integration)
 
 ## Testing Strategy
@@ -92,7 +92,9 @@ Leverage these MCP servers when you need current documentation, security insight
 - **Target**: Azure Container Apps (one for frontend, one for BFF)
 - **Registry**: Azure Container Registry
 - **IaC**: Bicep templates (see `infra/` directory)
+  - **Note**: Azure Container Apps are deployed via bash script AFTER infrastructure is provisioned and containers are pushed to ACR (not via Bicep)
 - **CI/CD**: GitHub Actions (see `.github/workflows/`)
+- **Observability**: All Azure resources must have diagnostic settings configured to send logs to Log Analytics workspace
 
 ## Development Workflow
 1. **Clone** the repository
@@ -120,3 +122,6 @@ Leverage these MCP servers when you need current documentation, security insight
 - For FastAPI, use modern Python 3.14 features (e.g., PEP 695 type syntax)
 - Respect the monorepo structure: frontend and shared are npm workspaces; BFF is a separate UV-managed Python project
 - When working on infrastructure, use Bicep (not ARM JSON or Terraform)
+- **IMPORTANT**: Do NOT add CORS middleware to the BFF — Azure Container Apps handles CORS configuration
+- **IMPORTANT**: All Azure resources must have diagnostic settings sending logs/metrics to Log Analytics
+- **IMPORTANT**: Deploy Container Apps via bash script after infrastructure provisioning, NOT via Bicep templates
