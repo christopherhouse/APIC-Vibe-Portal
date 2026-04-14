@@ -134,19 +134,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 027 — Analytics Dashboard.
->
-> Read the full task specification at `docs/project/plan/027-analytics-dashboard.md`.
->
-> Reference `docs/project/plan/026-analytics-data-collection.md` for the analytics data source and endpoints, `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/plan/016-entra-id-authentication.md` for admin role gating.
->
-> Build the analytics dashboard with: overview page (KPI cards, usage trends, top APIs), search analytics deep-dive (query volume, zero-result queries, click-through rates), API popularity analytics, user engagement analytics, time range selection, and CSV export. Use a charting library consistent with the governance dashboard (task 023). Gate access to admin/API-owner roles.
->
-> Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/027-analytics-dashboard.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 027 — Analytics Dashboard.
+
+Read the full task specification at `docs/project/plan/027-analytics-dashboard.md`.
+
+Reference `docs/project/plan/026-analytics-data-collection.md` for the analytics data source and endpoints, `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/plan/016-entra-id-authentication.md` for admin role gating.
+
+Build the analytics dashboard with: overview page (KPI cards, usage trends, top APIs), search analytics deep-dive (query volume, zero-result queries, click-through rates), API popularity analytics, user engagement analytics, time range selection, and CSV export. Use a charting library consistent with the governance dashboard (task 023). Gate access to admin/API-owner roles.
+
+Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/027-analytics-dashboard.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

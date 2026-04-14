@@ -146,19 +146,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 012 — Search API Implementation.
->
-> Read the full task specification at `docs/project/plan/012-search-api-implementation.md`.
->
-> Reference `docs/project/plan/011-ai-search-index-setup.md` for the index schema and `docs/project/plan/006-shared-types-package.md` for the search DTOs.
->
-> In `src/bff/`, create an Azure AI Search client wrapper, a search service implementing hybrid search (keyword + semantic + vector with RRF), and Express route handlers for search and suggest endpoints. Include faceted results, hit highlights, semantic captions, and pagination.
->
-> Write unit tests with mocked AI Search SDK responses. Verify the build succeeds and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/012-search-api-implementation.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 012 — Search API Implementation.
+
+Read the full task specification at `docs/project/plan/012-search-api-implementation.md`.
+
+Reference `docs/project/plan/011-ai-search-index-setup.md` for the index schema and `docs/project/plan/006-shared-types-package.md` for the search DTOs.
+
+In `src/bff/`, create an Azure AI Search client wrapper, a search service implementing hybrid search (keyword + semantic + vector with RRF), and Express route handlers for search and suggest endpoints. Include faceted results, hit highlights, semantic captions, and pagination.
+
+Write unit tests with mocked AI Search SDK responses. Verify the build succeeds and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/012-search-api-implementation.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

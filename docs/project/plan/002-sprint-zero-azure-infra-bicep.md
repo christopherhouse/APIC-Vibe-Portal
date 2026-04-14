@@ -113,19 +113,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 002 — Azure Infrastructure as Code (Bicep).
->
-> Read the full task specification at `docs/project/plan/002-sprint-zero-azure-infra-bicep.md`.
->
-> Reference the architecture at `docs/project/apic_architecture.md` for the full list of Azure services: Container Apps, ACR, Key Vault, API Center, AI Search, Azure OpenAI, Application Insights.
->
-> Create the Bicep template structure under `/infra/` with a main orchestrator and individual modules for each Azure resource. Include parameterization for multi-environment deployment (dev, staging, prod). Configure managed identity with appropriate RBAC role assignments for each service. Include all outputs needed by the CI/CD pipeline (task 003).
->
-> Validate the templates compile with `az bicep build --file infra/main.bicep`. Do NOT actually deploy to Azure.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/002-sprint-zero-azure-infra-bicep.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 002 — Azure Infrastructure as Code (Bicep).
+
+Read the full task specification at `docs/project/plan/002-sprint-zero-azure-infra-bicep.md`.
+
+Reference the architecture at `docs/project/apic_architecture.md` for the full list of Azure services: Container Apps, ACR, Key Vault, API Center, AI Search, Azure OpenAI, Application Insights.
+
+Create the Bicep template structure under `/infra/` with a main orchestrator and individual modules for each Azure resource. Include parameterization for multi-environment deployment (dev, staging, prod). Configure managed identity with appropriate RBAC role assignments for each service. Include all outputs needed by the CI/CD pipeline (task 003).
+
+Validate the templates compile with `az bicep build --file infra/main.bicep`. Do NOT actually deploy to Azure.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/002-sprint-zero-azure-infra-bicep.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

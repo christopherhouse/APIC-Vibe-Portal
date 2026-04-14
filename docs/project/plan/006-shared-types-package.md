@@ -154,19 +154,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 006 — Shared Types & Utilities Package.
->
-> Read the full task specification at `docs/project/plan/006-shared-types-package.md`.
->
-> Reference the architecture at `docs/project/apic_architecture.md` for the data flow between Frontend and BFF, and `docs/project/apic_product_charter.md` for the domain concepts (API discovery, governance, AI assistance).
->
-> Create the shared TypeScript package in `src/shared/` with domain models (API definitions, versions, deployments, search results, chat messages), DTOs for frontend-BFF communication, enum types for API lifecycle and governance states, error types, type guards, and utility functions. Ensure dual CJS/ESM build output and that both `src/frontend` and `src/bff` can import from the shared package.
->
-> Write tests for type guards and utility functions. Verify the package builds and is importable from both consumer workspaces.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/006-shared-types-package.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 006 — Shared Types & Utilities Package.
+
+Read the full task specification at `docs/project/plan/006-shared-types-package.md`.
+
+Reference the architecture at `docs/project/apic_architecture.md` for the data flow between Frontend and BFF, and `docs/project/apic_product_charter.md` for the domain concepts (API discovery, governance, AI assistance).
+
+Create the shared TypeScript package in `src/shared/` with domain models (API definitions, versions, deployments, search results, chat messages), DTOs for frontend-BFF communication, enum types for API lifecycle and governance states, error types, type guards, and utility functions. Ensure dual CJS/ESM build output and that both `src/frontend` and `src/bff` can import from the shared package.
+
+Write tests for type guards and utility functions. Verify the package builds and is importable from both consumer workspaces.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/006-shared-types-package.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

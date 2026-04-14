@@ -140,19 +140,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 023 — Governance Dashboard UI.
->
-> Read the full task specification at `docs/project/plan/023-governance-dashboard-ui.md`.
->
-> Reference `docs/project/plan/021-governance-agent.md` for the governance scoring system and rules, `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/apic_product_charter.md` for the governance visibility goals.
->
-> Create BFF endpoints for governance summary, scores, and compliance data. Build the `/governance` dashboard page with KPI cards, score distribution chart, rule compliance chart, trend chart, sortable API scores table, and single-API compliance drill-down with remediation guidance. Use a charting library (recharts or similar).
->
-> Write unit tests for all components and BFF endpoints. Verify the build succeeds, linting passes, and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/023-governance-dashboard-ui.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 023 — Governance Dashboard UI.
+
+Read the full task specification at `docs/project/plan/023-governance-dashboard-ui.md`.
+
+Reference `docs/project/plan/021-governance-agent.md` for the governance scoring system and rules, `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend structure, and `docs/project/apic_product_charter.md` for the governance visibility goals.
+
+Create BFF endpoints for governance summary, scores, and compliance data. Build the `/governance` dashboard page with KPI cards, score distribution chart, rule compliance chart, trend chart, sortable API scores table, and single-API compliance drill-down with remediation guidance. Use a charting library (recharts or similar).
+
+Write unit tests for all components and BFF endpoints. Verify the build succeeds, linting passes, and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/023-governance-dashboard-ui.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

@@ -142,19 +142,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 028 — Metadata Completeness Scoring & Recommendations.
->
-> Read the full task specification at `docs/project/plan/028-metadata-completeness.md`.
->
-> Reference `docs/project/plan/007-api-center-data-layer.md` for API metadata access, `docs/project/plan/021-governance-agent.md` for the governance rules foundation, `docs/project/plan/014-openai-integration.md` for AI recommendation generation, `docs/project/plan/010-frontend-api-detail-page.md` for the API detail page integration, and `docs/project/plan/023-governance-dashboard-ui.md` for the governance dashboard integration.
->
-> Create a multi-dimensional completeness scoring service (Basic Info, Versioning, Specification, Documentation, Classification, Security), an AI recommendation engine using OpenAI, BFF endpoints, and integrate into both the API detail page (new Metadata Quality tab) and the governance dashboard (completeness overview and leaderboard).
->
-> Write unit tests for all scoring rules, recommendation generation, and components. Verify the build succeeds and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/028-metadata-completeness.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 028 — Metadata Completeness Scoring & Recommendations.
+
+Read the full task specification at `docs/project/plan/028-metadata-completeness.md`.
+
+Reference `docs/project/plan/007-api-center-data-layer.md` for API metadata access, `docs/project/plan/021-governance-agent.md` for the governance rules foundation, `docs/project/plan/014-openai-integration.md` for AI recommendation generation, `docs/project/plan/010-frontend-api-detail-page.md` for the API detail page integration, and `docs/project/plan/023-governance-dashboard-ui.md` for the governance dashboard integration.
+
+Create a multi-dimensional completeness scoring service (Basic Info, Versioning, Specification, Documentation, Classification, Security), an AI recommendation engine using OpenAI, BFF endpoints, and integrate into both the API detail page (new Metadata Quality tab) and the governance dashboard (completeness overview and leaderboard).
+
+Write unit tests for all scoring rules, recommendation generation, and components. Verify the build succeeds and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/028-metadata-completeness.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

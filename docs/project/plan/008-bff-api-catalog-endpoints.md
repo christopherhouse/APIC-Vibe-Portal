@@ -121,19 +121,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 008 — BFF API Catalog Endpoints.
->
-> Read the full task specification at `docs/project/plan/008-bff-api-catalog-endpoints.md`.
->
-> Reference `docs/project/plan/007-api-center-data-layer.md` for the service layer these endpoints call, and `docs/project/plan/006-shared-types-package.md` for the DTOs.
->
-> In `src/bff/src/routes/`, create Express route handlers for the API catalog endpoints (list, detail, versions, definition, deployments, environments). Add request validation using zod, consistent response envelopes, pagination support, and filtering/sorting.
->
-> Write supertest integration tests for all endpoints with mocked service layer. Verify the build succeeds and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/008-bff-api-catalog-endpoints.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 008 — BFF API Catalog Endpoints.
+
+Read the full task specification at `docs/project/plan/008-bff-api-catalog-endpoints.md`.
+
+Reference `docs/project/plan/007-api-center-data-layer.md` for the service layer these endpoints call, and `docs/project/plan/006-shared-types-package.md` for the DTOs.
+
+In `src/bff/src/routes/`, create Express route handlers for the API catalog endpoints (list, detail, versions, definition, deployments, environments). Add request validation using zod, consistent response envelopes, pagination support, and filtering/sorting.
+
+Write supertest integration tests for all endpoints with mocked service layer. Verify the build succeeds and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/008-bff-api-catalog-endpoints.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

@@ -101,19 +101,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 018 — Security Trimming Implementation.
->
-> Read the full task specification at `docs/project/plan/018-security-trimming.md`.
->
-> Reference `docs/project/plan/016-entra-id-authentication.md` for the auth middleware and user context, `docs/project/plan/007-api-center-data-layer.md` for the catalog service, `docs/project/plan/012-search-api-implementation.md` for the search service, and `docs/project/plan/014-openai-integration.md` for the chat service.
->
-> Create a user context service that resolves group membership from Entra ID tokens. Update the catalog service, search service, and chat service to apply security trimming based on user permissions. Add admin bypass for `Portal.Admin` role. Implement group membership caching.
->
-> Write unit tests covering all trimming scenarios (different users, admin bypass, inaccessible APIs). Verify the build succeeds and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/018-security-trimming.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 018 — Security Trimming Implementation.
+
+Read the full task specification at `docs/project/plan/018-security-trimming.md`.
+
+Reference `docs/project/plan/016-entra-id-authentication.md` for the auth middleware and user context, `docs/project/plan/007-api-center-data-layer.md` for the catalog service, `docs/project/plan/012-search-api-implementation.md` for the search service, and `docs/project/plan/014-openai-integration.md` for the chat service.
+
+Create a user context service that resolves group membership from Entra ID tokens. Update the catalog service, search service, and chat service to apply security trimming based on user permissions. Add admin bypass for `Portal.Admin` role. Implement group membership caching.
+
+Write unit tests covering all trimming scenarios (different users, admin bypass, inaccessible APIs). Verify the build succeeds and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/018-security-trimming.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

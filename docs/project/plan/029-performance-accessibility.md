@@ -152,19 +152,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 029 — Performance Optimization & Accessibility.
->
-> Read the full task specification at `docs/project/plan/029-performance-accessibility.md`.
->
-> This is a cross-cutting optimization task. Reference the architecture at `docs/project/apic_architecture.md` and all frontend/BFF task docs for context on what needs optimization.
->
-> Frontend: Analyze and reduce bundles, add code splitting for large components, optimize caching strategy, implement virtual scrolling for long lists, and ensure Core Web Vitals targets are met. BFF: Optimize response times, add response compression, enhance caching. Accessibility: Audit and fix semantic HTML, keyboard navigation, screen reader support, and color contrast across all pages. Add axe-core to E2E tests. Create load test scripts.
->
-> Verify all Lighthouse scores meet targets and axe-core reports zero critical violations.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/029-performance-accessibility.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 029 — Performance Optimization & Accessibility.
+
+Read the full task specification at `docs/project/plan/029-performance-accessibility.md`.
+
+This is a cross-cutting optimization task. Reference the architecture at `docs/project/apic_architecture.md` and all frontend/BFF task docs for context on what needs optimization.
+
+Frontend: Analyze and reduce bundles, add code splitting for large components, optimize caching strategy, implement virtual scrolling for long lists, and ensure Core Web Vitals targets are met. BFF: Optimize response times, add response compression, enhance caching. Accessibility: Audit and fix semantic HTML, keyboard navigation, screen reader support, and color contrast across all pages. Add axe-core to E2E tests. Create load test scripts.
+
+Verify all Lighthouse scores meet targets and axe-core reports zero critical violations.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/029-performance-accessibility.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

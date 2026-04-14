@@ -132,19 +132,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 016 — Entra ID Authentication Integration.
->
-> Read the full task specification at `docs/project/plan/016-entra-id-authentication.md`.
->
-> Reference the architecture at `docs/project/apic_architecture.md` (Security: Entra ID, RBAC), `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend layout, and `docs/project/plan/005-bff-api-setup.md` for the BFF middleware placeholder.
->
-> In the frontend, integrate MSAL React for Entra ID authentication with login/logout UI, protected routes via AuthGuard, a useAuth hook, and update the API client to inject Bearer tokens. In the BFF, implement JWT validation middleware using JWKS, role-based access control middleware, and apply auth to all API routes.
->
-> Write unit tests for auth middleware, RBAC middleware, and auth-related frontend components. Verify the build succeeds and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/016-entra-id-authentication.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 016 — Entra ID Authentication Integration.
+
+Read the full task specification at `docs/project/plan/016-entra-id-authentication.md`.
+
+Reference the architecture at `docs/project/apic_architecture.md` (Security: Entra ID, RBAC), `docs/project/plan/004-frontend-nextjs-setup.md` for the frontend layout, and `docs/project/plan/005-bff-api-setup.md` for the BFF middleware placeholder.
+
+In the frontend, integrate MSAL React for Entra ID authentication with login/logout UI, protected routes via AuthGuard, a useAuth hook, and update the API client to inject Bearer tokens. In the BFF, implement JWT validation middleware using JWKS, role-based access control middleware, and apply auth to all API routes.
+
+Write unit tests for auth middleware, RBAC middleware, and auth-related frontend components. Verify the build succeeds and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/016-entra-id-authentication.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```

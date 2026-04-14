@@ -143,19 +143,21 @@ _No validation results yet._
 
 ## Coding Agent Prompt
 
-> **Task**: Implement plan step 014 — Azure OpenAI Service Integration.
->
-> Read the full task specification at `docs/project/plan/014-openai-integration.md`.
->
-> Reference the architecture at `docs/project/apic_architecture.md` (Azure OpenAI for AI features), `docs/project/plan/012-search-api-implementation.md` for the search service used in RAG retrieval, and `docs/project/plan/006-shared-types-package.md` for chat DTOs.
->
-> In `src/bff/`, create an Azure OpenAI client wrapper, a RAG-powered chat service (retrieve from AI Search → augment prompt → generate with OpenAI), chat endpoints with both synchronous and SSE streaming responses, conversation session management, and token/rate limiting. Design the system prompt for an API discovery assistant.
->
-> Write unit tests with mocked OpenAI and AI Search responses. Verify the build succeeds and all tests pass.
->
-> **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/014-openai-integration.md`):
-> 1. Change the status banner at the top to `> **✅ Status: Complete**`
-> 2. Add a row to the Status History table with the completion date and a summary
-> 3. Record any technical decisions made under "Technical Decisions"
-> 4. Note any deviations from the plan under "Deviations from Plan"
-> 5. Record test/validation results under "Validation Results"
+```text
+**Task**: Implement plan step 014 — Azure OpenAI Service Integration.
+
+Read the full task specification at `docs/project/plan/014-openai-integration.md`.
+
+Reference the architecture at `docs/project/apic_architecture.md` (Azure OpenAI for AI features), `docs/project/plan/012-search-api-implementation.md` for the search service used in RAG retrieval, and `docs/project/plan/006-shared-types-package.md` for chat DTOs.
+
+In `src/bff/`, create an Azure OpenAI client wrapper, a RAG-powered chat service (retrieve from AI Search → augment prompt → generate with OpenAI), chat endpoints with both synchronous and SSE streaming responses, conversation session management, and token/rate limiting. Design the system prompt for an API discovery assistant.
+
+Write unit tests with mocked OpenAI and AI Search responses. Verify the build succeeds and all tests pass.
+
+**Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/014-openai-integration.md`):
+1. Change the status banner at the top to `> **✅ Status: Complete**`
+2. Add a row to the Status History table with the completion date and a summary
+3. Record any technical decisions made under "Technical Decisions"
+4. Note any deviations from the plan under "Deviations from Plan"
+5. Record test/validation results under "Validation Results"
+```
