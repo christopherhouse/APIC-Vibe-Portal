@@ -74,10 +74,10 @@ app/chat/
 - Hover shows excerpt preview
 
 ### 7. Streaming Integration
-- Connect to `POST /api/chat/stream` via EventSource/SSE
-- Render tokens incrementally in the message bubble
+- Connect to `POST /api/chat/stream` using `fetch()` and consume the streamed response via `ReadableStream`
+- Render tokens incrementally in the message bubble as chunks arrive
 - Show typing indicator until first token arrives
-- Handle stream errors gracefully (reconnect or show error)
+- Handle stream errors gracefully (retry the request when appropriate or show an error)
 
 ### 8. Session Management
 - Store session ID in React state (or context)

@@ -42,7 +42,6 @@ Perform systematic performance optimization and accessibility improvements acros
 
 #### Core Web Vitals Targets
 - LCP (Largest Contentful Paint): < 2.5s
-- FID (First Input Delay): < 100ms
 - CLS (Cumulative Layout Shift): < 0.1
 - INP (Interaction to Next Paint): < 200ms
 

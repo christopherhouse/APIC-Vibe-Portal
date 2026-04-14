@@ -29,14 +29,14 @@ Define typed analytics events:
 ```typescript
 type AnalyticsEvent =
   | { type: 'page_view'; page: string; duration?: number }
-  | { type: 'search_query'; query: string; resultCount: number; clickedResult?: string }
+  | { type: 'search_query'; queryHash: string; queryLength: number; resultCount: number; clickedResult?: string }
   | { type: 'api_view'; apiId: string; source: 'catalog' | 'search' | 'chat' | 'compare' }
   | { type: 'spec_download'; apiId: string; format: 'json' | 'yaml' }
   | { type: 'chat_interaction'; sessionId: string; messageCount: number; agentUsed: string }
   | { type: 'comparison_made'; apiIds: string[]; usedAiAnalysis: boolean }
   | { type: 'governance_viewed'; apiId?: string; section: string }
   | { type: 'filter_applied'; filterType: string; filterValue: string; context: string }
-  | { type: 'user_session'; userId: string; sessionDuration: number; pagesVisited: number };
+  | { type: 'user_session'; userIdHash: string; sessionDuration: number; pagesVisited: number };
 ```
 
 ### 2. BFF Analytics Service
@@ -83,7 +83,8 @@ src/frontend/lib/
 - Minimal performance impact (async, non-blocking)
 
 ### 5. Privacy & Data Handling
-- Hash user IDs for privacy (don't store PII in analytics)
+- Hash user IDs server-side before storage (use `userIdHash` field, never raw user IDs)
+- Sanitize `search_query` before persisting: redact potential PII (emails, names, IDs) using a server-side redaction utility, or store only derived aggregates (query length, token count, salted hash) instead of raw query strings
 - Respect Do Not Track browser setting
 - Configurable data retention period
 - Data is anonymized for aggregation

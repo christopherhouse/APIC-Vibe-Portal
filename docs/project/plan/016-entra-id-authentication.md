@@ -21,7 +21,7 @@ Integrate Microsoft Entra ID (Azure AD) authentication across both the frontend 
 
 ### 1. Entra ID App Registrations
 Document (and optionally script) the creation of two app registrations:
-- **Frontend SPA App**: Public client, redirect URI to frontend URL, implicit grant for ID tokens
+- **Frontend SPA App**: Public SPA client, configure redirect URI(s) for the frontend URL, use Authorization Code flow with PKCE via MSAL, and do not enable implicit grant
 - **BFF API App**: Confidential client, expose API with scopes, configure API permissions
 
 Configure:

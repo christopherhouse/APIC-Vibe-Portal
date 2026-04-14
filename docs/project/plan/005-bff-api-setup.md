@@ -78,7 +78,7 @@ src/bff/
 - **Error Handler**: Catches unhandled errors, returns consistent JSON error responses, logs details
 - **Request Logger**: Logs method, path, status, duration in structured JSON
 - **CORS**: Configurable origins from settings
-- **Auth Placeholder**: Passes through for now; will integrate Entra ID in task 015
+- **Auth Placeholder**: Passes through for now; will integrate Entra ID in task 016
 
 ### 6. Health Check Endpoints
 - `GET /health` — Simple liveness check (returns 200)
