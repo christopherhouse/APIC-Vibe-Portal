@@ -10,7 +10,7 @@
 - [Product Spec](../apic_portal_spec.md) — Backend feature requirements
 
 ## Overview
-Scaffold the Backend-for-Frontend (BFF) API service using Node.js, Express, and TypeScript. The BFF acts as the orchestration layer between the Next.js frontend and Azure services (API Center, AI Search, OpenAI, Foundry Agents).
+Scaffold the Backend-for-Frontend (BFF) API service using Python 3.14 and FastAPI, with UV managing the Python version and all dependencies. The BFF acts as the orchestration layer between the Next.js frontend and Azure services (API Center, AI Search, OpenAI, Foundry Agents).
 
 ## Dependencies
 - **001** — Repository scaffolding (monorepo workspace structure)
@@ -18,54 +18,56 @@ Scaffold the Backend-for-Frontend (BFF) API service using Node.js, Express, and 
 ## Implementation Details
 
 ### 1. Project Initialization
-- Initialize a Node.js + TypeScript project in `src/bff/`
-- Use Express.js as the HTTP framework
-- Integrate with the root npm workspace
+- Initialize a Python 3.14 project in `src/bff/` using UV (`uv init`)
+- Use FastAPI as the HTTP framework
+- Use UV to manage the Python version (3.14) and all dependencies — no pip
 
 ### 2. Project Structure
 ```
 src/bff/
 ├── src/
-│   ├── index.ts                # Application entry point
-│   ├── app.ts                  # Express app configuration
-│   ├── config/
-│   │   └── settings.ts         # Environment-based configuration
-│   ├── routes/
-│   │   ├── index.ts            # Route registration
-│   │   ├── health.routes.ts    # Health check endpoints
-│   │   └── api-catalog.routes.ts  # Placeholder routes
-│   ├── middleware/
-│   │   ├── error-handler.ts    # Global error handling
-│   │   ├── request-logger.ts   # Request logging
-│   │   ├── cors.ts             # CORS configuration
-│   │   └── auth.ts             # Auth middleware placeholder
-│   ├── services/               # Business logic layer
-│   ├── clients/                # Azure SDK client wrappers
-│   ├── types/
-│   │   └── index.ts            # Shared type definitions
-│   └── utils/
-│       └── logger.ts           # Structured logging utility
-├── __tests__/
-│   ├── setup.ts                # Test configuration
-│   ├── routes/                 # Route tests
-│   └── middleware/             # Middleware tests
-├── tsconfig.json               # Extends root tsconfig.base.json
-├── jest.config.ts
-├── package.json
-└── nodemon.json                # Dev server config
+│   └── bff/
+│       ├── __init__.py
+│       ├── main.py                 # Application entry point (Uvicorn startup)
+│       ├── app.py                  # FastAPI app configuration
+│       ├── config/
+│       │   └── settings.py         # Environment-based configuration (Pydantic Settings)
+│       ├── routers/
+│       │   ├── __init__.py
+│       │   ├── health.py           # Health check endpoints
+│       │   └── api_catalog.py      # Placeholder routes
+│       ├── middleware/
+│       │   ├── __init__.py
+│       │   ├── error_handler.py    # Global error handling
+│       │   ├── request_logger.py   # Request logging
+│       │   ├── cors.py             # CORS configuration
+│       │   └── auth.py             # Auth middleware placeholder
+│       ├── services/               # Business logic layer
+│       ├── clients/                # Azure SDK client wrappers
+│       ├── models/
+│       │   └── __init__.py         # Pydantic model definitions
+│       └── utils/
+│           └── logger.py           # Structured logging utility
+├── tests/
+│   ├── conftest.py                 # Test configuration and fixtures
+│   ├── test_health.py              # Health endpoint tests
+│   └── test_middleware.py          # Middleware tests
+├── pyproject.toml                  # Project metadata, dependencies (UV-managed)
+├── uv.lock                         # UV lockfile
+└── .python-version                 # Pins Python 3.14
 ```
 
-### 3. Express App Configuration (`app.ts`)
-- JSON body parsing with size limits
-- CORS configured for frontend origin
+### 3. FastAPI App Configuration (`app.py`)
+- JSON request parsing with size limits
+- CORS configured for frontend origin (via FastAPI `CORSMiddleware`)
 - Request logging middleware (structured JSON)
-- Global error handling middleware
+- Global exception handler middleware
 - Health check endpoints (`/health`, `/health/ready`)
 
-### 4. Configuration Management (`config/settings.ts`)
-- Environment-based configuration using `dotenv`
-- Typed settings object with required fields:
-  - `PORT` (default 3001)
+### 4. Configuration Management (`config/settings.py`)
+- Environment-based configuration using Pydantic Settings (`pydantic-settings`)
+- Typed settings model with required fields:
+  - `PORT` (default 8000)
   - `FRONTEND_URL` (CORS origin)
   - `API_CENTER_ENDPOINT`
   - `AI_SEARCH_ENDPOINT`
@@ -85,13 +87,12 @@ src/bff/
 - `GET /health/ready` — Readiness check that will validate Azure service connectivity (stubs for now)
 
 ### 7. Logging
-- Use a structured logger (e.g., `pino` or `winston`)
+- Use `structlog` for structured logging
 - JSON format for production, pretty-print for development
 - Correlation ID support via request header
 
 ### 8. Testing Setup
-- Configure Jest with TypeScript support
-- Add supertest for HTTP endpoint testing
+- Configure pytest with `httpx` / `HTTPX AsyncClient` for async endpoint testing
 - Write tests for:
   - Health check endpoints
   - Error handler middleware
@@ -99,17 +100,19 @@ src/bff/
   - Configuration validation
 
 ### 9. Development Experience
-- `nodemon` for auto-restart during development
-- NPM scripts: `dev`, `build`, `start`, `test`, `lint`
-- `src/bff/dev.env` example file (gitignored actual `.env`)
+- Uvicorn with `--reload` for auto-restart during development
+- UV scripts in `pyproject.toml`: `dev`, `test`, `lint`, `format`
+- `src/bff/.env.example` file (gitignored actual `.env`)
+- All dependencies managed via `uv add` (no pip)
 
 ## Testing & Acceptance Criteria
-- [ ] `npm run dev` starts the BFF on port 3001 without errors
-- [ ] `npm run build` compiles TypeScript without errors
-- [ ] `npm run lint` passes
+- [ ] `uv run uvicorn bff.main:app --reload` starts the BFF on port 8000 without errors
+- [ ] Python 3.14 is enforced via `.python-version` and UV
+- [ ] `uv run pytest` passes all tests
+- [ ] `uv run ruff check .` passes linting
 - [ ] `GET /health` returns `200 OK` with `{ "status": "healthy" }`
 - [ ] `GET /health/ready` returns `200 OK`
-- [ ] Invalid JSON body returns `400` with structured error
+- [ ] Invalid JSON body returns `422` with structured error (FastAPI validation)
 - [ ] Unhandled errors return `500` with structured error (no stack in production)
 - [ ] All tests pass (health, middleware, config)
 - [ ] CORS properly allows frontend origin and rejects others
@@ -145,9 +148,9 @@ Read the full task specification at `docs/project/plan/005-bff-api-setup.md`.
 
 Reference the architecture at `docs/project/apic_architecture.md` (Backend BFF, orchestration layer) and the repo structure from `docs/project/plan/001-sprint-zero-repo-scaffolding.md`.
 
-Scaffold a Node.js + Express + TypeScript BFF API in `src/bff/`. Create the Express app with middleware (CORS, error handling, request logging, auth placeholder), health check endpoints, environment-based configuration with validation, structured logging, and a comprehensive test suite using Jest + supertest.
+Scaffold a Python 3.14 + FastAPI BFF API in `src/bff/` using UV for Python version and dependency management (no pip). Create the FastAPI app with middleware (CORS, error handling, request logging, auth placeholder), health check endpoints, environment-based configuration with Pydantic Settings validation, structured logging with structlog, and a comprehensive test suite using pytest + httpx.
 
-Ensure the project integrates with the root npm workspace. Verify the dev server starts, the build succeeds, linting passes, and all tests pass.
+Ensure the project uses UV for all dependency management (`uv add`, `uv sync`, `uv run`). Verify the dev server starts, linting passes (Ruff), and all tests pass.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/005-bff-api-setup.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

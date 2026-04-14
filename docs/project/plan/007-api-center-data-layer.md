@@ -22,23 +22,23 @@ Integrate the BFF with Azure API Center to read API definitions, versions, deplo
 ### 1. Azure API Center Client
 Create a typed client wrapper around the Azure API Center SDK:
 ```
-src/bff/src/clients/
-├── api-center-client.ts        # Main client class
-├── api-center-client.test.ts
-└── __mocks__/
-    └── api-center-responses.ts # Mock responses for testing
+src/bff/src/bff/clients/
+├── api_center_client.py        # Main client class
+├── test_api_center_client.py
+└── mocks/
+    └── api_center_responses.py # Mock responses for testing
 ```
 
-- Use `@azure/arm-apicenter` SDK or REST API directly
-- Authenticate using `@azure/identity` (DefaultAzureCredential for managed identity)
+- Use `azure-mgmt-apicenter` SDK or REST API directly via `httpx`
+- Authenticate using `azure-identity` (DefaultAzureCredential for managed identity)
 - Wrap all operations with error handling and logging
 - Implement retry logic with exponential backoff
 
 ### 2. Service Layer
 ```
-src/bff/src/services/
-├── api-catalog.service.ts      # Business logic for catalog operations
-└── api-catalog.service.test.ts
+src/bff/src/bff/services/
+├── api_catalog_service.py      # Business logic for catalog operations
+└── test_api_catalog_service.py
 ```
 
 Implement the following operations:
@@ -50,7 +50,7 @@ Implement the following operations:
 - `listDeployments(apiId: string): Promise<ApiDeployment[]>` — List deployments for an API
 
 ### 3. Data Mapping
-- Map API Center SDK responses to shared model types (from package 006)
+- Map API Center SDK responses to Pydantic models (mirroring the shared TypeScript types from package 006)
 - Handle nullable fields and optional properties gracefully
 - Normalize API metadata for consistent frontend consumption
 
@@ -109,9 +109,9 @@ Read the full task specification at `docs/project/plan/007-api-center-data-layer
 
 Reference the architecture at `docs/project/apic_architecture.md` for how the BFF connects to Azure API Center, and `docs/project/plan/006-shared-types-package.md` for the shared models to map to.
 
-In `src/bff/`, create an Azure API Center client using the Azure SDK with DefaultAzureCredential, a service layer with operations for listing/getting APIs, versions, deployments, and specifications, a data mapping layer to convert SDK responses to shared types, and an in-memory caching layer.
+In `src/bff/`, create an Azure API Center client using the Azure SDK for Python with DefaultAzureCredential, a service layer with operations for listing/getting APIs, versions, deployments, and specifications, a data mapping layer to convert SDK responses to Pydantic models (mirroring the shared TypeScript types), and an in-memory caching layer.
 
-Write comprehensive unit tests with mocked API Center responses. Verify the build succeeds and all tests pass.
+Write comprehensive unit tests with mocked API Center responses using pytest. Verify all tests pass with `uv run pytest`.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/007-api-center-data-layer.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

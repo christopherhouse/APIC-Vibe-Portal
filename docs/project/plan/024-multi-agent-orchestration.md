@@ -21,11 +21,11 @@ Enhance the multi-agent architecture with sophisticated orchestration, agent han
 
 ### 1. Agent Orchestrator
 ```
-src/bff/src/agents/
-├── orchestrator.ts                 # Multi-agent orchestrator
-├── orchestrator.test.ts
-├── intent-classifier.ts           # Intent classification for routing
-└── intent-classifier.test.ts
+src/bff/src/bff/agents/
+├── orchestrator.py                 # Multi-agent orchestrator
+├── test_orchestrator.py
+├── intent_classifier.py           # Intent classification for routing
+└── test_intent_classifier.py
 ```
 
 **Orchestration Capabilities:**
@@ -54,9 +54,9 @@ src/bff/src/agents/
 
 ### 4. Conversation Context Management
 ```
-src/bff/src/agents/
-├── context-manager.ts             # Cross-agent context management
-└── context-manager.test.ts
+src/bff/src/bff/agents/
+├── context_manager.py             # Cross-agent context management
+└── test_context_manager.py
 ```
 
 - Maintain a shared context across agent switches
@@ -66,10 +66,10 @@ src/bff/src/agents/
 
 ### 5. Agent Management API (Admin)
 ```
-src/bff/src/routes/
+src/bff/src/bff/routers/
 ├── admin/
-│   ├── agent-management.routes.ts
-│   └── agent-management.routes.test.ts
+│   ├── agent_management.py
+│   └── test_agent_management.py
 ```
 
 Endpoints (require `Portal.Admin` role):
@@ -140,7 +140,7 @@ Reference `docs/project/plan/020-foundry-agent-setup.md` for the base agent fram
 
 Implement a multi-agent orchestrator with intent classification, agent hand-off protocol with context preservation, cross-agent conversation context management, admin API endpoints for agent management, and an admin UI for viewing/configuring agents.
 
-Write unit tests for the orchestrator, intent classifier, context manager, and admin endpoints. Verify the build succeeds and all tests pass.
+Write unit tests for the orchestrator, intent classifier, context manager, and admin endpoints using pytest (BFF) and Jest (frontend). Verify all tests pass.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/024-multi-agent-orchestration.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

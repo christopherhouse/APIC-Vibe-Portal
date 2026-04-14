@@ -28,9 +28,9 @@ Define the trimming model:
 
 ### 2. User Context Service
 ```
-src/bff/src/services/
-├── user-context.service.ts         # User permissions and group membership
-└── user-context.service.test.ts
+src/bff/src/bff/services/
+├── user_context_service.py         # User permissions and group membership
+└── test_user_context_service.py
 ```
 
 - Extract user groups from Entra ID token claims (or call Microsoft Graph API)
@@ -39,19 +39,19 @@ src/bff/src/services/
 - Provide a `getAccessibleApiFilter(user)` for bulk filtering
 
 ### 3. API Center Trimming
-Update `api-catalog.service.ts` (from task 007):
+Update `api_catalog_service.py` (from task 007):
 - Apply security filter before returning API lists
 - Filter individual API access checks on detail views
 - Return `403` if user requests an API they cannot access
 
 ### 4. Search Result Trimming
-Update `search.service.ts` (from task 012):
+Update `search_service.py` (from task 012):
 - Add security filter to AI Search queries
 - Use AI Search's `$filter` parameter with user's accessible API IDs
 - Ensure facet counts reflect only accessible APIs
 
 ### 5. Chat Context Trimming
-Update `ai-chat.service.ts` (from task 014):
+Update `ai_chat_service.py` (from task 014):
 - Filter RAG retrieval results to only include accessible APIs
 - Ensure the AI cannot reference APIs the user cannot see
 - Trim citations to accessible APIs only
@@ -110,7 +110,7 @@ Reference `docs/project/plan/016-entra-id-authentication.md` for the auth middle
 
 Create a user context service that resolves group membership from Entra ID tokens. Update the catalog service, search service, and chat service to apply security trimming based on user permissions. Add admin bypass for `Portal.Admin` role. Implement group membership caching.
 
-Write unit tests covering all trimming scenarios (different users, admin bypass, inaccessible APIs). Verify the build succeeds and all tests pass.
+Write unit tests covering all trimming scenarios (different users, admin bypass, inaccessible APIs) using pytest. Verify all tests pass with `uv run pytest`.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/018-security-trimming.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

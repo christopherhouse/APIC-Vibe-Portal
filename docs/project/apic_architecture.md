@@ -9,11 +9,11 @@ Multi-agent API portal built on:
 - Azure Container Apps
 
 ## Architecture Diagram
-Browser -> Next.js -> BFF -> APIC + AI Search + Foundry Agents
+Browser -> Next.js -> BFF (Python/FastAPI) -> APIC + AI Search + Foundry Agents
 
 ## Components
 - Frontend (Next.js SPA)
-- Backend (BFF)
+- Backend (BFF) — Python 3.14, FastAPI, managed with UV
 - Agent Layer (Foundry)
 - Search Layer (AI Search)
 - Observability (App Insights)
