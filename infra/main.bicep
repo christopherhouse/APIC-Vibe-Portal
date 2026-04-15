@@ -99,7 +99,7 @@ var resourceNames = {
 // ============================================================================
 
 module monitoring 'modules/monitoring.bicep' = {
-  name: 'monitoring-deployment'
+  name: 'monitoring-${deployment().name}'
   params: {
     location: location
     logAnalyticsName: resourceNames.logAnalytics
@@ -113,7 +113,7 @@ module monitoring 'modules/monitoring.bicep' = {
 // ============================================================================
 
 module managedIdentity 'modules/managed-identity.bicep' = {
-  name: 'managed-identity-deployment'
+  name: 'managed-identity-${deployment().name}'
   params: {
     location: location
     managedIdentityName: resourceNames.managedIdentity
@@ -126,7 +126,7 @@ module managedIdentity 'modules/managed-identity.bicep' = {
 // ============================================================================
 
 module keyVault 'modules/key-vault.bicep' = {
-  name: 'key-vault-deployment'
+  name: 'key-vault-${deployment().name}'
   params: {
     location: location
     keyVaultName: resourceNames.keyVault
@@ -145,7 +145,7 @@ module keyVault 'modules/key-vault.bicep' = {
 // ============================================================================
 
 module containerRegistry 'modules/acr.bicep' = {
-  name: 'acr-deployment'
+  name: 'acr-${deployment().name}'
   params: {
     location: location
     acrName: resourceNames.containerRegistry
@@ -162,7 +162,7 @@ module containerRegistry 'modules/acr.bicep' = {
 // ============================================================================
 
 module containerAppsEnvironment 'modules/container-apps-env.bicep' = {
-  name: 'cae-deployment'
+  name: 'cae-${deployment().name}'
   params: {
     location: location
     containerAppsEnvName: resourceNames.containerAppsEnv
@@ -177,7 +177,7 @@ module containerAppsEnvironment 'modules/container-apps-env.bicep' = {
 // ============================================================================
 
 module apiCenter 'modules/api-center.bicep' = {
-  name: 'api-center-deployment'
+  name: 'api-center-${deployment().name}'
   params: {
     location: location
     apiCenterName: resourceNames.apiCenter
@@ -191,7 +191,7 @@ module apiCenter 'modules/api-center.bicep' = {
 // ============================================================================
 
 module aiSearch 'modules/ai-search.bicep' = {
-  name: 'ai-search-deployment'
+  name: 'ai-search-${deployment().name}'
   params: {
     location: location
     searchServiceName: resourceNames.aiSearch
@@ -209,7 +209,7 @@ module aiSearch 'modules/ai-search.bicep' = {
 // ============================================================================
 
 module openAi 'modules/openai.bicep' = {
-  name: 'openai-deployment'
+  name: 'openai-${deployment().name}'
   params: {
     location: location
     openAiName: resourceNames.openAi
@@ -227,7 +227,7 @@ module openAi 'modules/openai.bicep' = {
 // ============================================================================
 
 module cosmosDb 'modules/cosmosdb.bicep' = {
-  name: 'cosmosdb-deployment'
+  name: 'cosmosdb-${deployment().name}'
   params: {
     location: cosmosDbLocation
     cosmosDbAccountName: resourceNames.cosmosDb
@@ -246,7 +246,7 @@ module cosmosDb 'modules/cosmosdb.bicep' = {
 // ============================================================================
 
 module foundryAgent 'modules/foundry-agent.bicep' = {
-  name: 'foundry-agent-deployment'
+  name: 'foundry-agent-${deployment().name}'
   params: {
     location: location
     foundryAccountName: resourceNames.foundryAccount
