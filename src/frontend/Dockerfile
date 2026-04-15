@@ -19,7 +19,7 @@ RUN npm ci
 COPY src/frontend ./src/frontend
 COPY src/shared ./src/shared
 COPY tsconfig.base.json ./
-COPY eslint.config.js ./
+COPY eslint.config.mjs ./
 COPY .prettierrc.json ./
 
 # Build the application

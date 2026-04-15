@@ -91,6 +91,7 @@ Each API card displays:
 - [ ] Loading skeletons display during data fetch
 - [ ] Page is responsive across desktop, tablet, and mobile
 - [ ] All components have unit tests
+- [ ] Playwright e2e tests added in `src/frontend/e2e/catalog.spec.ts` covering catalog browsing, filtering, sorting, and navigation to detail pages
 
 ## Implementation Notes
 <!-- 
@@ -125,7 +126,7 @@ Reference `docs/project/plan/005-frontend-nextjs-setup.md` for the frontend stru
 
 Create the `/catalog` page in the Next.js app with: an API card grid/list view, lifecycle and kind filters, sorting controls, pagination, view mode toggle, URL-based filter state, loading skeletons, empty states, and responsive layout. Use server components for initial SSR and client-side data fetching for filter/sort/page changes.
 
-Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass. Add Playwright e2e tests in `src/frontend/e2e/catalog.spec.ts` covering catalog browsing, filtering, sorting, and card navigation. Run `npm run test:e2e` to verify.
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/011-frontend-api-catalog-page.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

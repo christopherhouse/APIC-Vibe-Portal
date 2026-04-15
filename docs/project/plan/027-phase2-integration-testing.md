@@ -19,10 +19,10 @@ Validate all Phase 2 features (governance, comparison, multi-agent) work togethe
 ## Implementation Details
 
 ### 1. Extended E2E Tests
-Add to existing Playwright test suite:
+Add to the existing Playwright test suite in `src/frontend/e2e/` (set up in task 005, exercised in CI via the `e2e-frontend` job):
 ```
-e2e/tests/
-├── governance-dashboard.spec.ts   # Governance feature tests
+src/frontend/e2e/
+├── governance-dashboard.spec.ts   # Governance feature tests (may exist from task 025)
 ├── api-comparison.spec.ts         # Comparison feature tests
 ├── multi-agent-chat.spec.ts       # Multi-agent conversation tests
 ├── agent-admin.spec.ts            # Agent management tests

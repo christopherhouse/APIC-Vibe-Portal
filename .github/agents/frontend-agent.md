@@ -44,6 +44,7 @@ You are the **Frontend Agent**, specializing in Next.js 16, React 19, TypeScript
 - Use TypeScript strict mode; avoid `any`
 - Write tests for critical user flows
 - Optimize images with Next.js Image component
+- **E2E Testing**: Every task that adds or modifies user-facing pages or flows MUST include Playwright e2e tests in `src/frontend/e2e/`. Run with `npm run test:e2e`. See existing tests in `e2e/app-shell.spec.ts`, `e2e/navigation.spec.ts`, and `e2e/not-found.spec.ts` for patterns.
 
 ## Living Documentation Requirements
 When working on implementation tasks from the plan (tasks 001-032), you MUST update documentation to track progress:

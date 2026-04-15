@@ -53,7 +53,7 @@ Complete usage analytics, metadata scoring, performance optimization, and launch
 ### Phase 1 — MVP
 | # | Task | Status | Key Dependencies |
 |---|------|--------|-----------------|
-| [005](005-frontend-nextjs-setup.md) | Next.js Frontend Project Setup | 🔲 | 001, 004 |
+| [005](005-frontend-nextjs-setup.md) | Next.js Frontend Project Setup | ✅ | 001, 004 |
 | [006](006-bff-api-setup.md) | BFF API Project Setup | ✅ | 001, 004 |
 | [007](007-shared-types-package.md) | Shared Types & Utilities Package | 🔲 | 001, 005, 006 |
 | [008](008-entra-id-authentication.md) | Entra ID Authentication Integration | 🔲 | 002, 005, 006 |
