@@ -118,6 +118,7 @@ Create a typed fetch wrapper in `lib/api-client.ts`:
 | 2026-04-15 | **Used ESLint directly** instead of `next lint` | Next.js 16 removed the built-in `next lint` CLI command. Lint script uses `eslint .` with an ESLint 9 flat config including `@next/eslint-plugin-next` rules. |
 | 2026-04-15 | **Used `@mui/material-nextjs` AppRouterCacheProvider** | Required for proper Emotion SSR/streaming in Next.js App Router to prevent FOUC. |
 | 2026-04-15 | **Manual scaffold** instead of `create-next-app` | `create-next-app` was unresponsive in the sandboxed environment; project was manually scaffolded with identical structure and configuration. |
+| 2026-04-15 | **Added Playwright e2e testing from the start** (not deferred to task 021) | Per review feedback, e2e tests should be added alongside each feature, not deferred to a single integration testing task. Playwright is configured in `src/frontend/playwright.config.ts` with Chromium, Firefox, and WebKit projects. CI runs e2e tests on every PR. All future frontend tasks must include corresponding e2e tests. |
 
 ### Deviations from Plan
 - **Manual scaffold instead of `create-next-app`**: The `create-next-app` CLI was unresponsive in the sandboxed environment, so the project was manually scaffolded with the same structure and configuration that `create-next-app` would produce.
@@ -135,6 +136,8 @@ Create a typed fetch wrapper in `lib/api-client.ts`:
 | App renders shell layout | ✅ AppBar header, Drawer sidebar, footer, content area |
 | API client module exports typed functions | ✅ GET, POST, PUT, PATCH, DELETE with typed responses |
 | localhost:3000 serves landing page | ✅ HTML response with "APIC Vibe Portal" content |
+| Playwright e2e tests pass | ✅ 3 suites, 11 tests, 0 failures (app-shell, navigation, not-found) |
+| E2E CI job configured | ✅ `e2e-frontend` job in `.github/workflows/ci.yml` |
 
 
 ## Coding Agent Prompt

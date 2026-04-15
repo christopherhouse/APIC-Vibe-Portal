@@ -77,7 +77,7 @@ This is an **AI-powered API portal** built on Azure services, designed to help d
 - **Frontend**: Jest + React Testing Library for unit/component tests, Playwright for E2E
 - **BFF**: pytest for unit and integration tests
 - **Coverage**: Aim for >80% coverage on business logic
-- **E2E**: Playwright tests for critical user flows (Task 021)
+- **E2E**: Playwright tests live in `src/frontend/e2e/` and run against the Next.js dev server. Every frontend task that adds or modifies user-facing pages or flows **must** include corresponding Playwright e2e tests. Run with `npm run test:e2e --workspace=@apic-vibe-portal/frontend`. CI runs e2e tests on every PR via the `e2e-frontend` job in `.github/workflows/ci.yml`.
 
 ## Available MCP Servers
 GitHub Copilot and custom agents have access to the following Model Context Protocol (MCP) servers for enhanced context and tooling:
@@ -109,7 +109,8 @@ Leverage these MCP servers when you need current documentation, security insight
    - BFF: `cd src/bff && uv run fastapi dev` (or similar, TBD in Task 006)
 6. **Lint**: `npm run lint` (frontend + shared), `cd src/bff && uv run ruff check .` (BFF)
 7. **Test**: `npm run test` (frontend + shared), `cd src/bff && uv run pytest` (BFF)
-8. **Build**: `npm run build` (frontend + shared)
+8. **E2E Test**: `npm run test:e2e --workspace=@apic-vibe-portal/frontend` (requires Playwright browsers: `npx playwright install --with-deps chromium`)
+9. **Build**: `npm run build` (frontend + shared)
 
 ## Project References
 - **Product Charter**: [docs/project/apic_product_charter.md](../docs/project/apic_product_charter.md)

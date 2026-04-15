@@ -96,7 +96,7 @@ Perform systematic performance optimization and accessibility improvements acros
 - Support for reduced motion preference
 
 #### Testing
-- Automated: `axe-core` integration in E2E tests
+- Automated: `axe-core` integration in Playwright E2E tests (add `@axe-core/playwright` to existing `src/frontend/e2e/` test suite)
 - Manual: Screen reader testing (NVDA/VoiceOver checklist)
 - Lighthouse accessibility audit score ≥ 95
 
