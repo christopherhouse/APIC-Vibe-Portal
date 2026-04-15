@@ -48,17 +48,25 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                 exc_info=True,
             )
 
-            detail: str | dict[str, str] = str(exc)
+            request_id = request.headers.get("x-request-id")
+            detail: str | dict[str, str] = "An unexpected error occurred."
             if self.debug:
                 detail = {
                     "message": str(exc),
                     "traceback": traceback.format_exc(),
                 }
 
-            return JSONResponse(
+            content: dict[str, str | dict[str, str]] = {
+                "error": "Internal Server Error",
+                "detail": detail,
+            }
+            if request_id:
+                content["request_id"] = request_id
+
+            response = JSONResponse(
                 status_code=500,
-                content={
-                    "error": "Internal Server Error",
-                    "detail": detail,
-                },
+                content=content,
             )
+            if request_id:
+                response.headers["X-Request-ID"] = request_id
+            return response

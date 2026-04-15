@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from apic_vibe_portal_bff.config.settings import Settings
+from apic_vibe_portal_bff.config.settings import Settings, get_settings
 
 
 class TestSettings:
@@ -44,3 +44,11 @@ class TestSettings:
         monkeypatch.setenv("TOTALLY_UNKNOWN_VAR", "hello")
         settings = Settings()
         assert settings.port == 8000  # defaults still work
+
+    def test_get_settings_is_cached(self) -> None:
+        """get_settings() should return the same instance on repeated calls."""
+        get_settings.cache_clear()
+        s1 = get_settings()
+        s2 = get_settings()
+        assert s1 is s2
+        get_settings.cache_clear()

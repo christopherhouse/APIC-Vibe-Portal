@@ -14,7 +14,7 @@ from apic_vibe_portal_bff.middleware.request_logger import RequestLoggerMiddlewa
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_app(*, debug: bool = False, raise_error: bool = False) -> FastAPI:
+def _make_app(*, debug: bool = False) -> FastAPI:
     """Build a minimal FastAPI app with our middleware stack."""
     app = FastAPI()
 
@@ -68,9 +68,19 @@ class TestErrorHandlerMiddleware:
         async with await _client(app) as c:
             response = await c.get("/error")
         data = response.json()
-        # detail should be a plain string, not a dict with traceback
+        # detail should be a generic message, not the exception text
         assert isinstance(data["detail"], str)
-        assert "traceback" not in str(data["detail"]).lower()
+        assert data["detail"] == "An unexpected error occurred."
+        assert "Something went wrong" not in data["detail"]
+
+    @pytest.mark.asyncio
+    async def test_production_mode_includes_request_id(self) -> None:
+        app = _make_app(debug=False)
+        async with await _client(app) as c:
+            response = await c.get("/error", headers={"X-Request-ID": "err-456"})
+        data = response.json()
+        assert data["request_id"] == "err-456"
+        assert response.headers["x-request-id"] == "err-456"
 
     @pytest.mark.asyncio
     async def test_debug_mode_includes_traceback(self) -> None:

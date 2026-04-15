@@ -1,11 +1,14 @@
 """Environment-based configuration using Pydantic Settings.
 
 All configuration is loaded from environment variables (or a `.env` file in
-development).  Missing **required** variables cause the application to fail
-fast on startup with a clear validation error.
+development).  Server settings have sensible defaults for local development.
+Azure service settings default to empty strings and are only required in
+production — see the ``environment`` field.
 """
 
 from __future__ import annotations
+
+import functools
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,8 +17,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings loaded from environment variables.
 
-    Required variables will raise a ``ValidationError`` at import time if
-    they are not set, ensuring fail-fast behaviour.
+    All fields have defaults suitable for local development. Azure service
+    fields default to empty strings; they are expected to be set in
+    production deployments.
     """
 
     model_config = SettingsConfigDict(
@@ -41,6 +45,7 @@ class Settings(BaseSettings):
     appinsights_connection_string: str = Field(default="", description="Application Insights connection string")
 
 
+@functools.lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return a cached ``Settings`` instance.
 

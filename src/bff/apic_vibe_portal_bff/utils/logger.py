@@ -71,6 +71,7 @@ def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     """Return a *structlog* bound logger.
 
     Args:
-        name: Logger name (defaults to the caller's ``__name__``).
+        name: Optional logger name. When omitted, ``None`` is passed through
+            to ``structlog.get_logger()``.
     """
     return structlog.get_logger(name)
