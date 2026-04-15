@@ -75,7 +75,7 @@ resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2026-01-1
   location: location
   tags: tags
   properties: {
-    friendlyName: foundryProjectName
+    displayName: foundryProjectName
     description: 'APIC Vibe Portal - AI Agent Project'
   }
 }
@@ -86,8 +86,7 @@ resource accountCapabilityHost 'Microsoft.CognitiveServices/accounts/capabilityH
   parent: foundryAccount
   name: 'agents'
   properties: {
-    hostType: 'Agents'
-    hostingModel: 'Standard'
+    capabilityHostKind: 'Agents'
   }
   dependsOn: [
     foundryProject
@@ -100,8 +99,8 @@ resource projectCapabilityHost 'Microsoft.CognitiveServices/accounts/projects/ca
   parent: foundryProject
   name: 'agents'
   properties: {
-    hostType: 'Agents'
-    hostingModel: 'Standard'
+    // ProjectCapabilityHostProperties only supports connection properties
+    // No hostType or hostingModel properties are allowed
   }
   dependsOn: [
     accountCapabilityHost
