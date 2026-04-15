@@ -1,3 +1,5 @@
+import { ApiKind } from '../enums/api-kind.js';
+import { ApiLifecycle } from '../enums/api-lifecycle.js';
 import { ApiDefinition } from '../models/api-definition.js';
 import { PaginationMeta } from '../models/pagination.js';
 
@@ -9,8 +11,8 @@ export interface ApiCatalogItem {
   name: string;
   title: string;
   description: string;
-  kind: string;
-  lifecycleStage: string;
+  kind: ApiKind;
+  lifecycleStage: ApiLifecycle;
   versionCount: number;
   deploymentCount: number;
   updatedAt: string;

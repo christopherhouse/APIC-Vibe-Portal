@@ -138,5 +138,13 @@ describe('formatters', () => {
     it('handles max length of 1', () => {
       expect(truncate('hello', 1)).toBe('…');
     });
+
+    it('returns empty string for maxLength of 0', () => {
+      expect(truncate('hello', 0)).toBe('');
+    });
+
+    it('returns empty string for negative maxLength', () => {
+      expect(truncate('hello', -5)).toBe('');
+    });
   });
 });

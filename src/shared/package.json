@@ -26,11 +26,11 @@
     "build": "npm run build:esm && npm run build:cjs && npm run build:fixcjs",
     "build:esm": "tsc --project tsconfig.esm.json",
     "build:cjs": "tsc --project tsconfig.cjs.json",
-    "build:fixcjs": "echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
+    "build:fixcjs": "node -e \"require('fs').writeFileSync('dist/cjs/package.json','{\\\"type\\\":\\\"commonjs\\\"}\\n')\"",
     "lint": "eslint .",
-    "test": "node --experimental-vm-modules ../../node_modules/.bin/jest",
-    "test:ci": "node --experimental-vm-modules ../../node_modules/.bin/jest --ci --coverage",
-    "clean": "rm -rf dist"
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test:ci": "NODE_OPTIONS='--experimental-vm-modules' jest --ci --coverage",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {},
   "devDependencies": {

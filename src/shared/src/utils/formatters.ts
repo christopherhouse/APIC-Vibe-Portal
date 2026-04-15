@@ -75,8 +75,11 @@ export function normalizeUrl(url: string): string {
 
 /**
  * Truncate a string to the specified max length, appending an ellipsis if truncated.
+ * Returns an empty string when maxLength is 0 or negative.
  */
 export function truncate(text: string, maxLength: number): string {
+  if (maxLength <= 0) return '';
   if (text.length <= maxLength) return text;
+  if (maxLength === 1) return '…';
   return text.slice(0, maxLength - 1) + '…';
 }
