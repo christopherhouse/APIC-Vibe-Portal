@@ -22,6 +22,9 @@ resource apiCenter 'Microsoft.ApiCenter/services@2024-03-01' = {
   name: apiCenterName
   location: location
   tags: tags
+  sku: {
+    name: 'Free'
+  }
   properties: {}
 }
 
