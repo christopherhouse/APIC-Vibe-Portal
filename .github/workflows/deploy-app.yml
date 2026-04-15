@@ -44,7 +44,7 @@ jobs:
         id: acr
         run: |
           ACR_NAME=$(az deployment group show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --resource-group rg-apic-vibe-portal-dev \
             --name main \
             --query properties.outputs.acrName.value -o tsv)
           echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
@@ -94,7 +94,7 @@ jobs:
         id: acr
         run: |
           ACR_NAME=$(az deployment group show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --resource-group rg-apic-vibe-portal-dev \
             --name main \
             --query properties.outputs.acrName.value -o tsv)
           echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
@@ -146,7 +146,7 @@ jobs:
         id: infra
         run: |
           DEPLOYMENT=$(az deployment group show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --name main \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
@@ -159,7 +159,7 @@ jobs:
         run: |
           chmod +x scripts/deploy-container-apps.sh
           ./scripts/deploy-container-apps.sh \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --environment-id ${{ steps.infra.outputs.container-apps-env }} \
             --frontend-app ${{ steps.infra.outputs.frontend-app }} \
             --bff-app ${{ steps.infra.outputs.bff-app }} \
@@ -190,7 +190,7 @@ jobs:
         id: infra
         run: |
           DEPLOYMENT=$(az deployment group show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_STAGING }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --name main \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
@@ -203,7 +203,7 @@ jobs:
         run: |
           chmod +x scripts/deploy-container-apps.sh
           ./scripts/deploy-container-apps.sh \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_STAGING }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --environment-id ${{ steps.infra.outputs.container-apps-env }} \
             --frontend-app ${{ steps.infra.outputs.frontend-app }} \
             --bff-app ${{ steps.infra.outputs.bff-app }} \
@@ -234,7 +234,7 @@ jobs:
         id: infra
         run: |
           DEPLOYMENT=$(az deployment group show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_PROD }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --name main \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
@@ -247,7 +247,7 @@ jobs:
         run: |
           chmod +x scripts/deploy-container-apps.sh
           ./scripts/deploy-container-apps.sh \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_PROD }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --environment-id ${{ steps.infra.outputs.container-apps-env }} \
             --frontend-app ${{ steps.infra.outputs.frontend-app }} \
             --bff-app ${{ steps.infra.outputs.bff-app }} \

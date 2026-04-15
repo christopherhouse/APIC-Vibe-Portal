@@ -43,7 +43,7 @@ jobs:
       - name: Validate deployment
         run: |
           az deployment group validate \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --resource-group rg-apic-vibe-portal-dev \
             --template-file infra/main.bicep \
             --parameters infra/env/dev.bicepparam
 
@@ -70,7 +70,7 @@ jobs:
         id: deploy
         run: |
           az deployment group create \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters infra/env/dev.bicepparam \
             --query properties.outputs
@@ -98,7 +98,7 @@ jobs:
         id: deploy
         run: |
           az deployment group create \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_STAGING }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters infra/env/staging.bicepparam \
             --query properties.outputs
@@ -126,7 +126,7 @@ jobs:
         id: deploy
         run: |
           az deployment group create \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_PROD }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters infra/env/prod.bicepparam \
             --query properties.outputs
