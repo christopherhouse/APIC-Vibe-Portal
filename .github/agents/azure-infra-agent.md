@@ -50,7 +50,7 @@ You are the **Azure Infrastructure Agent**, specializing in Bicep templates, Azu
 ## Living Documentation Requirements
 When working on implementation tasks from the plan (tasks 001-032), you MUST update documentation to track progress:
 
-1. **Update the individual task document** (`docs/project/plan/XXX-task-name.md`):
+1. **Update the individual task document** (`docs/project/plan/NNN-task-name.md`, e.g. `docs/project/plan/002-sprint-zero-azure-infra-bicep.md`):
    - Change status banner (🔲 Not Started → 🔄 In Progress → ✅ Complete)
    - Add Status History entries with dates and notes
    - Record Technical Decisions made during implementation

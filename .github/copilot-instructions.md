@@ -122,7 +122,7 @@ The implementation plan and all task documents are **living documents** that MUS
 ### When Working on Implementation Tasks
 After completing any implementation task from the plan (tasks 001-032):
 
-1. **Update the individual task document** (`docs/project/plan/XXX-task-name.md`):
+1. **Update the individual task document** (`docs/project/plan/NNN-task-name.md`, e.g. `docs/project/plan/001-sprint-zero-repo-scaffolding.md`):
    - Change the status banner at the top to reflect current state (🔄 In Progress or ✅ Complete)
    - Add rows to the Status History table with dates and notes
    - Record Technical Decisions made during implementation
