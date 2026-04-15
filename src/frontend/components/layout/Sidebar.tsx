@@ -35,7 +35,7 @@ const secondaryNavItems: NavItem[] = [
 ];
 
 export default function Sidebar() {
-  const [, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   return (
     <Drawer
@@ -54,7 +54,7 @@ export default function Sidebar() {
         {mainNavItems.map((item, index) => (
           <ListItem key={item.label} disablePadding>
             <ListItemButton
-              selected={index === 0}
+              selected={selectedIndex === index}
               onClick={() => setSelectedIndex(index)}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>

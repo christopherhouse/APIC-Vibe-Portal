@@ -25,7 +25,7 @@ export default function PortalSkeleton({ lines = 1, ...props }: PortalSkeletonPr
           sx={{
             mb: 1,
             ...(i === lines - 1 ? { width: '60%' } : {}),
-            ...((props.sx as Record<string, unknown>) ?? {}),
+            ...(props.sx ?? {}),
           }}
         />
       ))}
