@@ -67,7 +67,7 @@ def sanitize_string(value: str) -> str:
         The sanitized string with script tags and event handlers removed.
     """
     # Remove script tags and their content
-    sanitized = re.sub(r"<\s*script[^>]*>.*?<\s*/\s*script\s*>", "", value, flags=re.IGNORECASE | re.DOTALL)
+    sanitized = re.sub(r"<\s*script[^>]*>.*?<\s*/\s*script[^>]*>", "", value, flags=re.IGNORECASE | re.DOTALL)
     # Remove remaining HTML tags
     sanitized = re.sub(r"<[^>]+>", "", sanitized)
     return sanitized
