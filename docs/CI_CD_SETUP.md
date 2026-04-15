@@ -117,7 +117,9 @@ az group create --name "rg-apic-vibe-portal-staging" --location "eastus"
 az group create --name "rg-apic-vibe-portal-prod" --location "eastus"
 ```
 
-#### 5. Configure GitHub Secrets
+#### 5. Configure GitHub Secrets and Environment Variables
+
+##### Repository Secrets
 
 Add the following secrets to your GitHub repository (**Settings** > **Secrets and variables** > **Actions**):
 
@@ -126,14 +128,21 @@ Add the following secrets to your GitHub repository (**Settings** > **Secrets an
 | `AZURE_CLIENT_ID` | `<APP_ID>` | Entra ID app registration client ID |
 | `AZURE_TENANT_ID` | `<TENANT_ID>` | Azure tenant ID |
 | `AZURE_SUBSCRIPTION_ID` | `<SUBSCRIPTION_ID>` | Azure subscription ID |
-| `AZURE_RESOURCE_GROUP_DEV` | `rg-apic-vibe-portal-dev` | Dev resource group name |
-| `AZURE_RESOURCE_GROUP_STAGING` | `rg-apic-vibe-portal-staging` | Staging resource group name |
-| `AZURE_RESOURCE_GROUP_PROD` | `rg-apic-vibe-portal-prod` | Prod resource group name |
 
 Get your tenant ID:
 ```bash
 az account show --query tenantId -o tsv
 ```
+
+##### Environment Variables
+
+For each GitHub environment (dev, staging, prod), add environment-scoped variables (**Settings** > **Environments** > select environment > **Environment variables**):
+
+| Variable Name | Value (dev) | Value (staging) | Value (prod) | Description |
+|---------------|-------------|-----------------|--------------|-------------|
+| `AZURE_RESOURCE_GROUP` | `rg-apic-vibe-portal-dev` | `rg-apic-vibe-portal-staging` | `rg-apic-vibe-portal-prod` | Environment-specific resource group name |
+
+This approach uses GitHub environment-scoped variables, which keeps the variable name consistent across environments while allowing environment-specific values.
 
 ## Workflow Triggers
 
