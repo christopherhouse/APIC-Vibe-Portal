@@ -6,10 +6,20 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Box from '@mui/material/Box';
 import Avatar from '@mui/material/Avatar';
+import Button from '@mui/material/Button';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Divider from '@mui/material/Divider';
 import MenuIcon from '@mui/icons-material/Menu';
 import SearchIcon from '@mui/icons-material/Search';
+import LogoutIcon from '@mui/icons-material/Logout';
+import PersonIcon from '@mui/icons-material/Person';
 import InputBase from '@mui/material/InputBase';
 import { alpha, styled } from '@mui/material/styles';
+import { useState } from 'react';
+import { useAuth } from '@/lib/auth/use-auth';
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
@@ -45,7 +55,33 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   },
 }));
 
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 export default function Header() {
+  const { isAuthenticated, user, login, logout, isLoading } = useAuth();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const menuOpen = Boolean(anchorEl);
+
+  const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    handleMenuClose();
+    logout();
+  };
+
   return (
     <AppBar
       position="fixed"
@@ -73,7 +109,57 @@ export default function Header() {
           <StyledInputBase placeholder="Search APIs…" inputProps={{ 'aria-label': 'search' }} />
         </Search>
         <Box sx={{ flexGrow: 1 }} />
-        <Avatar sx={{ width: 32, height: 32 }} aria-label="user avatar" />
+
+        {isLoading ? null : isAuthenticated && user ? (
+          <>
+            <IconButton
+              onClick={handleAvatarClick}
+              aria-label="user menu"
+              aria-controls={menuOpen ? 'user-menu' : undefined}
+              aria-haspopup="true"
+              aria-expanded={menuOpen ? 'true' : undefined}
+            >
+              <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
+                {getInitials(user.name || user.email)}
+              </Avatar>
+            </IconButton>
+            <Menu
+              id="user-menu"
+              anchorEl={anchorEl}
+              open={menuOpen}
+              onClose={handleMenuClose}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+              <MenuItem disabled>
+                <ListItemIcon>
+                  <PersonIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={user.name || 'User'}
+                  secondary={user.email}
+                />
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={handleLogout}>
+                <ListItemIcon>
+                  <LogoutIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Sign out" />
+              </MenuItem>
+            </Menu>
+          </>
+        ) : (
+          <Button
+            color="inherit"
+            variant="outlined"
+            onClick={() => login()}
+            aria-label="sign in"
+            sx={{ borderColor: 'rgba(255,255,255,0.5)' }}
+          >
+            Sign in
+          </Button>
+        )}
       </Toolbar>
     </AppBar>
   );

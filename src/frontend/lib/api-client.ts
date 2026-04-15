@@ -2,8 +2,11 @@
  * Typed BFF API client for the APIC Vibe Portal.
  *
  * Provides a fetch wrapper with typed request/response handling,
- * error handling, and auth token injection placeholder.
+ * error handling, and auth token injection via MSAL.
  */
+
+import { getMsalInstance } from '@/lib/auth/auth-provider';
+import { bffApiScope } from '@/lib/auth/msal-config';
 
 const BFF_BASE_URL = process.env.NEXT_PUBLIC_BFF_URL ?? 'http://localhost:8000';
 
@@ -24,15 +27,28 @@ export class ApiError extends Error {
 export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
   params?: Record<string, string>;
+  /** Skip auth token injection (e.g. for public endpoints). */
+  skipAuth?: boolean;
 }
 
 /**
- * Get the authorization header value.
- * Placeholder for Entra ID integration — returns undefined until auth is configured.
+ * Acquire an access token from MSAL for the BFF API.
+ * Returns `undefined` when no active account exists or token acquisition fails.
  */
-function getAuthToken(): string | undefined {
-  // TODO: Integrate with Entra ID authentication (task 016)
-  return undefined;
+async function getAuthToken(): Promise<string | undefined> {
+  try {
+    const msalInstance = getMsalInstance();
+    const account = msalInstance.getActiveAccount();
+    if (!account) return undefined;
+
+    const result = await msalInstance.acquireTokenSilent({
+      scopes: bffApiScope ? [bffApiScope] : ['openid', 'profile', 'email'],
+      account,
+    });
+    return result.accessToken;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -52,7 +68,7 @@ function buildUrl(path: string, params?: Record<string, string>): string {
  * Core fetch wrapper with typed responses and error handling.
  */
 async function request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const { body, params, headers: customHeaders, ...fetchOptions } = options;
+  const { body, params, headers: customHeaders, skipAuth, ...fetchOptions } = options;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -60,9 +76,11 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
     ...(customHeaders as Record<string, string>),
   };
 
-  const token = getAuthToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (!skipAuth) {
+    const token = await getAuthToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
   }
 
   const url = buildUrl(path, params);

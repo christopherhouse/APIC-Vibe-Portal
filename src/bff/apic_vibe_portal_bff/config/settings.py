@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     key_vault_url: str = Field(default="", description="Azure Key Vault URL")
     appinsights_connection_string: str = Field(default="", description="Application Insights connection string")
 
+    # --- Entra ID (authentication) ---------------------------------------
+    entra_tenant_id: str = Field(default="", description="Entra ID (Azure AD) tenant ID")
+    entra_client_id: str = Field(default="", description="Entra ID client (audience) ID for the BFF API")
+    entra_audience: str = Field(default="", description="Expected token audience (defaults to client ID if empty)")
+
 
 @functools.lru_cache(maxsize=1)
 def get_settings() -> Settings:
