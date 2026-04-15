@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     # --- Frontend --------------------------------------------------------
     frontend_url: str = Field(default="http://localhost:3000", description="Frontend origin URL")
 
+    # --- Entra ID Authentication -------------------------------------------
+    entra_tenant_id: str = Field(default="", description="Entra ID (Azure AD) tenant ID")
+    entra_client_id: str = Field(default="", description="Entra ID client/application ID for the BFF API")
+    entra_audience: str = Field(default="", description="Expected token audience (usually api://<client-id>)")
+
     # --- Azure services (required in production) -------------------------
     api_center_endpoint: str = Field(default="", description="Azure API Center endpoint")
     ai_search_endpoint: str = Field(default="", description="Azure AI Search endpoint")

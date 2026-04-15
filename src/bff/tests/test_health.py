@@ -32,8 +32,7 @@ async def test_health_liveness_method_not_allowed(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_api_catalog_placeholder(client: AsyncClient) -> None:
-    """GET /api/catalog/ returns 200 with a placeholder message."""
+async def test_api_catalog_requires_auth(client: AsyncClient) -> None:
+    """GET /api/catalog/ returns 401 when unauthenticated (RBAC enforced)."""
     response = await client.get("/api/catalog/")
-    assert response.status_code == 200
-    assert "message" in response.json()
+    assert response.status_code == 401
