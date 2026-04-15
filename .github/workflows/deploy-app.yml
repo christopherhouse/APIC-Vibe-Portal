@@ -27,6 +27,7 @@ jobs:
   build-and-push-frontend:
     name: Build and Push Frontend Image
     runs-on: ubuntu-latest
+    environment: dev
     outputs:
       image-tag: ${{ steps.meta.outputs.version }}
     steps:
@@ -77,6 +78,7 @@ jobs:
   build-and-push-bff:
     name: Build and Push BFF Image
     runs-on: ubuntu-latest
+    environment: dev
     outputs:
       image-tag: ${{ steps.meta.outputs.version }}
     steps:
