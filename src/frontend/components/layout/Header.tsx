@@ -161,9 +161,6 @@ export default function Header() {
             </Menu>
           </>
         )}
-        {!isAuthenticated && !isLoading ? null : !isAuthenticated ? (
-          <Avatar sx={{ width: 32, height: 32 }} aria-label="user avatar" />
-        ) : null}
       </Toolbar>
     </AppBar>
   );
