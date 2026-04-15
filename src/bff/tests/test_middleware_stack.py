@@ -70,7 +70,7 @@ class TestErrorHandlerMiddleware:
         data = response.json()
         # detail should be a plain string, not a dict with traceback
         assert isinstance(data["detail"], str)
-        assert "traceback" not in str(data["detail"]).lower() or "Traceback" not in str(data["detail"])
+        assert "traceback" not in str(data["detail"]).lower()
 
     @pytest.mark.asyncio
     async def test_debug_mode_includes_traceback(self) -> None:
