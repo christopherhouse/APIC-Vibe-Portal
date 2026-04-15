@@ -5,6 +5,7 @@ This directory contains Bicep templates for deploying the APIC Vibe Portal AI in
 ## Architecture
 
 The infrastructure includes:
+
 - **Observability**: Log Analytics Workspace + Application Insights
 - **Identity**: User-assigned managed identity with RBAC
 - **Secrets**: Azure Key Vault (RBAC-enabled)
@@ -124,6 +125,7 @@ After infrastructure is provisioned and container images are pushed to ACR, depl
 ### Environment Parameters
 
 Each environment has a `.bicepparam` file under `/infra/env/` that configures:
+
 - **Environment name**: dev, staging, prod
 - **SKU tiers**: Cheaper SKUs for dev, premium for prod
 - **Private endpoints**: Disabled in dev, enabled in prod
@@ -133,6 +135,7 @@ Each environment has a `.bicepparam` file under `/infra/env/` that configures:
 ### Customization
 
 To customize the deployment:
+
 1. Edit the appropriate `.bicepparam` file under `/infra/env/`
 2. Update parameter values (SKUs, regions, etc.)
 3. Redeploy using `az deployment group create`
@@ -140,6 +143,7 @@ To customize the deployment:
 ### Private Endpoints
 
 For production deployments with private endpoints:
+
 1. Provision a VNet and subnet first
 2. Update `prod.bicepparam` with the subnet resource ID
 3. Deploy infrastructure with `enablePrivateEndpoints = true`
@@ -155,6 +159,7 @@ For production deployments with private endpoints:
 ### Role Assignments
 
 The managed identity is granted:
+
 - **Key Vault Secrets User** on Key Vault
 - **AcrPull** on Container Registry
 - **Azure API Center Data Reader** on API Center
@@ -167,6 +172,7 @@ The managed identity is granted:
 ## Foundry Agent Service
 
 The Foundry Agent Service module provisions:
+
 - **AI Services Account** (kind: `AIServices`)
 - **Foundry Project** attached to the account
 - **Capability Hosts** for Standard Agent Services (account + project level)
@@ -179,6 +185,7 @@ This setup enables multi-agent orchestration for governance and compliance agent
 All Azure resources have diagnostic settings configured to send logs and metrics to the Log Analytics workspace.
 
 Query logs in Azure Portal:
+
 1. Navigate to Log Analytics Workspace
 2. Use Kusto Query Language (KQL) to query logs
 3. Example: `AzureDiagnostics | where ResourceProvider == "MICROSOFT.COGNITIVESERVICES" | take 100`
@@ -186,6 +193,7 @@ Query logs in Azure Portal:
 ## Outputs
 
 After deployment, the following outputs are available:
+
 - ACR login server
 - Key Vault URI
 - AI Search endpoint
@@ -231,6 +239,7 @@ az deployment operation group list \
 ### Resource Naming Conflicts
 
 If you encounter naming conflicts (e.g., globally unique names already taken):
+
 - Update `uniqueSuffix` parameter in main.bicep
 - Or modify `namePrefix` in the parameter file
 

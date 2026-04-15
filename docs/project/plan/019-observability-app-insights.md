@@ -5,15 +5,18 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Observability: App Insights
 - [Product Charter](../apic_product_charter.md) — Operational excellence; success metrics tracking
 - [Product Spec](../apic_portal_spec.md) — Monitoring and diagnostics requirements
 - [Azure Monitor OpenTelemetry Distro](https://learn.microsoft.com/en-us/azure/azure-monitor/app/opentelemetry-enable?tabs=python) — Python SDK
 
 ## Overview
+
 Implement end-to-end OpenTelemetry observability using the **Azure Monitor OpenTelemetry Distro** (`azure-monitor-opentelemetry` for the BFF, `@microsoft/applicationinsights-web` for the browser frontend). This gives us distributed tracing with W3C Trace Context correlation, custom OTel metrics for usage measurement, structured logging, and automatic App Insights integration — all from a single instrumentation layer.
 
 ## Dependencies
+
 - **002** — Azure infrastructure (App Insights resource deployed)
 - **005** — Frontend project setup
 - **006** — BFF API project setup
@@ -21,6 +24,7 @@ Implement end-to-end OpenTelemetry observability using the **Azure Monitor OpenT
 ## Implementation Details
 
 ### 1. BFF — Azure Monitor OpenTelemetry Distro Setup
+
 ```
 src/bff/src/bff/
 ├── telemetry/
@@ -32,6 +36,7 @@ src/bff/src/bff/
 ```
 
 **Initialization (`otel_setup.py`)**
+
 - Use `azure-monitor-opentelemetry` distro — single call to `configure_azure_monitor()` to wire up traces, metrics, and logs to App Insights
 - Initialize before FastAPI app starts (lifespan event)
 - Automatically instruments: `httpx`, `fastapi`, `openai`, `azure-core` via included OTel instrumentors
@@ -39,6 +44,7 @@ src/bff/src/bff/
 - Set `service.name`, `service.version`, `deployment.environment` resource attributes
 
 **Auto-collected signals (out of the box)**
+
 - Distributed traces for all inbound HTTP requests (FastAPI) and outbound calls (httpx, Azure SDKs, OpenAI SDK)
 - W3C `traceparent` / `tracestate` propagation between frontend → BFF → Azure services
 - Dependency tracking (Cosmos DB, AI Search, OpenAI, API Center)
@@ -46,6 +52,7 @@ src/bff/src/bff/
 - Live metrics stream
 
 ### 2. Custom OTel Metrics (`metrics.py`)
+
 Define a custom `Meter` with the following instruments:
 
 **Request/feature metrics**
@@ -69,9 +76,11 @@ Define a custom `Meter` with the following instruments:
 | `apic.llm.cost.estimated` | Histogram | `USD` | `model` | Estimated cost based on token pricing |
 
 ### 3. Token Metrics with tiktoken (`token_metrics.py`)
+
 Use `tiktoken` for pre-call token estimation and the OpenAI response `usage` object for actual token counts:
 
 **Pre-call estimation (tiktoken)**
+
 - Before each OpenAI API call, use `tiktoken.encoding_for_model(model)` to count tokens in:
   - System prompt
   - Conversation history (sliding window)
@@ -80,15 +89,18 @@ Use `tiktoken` for pre-call token estimation and the OpenAI response `usage` obj
 - Use estimates to enforce token budget and truncate context if needed (from task 017)
 
 **Post-call actuals (OpenAI response)**
+
 - Extract `usage.prompt_tokens`, `usage.completion_tokens`, `usage.total_tokens` from the OpenAI response
 - Emit `apic.llm.tokens.prompt`, `apic.llm.tokens.completion`, `apic.llm.tokens.total` histograms
 - Calculate estimated cost from token counts × per-token pricing (configurable per model)
 - Emit `apic.llm.cost.estimated` histogram
 
 **Drift tracking**
+
 - Log a warning when estimated tokens differ from actual by >10% (helps calibrate prompts)
 
 ### 4. BFF Structured Logging + OTel Integration
+
 - Integrate `structlog` (from task 006) with OpenTelemetry logging bridge
 - All log records automatically include `trace_id` and `span_id` for correlation
 - Azure Monitor distro exports logs to App Insights as trace records
@@ -96,6 +108,7 @@ Use `tiktoken` for pre-call token estimation and the OpenAI response `usage` obj
 - Critical events to log: search queries, chat completions, auth events, token budget overruns
 
 ### 5. Frontend Telemetry
+
 ```
 src/frontend/lib/
 ├── telemetry/
@@ -116,6 +129,7 @@ src/frontend/lib/
   - `spec_downloaded` — API ID, format
 
 ### 6. End-to-End Distributed Tracing
+
 - Frontend SDK generates `traceparent` header automatically on outbound requests
 - BFF: Azure Monitor OTel distro auto-propagates W3C Trace Context (`traceparent` / `tracestate`) across all outbound calls (httpx → Azure SDKs, OpenAI)
 - Full trace path: **Browser → BFF (FastAPI) → Cosmos DB / AI Search / OpenAI / API Center**
@@ -123,12 +137,15 @@ src/frontend/lib/
 - Custom span attributes added where useful (e.g., `chat.session_id`, `search.query_type`)
 
 ### 7. Error Tracking
+
 - Frontend: Catch unhandled errors and promise rejections (auto-captured by browser SDK)
 - BFF: OTel distro auto-captures unhandled exceptions; custom exception handler enriches spans with context (user ID, request path)
 - Alert on error rate spikes (configure in App Insights alert rules)
 
 ### 8. App Insights Dashboards & Alerts
+
 Define an App Insights workbook or dashboard covering:
+
 - **Request metrics**: Rate, latency (p50/p95/p99), error rate (BFF)
 - **Token usage**: Estimated vs actual tokens, cost trends, per-model breakdown
 - **Search metrics**: Query volume, latency, result counts, zero-result rate
@@ -137,18 +154,21 @@ Define an App Insights workbook or dashboard covering:
 - **Frontend**: Page load times, JS errors, AJAX failure rate
 
 **Alerts**:
+
 - Error rate > 5% over 5 min window
 - P95 latency > 2s for BFF requests
 - Token cost exceeding daily budget threshold
 - Dependency failure rate > 1%
 
 ### 9. Availability Tests
+
 - Configure availability ping tests for:
   - Frontend health endpoint
   - BFF `/health` endpoint
   - BFF `/health/ready` endpoint
 
 ## Testing & Acceptance Criteria
+
 - [ ] BFF uses `azure-monitor-opentelemetry` distro and sends traces, metrics, and logs to App Insights
 - [ ] W3C Trace Context propagates end-to-end: frontend → BFF → Azure services
 - [ ] Custom OTel metrics are emitted for search, chat, cache, auth, and agent invocations
@@ -165,6 +185,7 @@ Define an App Insights workbook or dashboard covering:
 - [ ] Unit tests verify custom metric recording (with mocked OTel meter)
 
 ## Implementation Notes
+
 <!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
@@ -172,19 +193,22 @@ Define an App Insights workbook or dashboard covering:
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 

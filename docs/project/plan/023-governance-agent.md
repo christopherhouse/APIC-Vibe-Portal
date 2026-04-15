@@ -5,20 +5,24 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Multi-agent design; Agent Layer: Foundry
 - [Product Charter](../apic_product_charter.md) — Provide governance visibility; metadata completeness as success metric
 - [Product Spec](../apic_portal_spec.md) — Governance feature requirements
 
 ## Overview
+
 Create a Governance & Compliance Agent that can assess API governance status, check compliance with organizational standards, and provide recommendations for improving API metadata quality. Extend the multi-agent router to dispatch governance-related queries to this agent.
 
 ## Dependencies
+
 - **022** — Foundry Agent Service setup (agent framework, router)
 - **009** — API Center data layer (governance metadata source)
 
 ## Implementation Details
 
 ### 1. Governance Agent Definition
+
 ```
 src/bff/src/bff/agents/governance_agent/
 ├── definition.py              # Agent definition and tools
@@ -33,7 +37,9 @@ src/bff/src/bff/agents/governance_agent/
 ```
 
 ### 2. Governance Rules Engine
+
 Define configurable governance rules:
+
 - **Metadata Completeness**: Description present, contacts defined, license specified, tags assigned
 - **Versioning**: Follows semantic versioning, has active version
 - **Specification Quality**: OpenAPI spec validates, endpoints documented, schemas defined
@@ -42,12 +48,14 @@ Define configurable governance rules:
 - **Documentation**: External docs linked, changelog maintained
 
 Each rule has:
+
 - ID, name, description
 - Severity: `critical`, `warning`, `info`
 - Evaluation function: `(api: ApiDefinition) => RuleResult`
 - Remediation guidance
 
 ### 3. Agent Tools
+
 - `checkApiCompliance(apiId)` — Run all governance rules against an API
 - `getGovernanceScore(apiId)` — Calculate overall governance score (0-100)
 - `listNonCompliantApis(rule?)` — Find APIs failing specific rules
@@ -55,7 +63,9 @@ Each rule has:
 - `compareGovernanceScores(apiIds[])` — Compare scores across APIs
 
 ### 4. Agent System Prompt
+
 Design prompt that:
+
 - Identifies as a Governance & Compliance specialist
 - Understands organizational API standards
 - Can explain governance rules and their importance
@@ -63,18 +73,22 @@ Design prompt that:
 - References specific governance rules by name
 
 ### 5. Agent Router Update
+
 Update `agent_router.py` to:
+
 - Detect governance-related intents (e.g., "Is this API compliant?", "Show governance issues")
 - Route governance queries to the Governance Agent
 - Route discovery queries to the Discovery Agent
 - Handle ambiguous queries (default to Discovery, but suggest Governance if relevant)
 
 ### 6. Governance Score Calculation
+
 - Weight rules by severity: critical (3x), warning (2x), info (1x)
 - Score = passed weight / total weight × 100
 - Categorize: Excellent (90+), Good (75-89), Needs Improvement (50-74), Poor (<50)
 
 ## Testing & Acceptance Criteria
+
 - [ ] Governance Agent responds to compliance queries
 - [ ] Compliance checker evaluates all defined rules correctly
 - [ ] Governance score calculation is accurate
@@ -87,26 +101,30 @@ Update `agent_router.py` to:
 - [ ] Unit tests cover score calculation edge cases
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 

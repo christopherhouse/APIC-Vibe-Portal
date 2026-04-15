@@ -1,19 +1,25 @@
 ## Summary
+
 <!-- Provide a brief description of the changes in this PR -->
 
 ## Related Task
+
 <!-- Reference the plan step or issue this PR addresses -->
+
 - Task:
 - Plan Doc:
 
 ## Changes Made
-<!-- List the key changes in this PR -->
--
+
+## <!-- List the key changes in this PR -->
+
 -
 -
 
 ## Testing Performed
+
 <!-- Describe the testing you performed to verify your changes -->
+
 - [ ] Unit tests added/updated
 - [ ] Integration tests added/updated
 - [ ] E2E tests added/updated (if applicable)
@@ -21,9 +27,11 @@
 - [ ] Testing notes:
 
 ## Screenshots (if applicable)
+
 <!-- Add screenshots for UI changes -->
 
 ## Checklist
+
 - [ ] Code follows project coding conventions
 - [ ] ESLint/Ruff linting passes (`npm run lint` or `uv run ruff check .`)
 - [ ] Prettier formatting applied (`npm run format` or `uv run ruff format .`)
@@ -35,4 +43,5 @@
 - [ ] Secrets/credentials not committed to source control
 
 ## Additional Notes
+
 <!-- Any additional context, considerations, or follow-up items -->

@@ -7,7 +7,10 @@ export default function NotFound() {
   return (
     <Container maxWidth="sm">
       <Box sx={{ py: 8, textAlign: 'center' }}>
-        <Typography variant="h1" sx={{ fontSize: '6rem', fontWeight: 700, color: 'text.secondary' }}>
+        <Typography
+          variant="h1"
+          sx={{ fontSize: '6rem', fontWeight: 700, color: 'text.secondary' }}
+        >
           404
         </Typography>
         <Typography variant="h4" component="h1" gutterBottom>
