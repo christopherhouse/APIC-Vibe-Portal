@@ -38,22 +38,14 @@ param tags object
 
 var databaseName = 'apic-vibe-portal'
 
-// Build additional locations array (conditionally include isZoneRedundant only when enabled)
-var additionalLocationsArray = [for (loc, i) in additionalLocations: enableZoneRedundancy ? {
-  locationName: loc
-  failoverPriority: i + 1
-  isZoneRedundant: true
-} : {
+// Build additional locations array (without isZoneRedundant to avoid quota issues)
+var additionalLocationsArray = [for (loc, i) in additionalLocations: {
   locationName: loc
   failoverPriority: i + 1
 }]
 
-// Build primary location object (conditionally include isZoneRedundant only when enabled)
-var primaryLocation = enableZoneRedundancy ? {
-  locationName: location
-  failoverPriority: 0
-  isZoneRedundant: true
-} : {
+// Build primary location object (without isZoneRedundant to avoid quota issues)
+var primaryLocation = {
   locationName: location
   failoverPriority: 0
 }
