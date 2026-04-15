@@ -1,9 +1,11 @@
 # APIC Vibe Portal AI - GitHub Copilot Instructions
 
 ## Project Overview
+
 This is an **AI-powered API portal** built on Azure services, designed to help developers discover, understand, and use APIs faster through multi-agent AI assistance.
 
 ## Architecture
+
 - **Frontend**: Next.js 16 (App Router) + TypeScript 6.0 SPA
 - **Backend-for-Frontend (BFF)**: Python 3.14 + FastAPI, managed with UV
 - **AI Services**: Azure OpenAI, Foundry Agent Service (multi-agent orchestration)
@@ -17,6 +19,7 @@ This is an **AI-powered API portal** built on Azure services, designed to help d
 ## Tech Stack Details
 
 ### Frontend (Next.js)
+
 - **Version**: Next.js 16 with App Router
 - **Language**: TypeScript 6.0 in strict mode
 - **UI Framework**: React 19 with functional components and hooks
@@ -27,6 +30,7 @@ This is an **AI-powered API portal** built on Azure services, designed to help d
 - **Node Version**: >= 24 (see `.nvmrc`)
 
 ### Backend-for-Frontend (BFF)
+
 - **Language**: Python 3.14 (see `.python-version`)
 - **Framework**: FastAPI
 - **Package Manager**: UV (not pip)
@@ -36,6 +40,7 @@ This is an **AI-powered API portal** built on Azure services, designed to help d
 - **Middleware**: Authentication, logging, request validation (CORS handled by Azure Container Apps)
 
 ### Shared
+
 - **Purpose**: Shared TypeScript types, utilities (frontend-only)
 - **Language**: TypeScript 6.0
 - **Workspace**: npm workspace alongside frontend
@@ -43,6 +48,7 @@ This is an **AI-powered API portal** built on Azure services, designed to help d
 ## Coding Conventions
 
 ### TypeScript (Frontend + Shared)
+
 - Use **TypeScript 6.0** strict mode
 - Prefer **functional React components** with hooks
 - Use **async/await** over promises
@@ -51,6 +57,7 @@ This is an **AI-powered API portal** built on Azure services, designed to help d
 - Use **Path aliases** for imports (e.g., `@/components`, `@/lib`)
 
 ### Python (BFF)
+
 - Use **Python 3.14** features
 - Follow **PEP 8** conventions (enforced by Ruff)
 - Use **async/await** for async operations
@@ -59,6 +66,7 @@ This is an **AI-powered API portal** built on Azure services, designed to help d
 - Follow FastAPI best practices (routers, dependency injection, Pydantic models)
 
 ### General
+
 - Keep files under 300 lines where possible
 - Write self-documenting code; comments for "why," not "what"
 - Use consistent naming: camelCase (TS/JS), snake_case (Python)
@@ -66,6 +74,7 @@ This is an **AI-powered API portal** built on Azure services, designed to help d
 - Write unit tests for business logic
 
 ## Security Practices
+
 - **Authentication**: Entra ID (Azure AD) for user authentication
 - **Authorization**: RBAC with security trimming (filter results by user permissions)
 - **Secrets**: Store in Azure Key Vault, never commit to source control
@@ -74,12 +83,14 @@ This is an **AI-powered API portal** built on Azure services, designed to help d
 - **Dependencies**: Regularly scan for vulnerabilities (Snyk integration)
 
 ## Testing Strategy
+
 - **Frontend**: Jest + React Testing Library for unit/component tests, Playwright for E2E
 - **BFF**: pytest for unit and integration tests
 - **Coverage**: Aim for >80% coverage on business logic
 - **E2E**: Playwright tests live in `src/frontend/e2e/` and run against the Next.js dev server. Every frontend task that adds or modifies user-facing pages or flows **must** include corresponding Playwright e2e tests. Run with `npm run test:e2e --workspace=@apic-vibe-portal/frontend`. CI runs e2e tests on every PR via the `e2e-frontend` job in `.github/workflows/ci.yml`.
 
 ## Available MCP Servers
+
 GitHub Copilot and custom agents have access to the following Model Context Protocol (MCP) servers for enhanced context and tooling:
 
 - **Microsoft Learn** — Azure SDK documentation, Azure service references, best practices
@@ -90,6 +101,7 @@ GitHub Copilot and custom agents have access to the following Model Context Prot
 Leverage these MCP servers when you need current documentation, security insights, or framework-specific guidance.
 
 ## Deployment
+
 - **Target**: Azure Container Apps (one for frontend, one for BFF)
 - **Registry**: Azure Container Registry
 - **IaC**: Bicep templates (see `infra/` directory)
@@ -98,6 +110,7 @@ Leverage these MCP servers when you need current documentation, security insight
 - **Observability**: All Azure resources must have diagnostic settings configured to send logs to Log Analytics workspace
 
 ## Development Workflow
+
 1. **Clone** the repository
 2. **Install Node.js** >= 24 (see `.nvmrc`)
 3. **Install Python** 3.14 (see `.python-version`)
@@ -113,15 +126,18 @@ Leverage these MCP servers when you need current documentation, security insight
 9. **Build**: `npm run build` (frontend + shared)
 
 ## Project References
+
 - **Product Charter**: [docs/project/apic_product_charter.md](../docs/project/apic_product_charter.md)
 - **Architecture**: [docs/project/apic_architecture.md](../docs/project/apic_architecture.md)
 - **Product Spec**: [docs/project/apic_portal_spec.md](../docs/project/apic_portal_spec.md)
 - **Implementation Plan**: [docs/project/plan/README.md](../docs/project/plan/README.md)
 
 ## Living Documentation Requirements
+
 The implementation plan and all task documents are **living documents** that MUST be kept up-to-date as work progresses.
 
 ### When Working on Implementation Tasks
+
 After completing any implementation task from the plan (tasks 001-032):
 
 1. **Update the individual task document** (`docs/project/plan/NNN-task-name.md`, e.g. `docs/project/plan/001-sprint-zero-repo-scaffolding.md`):
@@ -137,6 +153,7 @@ After completing any implementation task from the plan (tasks 001-032):
    - Keep the status synchronized with the individual task document
 
 ### Status Icons
+
 - 🔲 Not Started
 - 🔄 In Progress
 - ✅ Complete
@@ -145,6 +162,7 @@ After completing any implementation task from the plan (tasks 001-032):
 **This is NOT optional** — keeping these documents current ensures the entire team understands project status and decisions made along the way.
 
 ## Notes for Copilot
+
 - When suggesting Azure SDK usage, prefer the latest Azure SDK for Python or JavaScript/TypeScript
 - For Next.js 16, always use App Router conventions (app directory, Server Components by default, Client Components with "use client")
 - For FastAPI, use modern Python 3.14 features (e.g., PEP 695 type syntax)

@@ -117,32 +117,44 @@ az group create --name "rg-apic-vibe-portal-staging" --location "eastus"
 az group create --name "rg-apic-vibe-portal-prod" --location "eastus"
 ```
 
-#### 5. Configure GitHub Secrets
+#### 5. Configure GitHub Secrets and Environment Variables
+
+##### Repository Secrets
 
 Add the following secrets to your GitHub repository (**Settings** > **Secrets and variables** > **Actions**):
 
-| Secret Name | Value | Description |
-|-------------|-------|-------------|
-| `AZURE_CLIENT_ID` | `<APP_ID>` | Entra ID app registration client ID |
-| `AZURE_TENANT_ID` | `<TENANT_ID>` | Azure tenant ID |
-| `AZURE_SUBSCRIPTION_ID` | `<SUBSCRIPTION_ID>` | Azure subscription ID |
-| `AZURE_RESOURCE_GROUP_DEV` | `rg-apic-vibe-portal-dev` | Dev resource group name |
-| `AZURE_RESOURCE_GROUP_STAGING` | `rg-apic-vibe-portal-staging` | Staging resource group name |
-| `AZURE_RESOURCE_GROUP_PROD` | `rg-apic-vibe-portal-prod` | Prod resource group name |
+| Secret Name             | Value               | Description                         |
+| ----------------------- | ------------------- | ----------------------------------- |
+| `AZURE_CLIENT_ID`       | `<APP_ID>`          | Entra ID app registration client ID |
+| `AZURE_TENANT_ID`       | `<TENANT_ID>`       | Azure tenant ID                     |
+| `AZURE_SUBSCRIPTION_ID` | `<SUBSCRIPTION_ID>` | Azure subscription ID               |
 
 Get your tenant ID:
+
 ```bash
 az account show --query tenantId -o tsv
 ```
 
+##### Environment Variables
+
+For each GitHub environment (dev, staging, prod), add environment-scoped variables (**Settings** > **Environments** > select environment > **Environment variables**):
+
+| Variable Name          | Value (dev)               | Value (staging)               | Value (prod)               | Description                              |
+| ---------------------- | ------------------------- | ----------------------------- | -------------------------- | ---------------------------------------- |
+| `AZURE_RESOURCE_GROUP` | `rg-apic-vibe-portal-dev` | `rg-apic-vibe-portal-staging` | `rg-apic-vibe-portal-prod` | Environment-specific resource group name |
+
+This approach uses GitHub environment-scoped variables, which keeps the variable name consistent across environments while allowing environment-specific values.
+
 ## Workflow Triggers
 
 ### CI Workflow
+
 - **Triggers**: Push to `main`, pull request to `main`
 - **Jobs**: lint, typecheck, test-frontend, test-bff, build-frontend, build-bff
 - **Purpose**: Ensure code quality and catch issues early
 
 ### Deploy Infrastructure Workflow
+
 - **Triggers**:
   - Push to `main` (when `infra/**` changes)
   - Manual trigger via `workflow_dispatch`
@@ -150,6 +162,7 @@ az account show --query tenantId -o tsv
 - **Purpose**: Deploy Bicep templates to Azure
 
 ### Deploy Application Workflow
+
 - **Triggers**:
   - Push to `main` (when `src/**` changes)
   - Manual trigger via `workflow_dispatch`
@@ -157,6 +170,7 @@ az account show --query tenantId -o tsv
 - **Purpose**: Build Docker images and deploy to Container Apps
 
 ### PR Checks Workflow
+
 - **Triggers**: Pull request events (opened, synchronize, reopened, edited)
 - **Jobs**: labeler, size-check, plan-reference
 - **Purpose**: Automated PR quality gates
@@ -181,6 +195,7 @@ The pipeline builds two Docker images:
 - **BFF**: FastAPI application (Python 3.14-slim)
 
 Both images use multi-stage builds with:
+
 - Separate build and production stages
 - Non-root users for security
 - Health check endpoints
@@ -189,10 +204,12 @@ Both images use multi-stage builds with:
 ## Container Apps Deployment
 
 Container Apps are deployed via the `scripts/deploy-container-apps.sh` bash script after:
+
 1. Infrastructure is provisioned (Bicep)
 2. Docker images are built and pushed to ACR
 
 The script:
+
 - Creates Container Apps if they don't exist
 - Updates existing Container Apps with new images
 - Configures ingress, scaling, and managed identity

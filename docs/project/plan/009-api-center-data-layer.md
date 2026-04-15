@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Azure API Center as the core API catalog data source
 - [Product Charter](../apic_product_charter.md) — Improve API discovery; API metadata completeness
 - [Product Spec](../apic_portal_spec.md) — API catalog and metadata requirements
 
 ## Overview
+
 Integrate the BFF with Azure API Center to read API definitions, versions, deployments, and environments. This creates the data layer that powers the API catalog, providing the foundation for all API browsing and discovery features.
 
 ## Dependencies
+
 - **002** — Azure infrastructure (API Center resource deployed)
 - **006** — BFF API project setup
 - **007** — Shared types package (API models and DTOs)
@@ -20,7 +23,9 @@ Integrate the BFF with Azure API Center to read API definitions, versions, deplo
 ## Implementation Details
 
 ### 1. Azure API Center Client
+
 Create a typed client wrapper around the Azure API Center SDK:
+
 ```
 src/bff/src/bff/clients/
 ├── api_center_client.py        # Main client class
@@ -35,6 +40,7 @@ src/bff/src/bff/clients/
 - Implement retry logic with exponential backoff
 
 ### 2. Service Layer
+
 ```
 src/bff/src/bff/services/
 ├── api_catalog_service.py      # Business logic for catalog operations
@@ -42,6 +48,7 @@ src/bff/src/bff/services/
 ```
 
 Implement the following operations:
+
 - `listApis(options: ListApisOptions): Promise<PaginatedResult<ApiDefinition>>` — List APIs with pagination, filtering, sorting
 - `getApi(apiId: string): Promise<ApiDefinition>` — Get a single API with all metadata
 - `listApiVersions(apiId: string): Promise<ApiVersion[]>` — List versions for an API
@@ -50,11 +57,13 @@ Implement the following operations:
 - `listDeployments(apiId: string): Promise<ApiDeployment[]>` — List deployments for an API
 
 ### 3. Data Mapping
+
 - Map API Center SDK responses to Pydantic models (mirroring the shared TypeScript types from package 006)
 - Handle nullable fields and optional properties gracefully
 - Normalize API metadata for consistent frontend consumption
 
 ### 4. Caching Layer
+
 - Implement in-memory caching with configurable TTL
 - Cache API list results (short TTL: 2-5 minutes)
 - Cache individual API details (medium TTL: 5-10 minutes)
@@ -62,13 +71,16 @@ Implement the following operations:
 - Provide cache invalidation mechanism
 
 ### 5. Configuration
+
 Add to BFF settings:
+
 - `API_CENTER_RESOURCE_GROUP` — Resource group containing API Center
 - `API_CENTER_SERVICE_NAME` — API Center service name
 - `API_CENTER_SUBSCRIPTION_ID` — Azure subscription ID
 - `CACHE_TTL_SECONDS` — Default cache TTL
 
 ## Testing & Acceptance Criteria
+
 - [ ] API Center client connects successfully with managed identity (integration test)
 - [ ] `listApis` returns paginated API definitions mapped to shared models
 - [ ] `getApi` returns complete API details with versions and deployments
@@ -79,26 +91,30 @@ Add to BFF settings:
 - [ ] Data mapping correctly handles missing/nullable fields
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 

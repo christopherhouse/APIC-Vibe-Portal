@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Agent Layer: Foundry Agent Service; Multi-agent design
 - [Product Charter](../apic_product_charter.md) — Enable AI-assisted workflows via multi-agent systems
 - [Product Spec](../apic_portal_spec.md) — Agent-based feature requirements
 
 ## Overview
+
 Set up Azure Foundry Agent Service and create the first agent — the API Discovery Agent. This establishes the multi-agent foundation that will be extended with specialized agents in subsequent tasks.
 
 ## Dependencies
+
 - **002** — Azure infrastructure (Foundry Agent Service resource)
 - **006** — BFF API project setup
 - **017** — OpenAI integration (existing chat service to integrate with)
@@ -22,6 +25,7 @@ Set up Azure Foundry Agent Service and create the first agent — the API Discov
 ## Implementation Details
 
 ### 1. Foundry Agent Service Client
+
 ```
 src/bff/src/bff/clients/
 ├── foundry_agent_client.py        # Foundry Agent Service client
@@ -34,6 +38,7 @@ src/bff/src/bff/clients/
 - Wrapper with retry logic and error handling
 
 ### 2. Agent Definitions
+
 ```
 src/bff/src/bff/agents/
 ├── agent_registry.py              # Agent registration and lookup
@@ -46,9 +51,11 @@ src/bff/src/bff/agents/
 ```
 
 ### 3. API Discovery Agent
+
 The first agent specializes in helping users find and understand APIs:
 
 **Capabilities:**
+
 - Search the API catalog using natural language
 - Answer questions about specific APIs
 - Compare APIs for a given use case
@@ -56,6 +63,7 @@ The first agent specializes in helping users find and understand APIs:
 - Explain API specifications in plain language
 
 **Tools (Function Calling):**
+
 - `searchApis(query, filters)` — Search the catalog
 - `getApiDetails(apiId)` — Get detailed API info
 - `getApiSpec(apiId, versionId)` — Get API specification
@@ -63,12 +71,14 @@ The first agent specializes in helping users find and understand APIs:
 
 **System Prompt:**
 Design a focused system prompt that:
+
 - Identifies the agent as an API Discovery specialist
 - Describes available tools and when to use them
 - Instructs on response format (concise, with citations)
 - Includes few-shot examples of good interactions
 
 ### 4. Agent Router
+
 ```
 src/bff/src/bff/agents/
 ├── agent_router.py                # Routes requests to appropriate agent
@@ -80,17 +90,20 @@ src/bff/src/bff/agents/
 - Designed to be extended with additional agents (tasks 021-022)
 
 ### 5. Integration with Existing Chat
+
 - Update chat endpoints (from task 017) to use the agent system
 - Maintain backward compatibility with the direct OpenAI chat
 - Add a flag to route through agent system vs. direct chat
 - Agent responses should follow the same `ChatResponse` format
 
 ### 6. Bicep Updates
+
 - Update infrastructure templates for Foundry Agent Service configuration
 - Add any necessary role assignments for the managed identity
 - Configure agent deployment parameters
 
 ## Testing & Acceptance Criteria
+
 - [ ] Foundry Agent Service client connects and authenticates
 - [ ] API Discovery Agent is registered and responds to queries
 - [ ] Agent correctly uses tools to search and retrieve API data
@@ -102,26 +115,30 @@ src/bff/src/bff/agents/
 - [ ] Integration test validates full agent conversation flow
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 
