@@ -2,13 +2,14 @@
 // Azure AI Foundry Agent Service Module
 // ============================================================================
 // Provisions Azure AI Foundry (Cognitive Services kind: AIServices) account
-// and project with capability hosts for Standard Agent Services.
+// and project for multi-agent orchestration.
 //
-// Based on Azure Verified Module pattern:
-// - br/public:avm/ptn/ai-ml/ai-foundry
+// Based on working example from:
+// https://github.com/microsoft-foundry/foundry-samples/blob/main/infrastructure/infrastructure-setup-bicep/00-basic/main.bicep
+//
+// Resources:
 // - Microsoft.CognitiveServices/accounts (kind: AIServices)
 // - Microsoft.CognitiveServices/accounts/projects
-// - Microsoft.CognitiveServices/accounts/projects/capabilityHosts
 // ============================================================================
 
 @description('Azure region')
@@ -43,7 +44,7 @@ param tags object
 // ============================================================================
 
 // Foundry Account (AI Services account with kind: AIServices)
-resource foundryAccount 'Microsoft.CognitiveServices/accounts@2026-01-15-preview' = {
+resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: foundryAccountName
   location: location
   tags: tags
@@ -68,43 +69,15 @@ resource foundryAccount 'Microsoft.CognitiveServices/accounts@2026-01-15-preview
 }
 
 // Foundry Project (attached to account)
-#disable-next-line BCP081
-resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2026-01-15-preview' = {
+resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
   parent: foundryAccount
   name: foundryProjectName
   location: location
   tags: tags
-  properties: {
-    displayName: foundryProjectName
-    description: 'APIC Vibe Portal - AI Agent Project'
+  identity: {
+    type: 'SystemAssigned'
   }
-}
-
-// Capability Host for Standard Agent Services (on account level)
-#disable-next-line BCP081
-resource accountCapabilityHost 'Microsoft.CognitiveServices/accounts/capabilityHosts@2026-01-15-preview' = {
-  parent: foundryAccount
-  name: 'agents'
-  properties: {
-    capabilityHostKind: 'Agents'
-  }
-  dependsOn: [
-    foundryProject
-  ]
-}
-
-// Capability Host for Standard Agent Services (on project level)
-#disable-next-line BCP081
-resource projectCapabilityHost 'Microsoft.CognitiveServices/accounts/projects/capabilityHosts@2026-01-15-preview' = {
-  parent: foundryProject
-  name: 'agents'
-  properties: {
-    // ProjectCapabilityHostProperties only supports connection properties
-    // No hostType or hostingModel properties are allowed
-  }
-  dependsOn: [
-    accountCapabilityHost
-  ]
+  properties: {}
 }
 
 // RBAC: Grant managed identity "Cognitive Services OpenAI User" role
