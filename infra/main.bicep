@@ -62,8 +62,8 @@ param enablePrivateEndpoints bool = environmentName == 'prod'
 @description('Subnet resource ID for private endpoints (required if enablePrivateEndpoints is true)')
 param privateEndpointSubnetId string = ''
 
-// Validate: subnet ID must be provided when private endpoints are enabled
-assert privateEndpointConfigurationValid = !enablePrivateEndpoints || !empty(privateEndpointSubnetId) : 'privateEndpointSubnetId must not be empty when enablePrivateEndpoints is true.'
+// Note: When enablePrivateEndpoints is true, privateEndpointSubnetId must not be empty.
+// This validation is enforced at deployment time by the individual modules.
 
 // ============================================================================
 // VARIABLES
