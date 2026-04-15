@@ -1,6 +1,6 @@
 # 007 - Phase 1 MVP: Shared Types & Utilities Package
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -123,14 +123,14 @@ interface ChatMessage {
 - The BFF (Python) will define corresponding Pydantic models — these TypeScript types serve as the source of truth for the API contract
 
 ## Testing & Acceptance Criteria
-- [ ] Package compiles without errors
-- [ ] Package is importable from the frontend workspace
-- [ ] Type definitions serve as reference for BFF Pydantic models
-- [ ] All type guards have corresponding tests
-- [ ] All utility functions have tests
-- [ ] Barrel export (`index.ts`) exports all public types and utilities
-- [ ] No circular dependencies between modules
-- [ ] `npm run build` in shared package produces valid output
+- [x] Package compiles without errors
+- [x] Package is importable from the frontend workspace
+- [x] Type definitions serve as reference for BFF Pydantic models
+- [x] All type guards have corresponding tests
+- [x] All utility functions have tests
+- [x] Barrel export (`index.ts`) exports all public types and utilities
+- [x] No circular dependencies between modules
+- [x] `npm run build` in shared package produces valid output
 
 ## Implementation Notes
 <!-- 
@@ -143,15 +143,28 @@ interface ChatMessage {
 | Date | Status | Author | Notes |
 |------|--------|--------|-------|
 | — | 🔲 Not Started | — | Task created |
+| 2026-04-15 | ✅ Complete | copilot | Full implementation: enums, models, DTOs, errors, utilities, type guards, formatters. 69 tests passing. Dual CJS/ESM build verified. |
 
 ### Technical Decisions
-_No technical decisions recorded yet._
+- **Dual CJS/ESM output**: Separate `tsconfig.esm.json` and `tsconfig.cjs.json` with `rewriteRelativeImportExtensions` for TS 6.0 compatibility. CJS output uses a nested `package.json` with `{"type":"commonjs"}` to resolve correctly under the parent `"type":"module"` package.
+- **ts-jest test config**: Used a dedicated `tsconfig.test.json` with `moduleResolution: "node10"` + `ignoreDeprecations: "6.0"` since ts-jest 29.x does not yet support the `bundler` resolution mode natively. Added `ignoreDiagnostics: [5107]` in jest config for resilience.
+- **String enums over union types**: Used TypeScript `enum` for `ApiLifecycle`, `ApiKind`, `GovernanceStatus`, and `ErrorCode` so they produce runtime values usable in type guards and serialization, not just compile-time types.
+- **Generic SearchResult and PaginatedResponse**: Both support generic type parameters for reuse across different entity types.
+- **`toApiCatalogItem` transformer**: Included in DTOs as a pure function to convert full `ApiDefinition` to summary `ApiCatalogItem`.
 
 ### Deviations from Plan
-_No deviations from the original plan._
+- Added `EnvironmentKind` enum in `api-environment.ts` (not in original spec) to type the environment kind field.
+- Added `ChatSession` interface alongside `ChatMessage` to model conversation threads.
+- Added `Citation` and `ChatRole` types to support AI citation linking.
+- Test file `__tests__/models/app-error-and-dto.test.ts` covers both AppError and toApiCatalogItem rather than a separate `type-guards.test.ts` at the top level (test coverage is equivalent).
 
 ### Validation Results
-_No validation results yet._
+- **Build**: `npm run build` produces valid CJS (`dist/cjs/`) and ESM (`dist/esm/`) output with type declarations (`dist/types/`)
+- **Tests**: 69 tests across 3 test suites, all passing
+- **Lint**: `eslint .` passes with no errors or warnings
+- **CJS import**: Verified via `require('@apic-vibe-portal/shared')` — all exports accessible
+- **ESM import**: Verified via `import { ... } from '@apic-vibe-portal/shared'` — all exports accessible
+- **Frontend build**: `next build` succeeds with shared package as workspace dependency
 
 
 ## Coding Agent Prompt
