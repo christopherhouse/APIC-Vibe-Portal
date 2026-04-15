@@ -2,7 +2,7 @@
  * Typed BFF API client for the APIC Vibe Portal.
  *
  * Provides a fetch wrapper with typed request/response handling,
- * error handling, and auth token injection placeholder.
+ * error handling, and Entra ID auth token injection.
  */
 
 const BFF_BASE_URL = process.env.NEXT_PUBLIC_BFF_URL ?? 'http://localhost:8000';
@@ -27,12 +27,28 @@ export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
 }
 
 /**
- * Get the authorization header value.
- * Placeholder for Entra ID integration — returns undefined until auth is configured.
+ * Token provider function type.
+ * Set via `setTokenProvider` to inject auth tokens into requests.
  */
-function getAuthToken(): string | undefined {
-  // TODO: Integrate with Entra ID authentication (task 016)
-  return undefined;
+type TokenProvider = () => Promise<string | null>;
+
+let _tokenProvider: TokenProvider | null = null;
+
+/**
+ * Register a function that provides auth tokens for API requests.
+ * Called once during app initialization with the MSAL getToken function.
+ */
+export function setTokenProvider(provider: TokenProvider): void {
+  _tokenProvider = provider;
+}
+
+/**
+ * Get the authorization token using the registered provider.
+ */
+async function getAuthToken(): Promise<string | undefined> {
+  if (!_tokenProvider) return undefined;
+  const token = await _tokenProvider();
+  return token ?? undefined;
 }
 
 /**
@@ -60,7 +76,7 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
     ...(customHeaders as Record<string, string>),
   };
 
-  const token = getAuthToken();
+  const token = await getAuthToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
