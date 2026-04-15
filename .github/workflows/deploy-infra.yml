@@ -44,7 +44,7 @@ jobs:
         run: |
           az deployment group validate \
             --name validate-infra-${{ github.run_number }} \
-            --resource-group rg-apic-vibe-portal-dev \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters infra/parameters/dev.bicepparam
 

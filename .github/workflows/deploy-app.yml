@@ -44,7 +44,7 @@ jobs:
         id: acr
         run: |
           ACR_NAME=$(az deployment group show \
-            --resource-group rg-apic-vibe-portal-dev \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --name main \
             --query properties.outputs.acrName.value -o tsv)
           echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
@@ -94,7 +94,7 @@ jobs:
         id: acr
         run: |
           ACR_NAME=$(az deployment group show \
-            --resource-group rg-apic-vibe-portal-dev \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --name main \
             --query properties.outputs.acrName.value -o tsv)
           echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
