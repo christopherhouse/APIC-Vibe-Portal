@@ -62,6 +62,7 @@ resource foundryAccount 'Microsoft.CognitiveServices/accounts@2026-01-15-preview
       bypass: 'AzureServices'
     }
     disableLocalAuth: disableLocalAuth
+    allowProjectManagement: true // Required to create projects under this account
     apiProperties: {}
   }
 }
