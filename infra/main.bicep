@@ -233,6 +233,7 @@ module cosmosDb 'modules/cosmosdb.bicep' = {
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
+    enableZoneRedundancy: environmentName == 'prod'
     tags: tags
   }
 }
