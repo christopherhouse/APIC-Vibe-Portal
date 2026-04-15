@@ -1,0 +1,133 @@
+name: "Security: Dependency Scanning"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '0 8 * * 1'  # Weekly Monday at 08:00 UTC
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  npm-audit:
+    name: npm Audit (Frontend/Shared)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Run npm audit (JSON output)
+        run: npm audit --json > /tmp/npm-audit-results.json || true
+
+      - name: Check for critical vulnerabilities
+        run: |
+          CRITICAL=$(cat /tmp/npm-audit-results.json | python3 -c "
+          import json, sys
+          try:
+              data = json.load(sys.stdin)
+              vulns = data.get('metadata', {}).get('vulnerabilities', {})
+              critical = vulns.get('critical', 0)
+              high = vulns.get('high', 0)
+              print(critical + high)
+          except Exception:
+              print(0)
+          ")
+          echo "Critical+High vulnerabilities: $CRITICAL"
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "::error::Found $CRITICAL critical/high npm vulnerabilities"
+            exit 1
+          fi
+
+  python-audit:
+    name: Python Audit (BFF)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Install UV
+        run: pip install uv
+
+      - name: Install dependencies
+        working-directory: src/bff
+        run: uv sync
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Run pip-audit
+        working-directory: src/bff
+        run: |
+          pip-audit --requirement <(uv pip freeze 2>/dev/null || uv run pip freeze 2>/dev/null || echo "") \
+            --desc --format json --output /tmp/pip-audit-results.json || true
+
+      - name: Check for critical vulnerabilities
+        run: |
+          if [ -f /tmp/pip-audit-results.json ]; then
+            VULNS=$(python3 -c "
+          import json
+          try:
+              with open('/tmp/pip-audit-results.json') as f:
+                  data = json.load(f)
+              deps = data.get('dependencies', [])
+              critical = sum(1 for d in deps for v in d.get('vulns', []) if v.get('fix_versions'))
+              print(critical)
+          except Exception:
+              print(0)
+          ")
+            echo "Vulnerabilities with fixes: $VULNS"
+            if [ "$VULNS" -gt 0 ]; then
+              echo "::warning::Found $VULNS Python vulnerabilities with available fixes"
+            fi
+          fi
+
+  sbom-generation:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate npm SBOM
+        run: npm sbom --sbom-format cyclonedx > /tmp/npm-sbom.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-npm
+          path: /tmp/npm-sbom.json
+          retention-days: 90

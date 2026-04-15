@@ -1,0 +1,96 @@
+name: "Security: Container Scanning"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/frontend/Dockerfile'
+      - 'src/bff/Dockerfile'
+      - '.github/workflows/security-container-scan.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/frontend/Dockerfile'
+      - 'src/bff/Dockerfile'
+      - '.github/workflows/security-container-scan.yml'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  trivy-scan-frontend:
+    name: Trivy Scan — Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Frontend Docker image
+        run: docker build -t frontend:scan ./src/frontend
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: frontend:scan
+          format: sarif
+          output: trivy-frontend-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-frontend-results.sarif
+          category: trivy-frontend
+
+  trivy-scan-bff:
+    name: Trivy Scan — BFF
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build BFF Docker image
+        run: docker build -t bff:scan ./src/bff
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: bff:scan
+          format: sarif
+          output: trivy-bff-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-bff-results.sarif
+          category: trivy-bff
+
+  trivy-config-scan:
+    name: Trivy Config Scan — Dockerfiles
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy config scanner on Dockerfiles
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: .
+          format: table
+          severity: CRITICAL,HIGH,MEDIUM
+          exit-code: '1'
+          trivy-config: |
+            scan:
+              skip-dirs:
+                - node_modules
+                - .git
+                - infra

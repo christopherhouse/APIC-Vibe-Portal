@@ -1,0 +1,79 @@
+# Dependabot configuration for automated dependency updates
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # npm (frontend + shared workspaces)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - security
+    commit-message:
+      prefix: "deps(npm):"
+    groups:
+      typescript:
+        patterns:
+          - "typescript"
+          - "@typescript-eslint/*"
+      eslint:
+        patterns:
+          - "eslint*"
+      react:
+        patterns:
+          - "react*"
+          - "@types/react*"
+
+  # pip / UV (BFF Python)
+  - package-ecosystem: pip
+    directory: /src/bff
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - security
+      - bff
+    commit-message:
+      prefix: "deps(python):"
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "deps(actions):"
+
+  # Docker (container base images)
+  - package-ecosystem: docker
+    directory: /src/frontend
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - dependencies
+      - docker
+    commit-message:
+      prefix: "deps(docker):"
+
+  - package-ecosystem: docker
+    directory: /src/bff
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - dependencies
+      - docker
+    commit-message:
+      prefix: "deps(docker):"
