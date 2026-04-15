@@ -3,6 +3,7 @@
 Date: 2026-04-14
 
 ## Scope Reviewed
+
 - Product charter: `docs/project/apic_product_charter.md`
 - Product spec: `docs/project/apic_portal_spec.md`
 - Architecture: `docs/project/apic_architecture.md`
@@ -29,12 +30,14 @@ If these items are corrected, the plan should be highly executable.
 ## Alignment to Charter and Architecture
 
 ## What aligns well
+
 - **Phased roadmap matches charter timeline** (MVP, governance/compare, analytics).
 - **Architecture mapping is coherent**: Next.js frontend, BFF orchestration layer, API Center, AI Search, OpenAI, and observability are all represented in plan tasks.
 - **Governance and metadata completeness** are explicitly planned and tied to charter success metrics.
 - **Operationalization exists**: CI/CD, observability, E2E testing, and final readiness are included.
 
 ## Partial/missing alignment
+
 - **Product spec traceability is currently blocked** because `apic_portal_spec.md` is not populated.
 - **Security model is present but under-specified operationally** (e.g., secrets governance, threat modeling, security testing automation).
 - **Data architecture is under-defined** for features requiring durable history (analytics trends, governance trends, chat/session continuity beyond in-memory).
@@ -46,14 +49,17 @@ If these items are corrected, the plan should be highly executable.
 ## 1) Requirements Grounding Risk (High)
 
 ### Issue
+
 `docs/project/apic_portal_spec.md` contains only placeholder text (“See full spec provided in chat”), so the plan cannot be validated against an in-repo detailed product requirements baseline.
 
 ### Impact
+
 - Scope drift likely.
 - Acceptance criteria may not match real product requirements.
 - Harder handoff/auditability for new contributors.
 
 ### Recommendation
+
 - Commit the full product spec into `docs/project/apic_portal_spec.md` before task execution.
 - Add a requirement-ID section and require each plan task to reference applicable IDs.
 
@@ -78,6 +84,7 @@ If these items are corrected, the plan should be highly executable.
 5. **Task 023 introduces governance BFF endpoints but dependency list is UI-centric and omits auth/security dependencies (016 at minimum).**
 
 ### Recommendation (minimum dependency corrections)
+
 - **014** add dependency: **012**.
 - **020** add dependency: **012** (and optionally **018** if agent responses must already be security-trimmed).
 - **022** add dependency: **021**.
@@ -89,6 +96,7 @@ If these items are corrected, the plan should be highly executable.
 ## 3) Security Gaps and Sequencing Risks (High)
 
 ## Gaps
+
 - Auth is task 016, while several externally useful endpoints/features are built earlier (008–015).
 - Security trimming is task 018, after search/chat are already implemented.
 - No explicit security backlog items for:
@@ -99,10 +107,12 @@ If these items are corrected, the plan should be highly executable.
   - abuse protections beyond chat rate limit (global API throttling, bot mitigation).
 
 ## Impact
+
 - Increased chance of data leakage during early integration/testing environments.
 - Security hardening becomes retrofit work rather than design-time implementation.
 
 ## Recommendation
+
 - Move **016** earlier (immediately after 005, before 008/012/014).
 - Introduce a “security baseline” gate before any externally reachable feature testing.
 - Add a dedicated task for secure SDLC controls in CI/CD (SAST/SCA/container scan + policy gates).
@@ -112,18 +122,23 @@ If these items are corrected, the plan should be highly executable.
 ## 4) Data Persistence & Analytics Architecture Ambiguity (Medium/High)
 
 ## Issue
+
 Multiple tasks require durable historical data, but persistence design is not consistently defined:
+
 - Chat history in 014 is in-memory for MVP.
 - Governance trends in 023 imply snapshots over time.
 - Analytics in 026/027 requires longitudinal querying and scoped access.
 
 ## Impact
+
 - Trend features may be hard to implement reliably.
 - Scale/performance can degrade without a clear storage/query design.
 - Inconsistent data contracts across phases.
 
 ## Recommendation
+
 Define a persistent data strategy early (at least by end of Sprint Zero or early Phase 1):
+
 - storage choice(s) per data type,
 - retention policy,
 - partition/index strategy,
@@ -135,12 +150,15 @@ Define a persistent data strategy early (at least by end of Sprint Zero or early
 ## 5) Infrastructure/Plan Consistency Issue (Medium)
 
 ### Issue
+
 Task 020 depends on Foundry Agent Service being available via task 002, but task 002’s listed resource modules do not explicitly include Foundry Agent Service.
 
 ### Impact
+
 - Phase 2 can stall when environment prerequisites are missing.
 
 ### Recommendation
+
 Update task 002 (and its Bicep module list) to explicitly provision/configure Foundry Agent Service resources and RBAC.
 
 ---
@@ -148,12 +166,15 @@ Update task 002 (and its Bicep module list) to explicitly provision/configure Fo
 ## 6) Toolchain Version Risk (Medium)
 
 ### Issue
+
 Plan uses very forward-leaning versions (Node >=24, TypeScript 6.0, Next.js 16) across early tasks.
 
 ### Impact
+
 - Potential ecosystem incompatibilities (SDK/tooling/lint/test infra) and setup friction.
 
 ### Recommendation
+
 - Add a version validation checkpoint in task 001.
 - Define fallback versions that are known-good.
 - Pin exact versions, not only major/minimum ranges.
@@ -163,7 +184,9 @@ Plan uses very forward-leaning versions (Node >=24, TypeScript 6.0, Next.js 16) 
 ## 7) Logical Wiring Coverage Check
 
 ### Positive
+
 The plan generally does include backend-to-frontend wiring for core experiences:
+
 - Catalog APIs (008) → Catalog UI (009) → Detail UI (010).
 - Search API (012) → Search UI (013).
 - Chat API (014) → Chat UI (015).
@@ -171,6 +194,7 @@ The plan generally does include backend-to-frontend wiring for core experiences:
 - Analytics collection (026) → Analytics dashboard (027).
 
 ### Remaining wiring concerns
+
 - Security/error-state UX is not explicitly planned (e.g., 401/403 handling patterns across pages).
 - Agent admin UI in 024 exists, but operational guardrails/auditing for config changes are not detailed.
 - Metadata completeness (028) spans detail and governance views but dependency list does not enforce both integrations.
@@ -180,6 +204,7 @@ The plan generally does include backend-to-frontend wiring for core experiences:
 ## Recommended Plan Adjustments (Actionable)
 
 ## A) Update dependencies (immediate)
+
 - 014 +012
 - 020 +012 (+018 recommended)
 - 022 +021
@@ -187,11 +212,14 @@ The plan generally does include backend-to-frontend wiring for core experiences:
 - 028 +010 +023
 
 ## B) Add two explicit tasks
+
 1. **Security Baseline & Secure SDLC Controls** (after 003, before feature work)
 2. **Persistence & Data Governance Baseline** (before 014/023/026 trend-heavy features)
 
 ## C) Resequence for lower risk
+
 Suggested early sequence:
+
 1. 001 → 002 → 003
 2. 004 + 005 + 006
 3. **016 (Auth) moved here**
@@ -204,7 +232,9 @@ Suggested early sequence:
 (Then Phase 2/3 with dependency corrections above.)
 
 ## D) Strengthen acceptance criteria
+
 Add explicit non-functional/security criteria to affected tasks:
+
 - P95 latency and error budgets by endpoint group.
 - 401/403 behavior and UX expectations.
 - Required audit logging for admin/agent configuration changes.

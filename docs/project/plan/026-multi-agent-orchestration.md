@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Multi-agent design; Agent Layer: Foundry
 - [Product Charter](../apic_product_charter.md) — Enable AI-assisted workflows through multiple specialized agents
 - [Product Spec](../apic_portal_spec.md) — Advanced AI feature requirements
 
 ## Overview
+
 Enhance the multi-agent architecture with sophisticated orchestration, agent hand-off, and an admin interface for managing agent configurations. This enables seamless multi-turn conversations where multiple agents collaborate to answer complex queries.
 
 ## Dependencies
+
 - **022** — Foundry Agent setup (base agent framework)
 - **023** — Governance Agent (second agent in the system)
 - **008** — Entra ID authentication (admin-only management features)
@@ -20,6 +23,7 @@ Enhance the multi-agent architecture with sophisticated orchestration, agent han
 ## Implementation Details
 
 ### 1. Agent Orchestrator
+
 ```
 src/bff/src/bff/agents/
 ├── orchestrator.py                 # Multi-agent orchestrator
@@ -29,6 +33,7 @@ src/bff/src/bff/agents/
 ```
 
 **Orchestration Capabilities:**
+
 - Classify user intent to select the best agent
 - Support agent hand-off within a conversation
 - Allow agents to delegate to other agents
@@ -36,6 +41,7 @@ src/bff/src/bff/agents/
 - Fallback handling when no agent is confident
 
 ### 2. Intent Classification
+
 - Use a lightweight classifier (could be rule-based + LLM fallback)
 - Intent categories:
   - `discovery` → API Discovery Agent
@@ -45,6 +51,7 @@ src/bff/src/bff/agents/
 - Confidence threshold: above 0.7 route directly, below 0.7 ask for clarification
 
 ### 3. Agent Hand-off Protocol
+
 - When an agent determines another agent would better serve the user:
   1. Current agent generates a summary of the conversation so far
   2. Orchestrator routes to the new agent
@@ -53,6 +60,7 @@ src/bff/src/bff/agents/
 - Hand-off state is preserved in the session
 
 ### 4. Conversation Context Management
+
 ```
 src/bff/src/bff/agents/
 ├── context_manager.py             # Cross-agent context management
@@ -65,6 +73,7 @@ src/bff/src/bff/agents/
 - Session-level context with configurable max size
 
 ### 5. Agent Management API (Admin)
+
 ```
 src/bff/src/bff/routers/
 ├── admin/
@@ -82,6 +91,7 @@ Endpoints (require `Portal.Admin` role):
 | `POST` | `/api/admin/agents/:agentId/test` | Test agent with sample query |
 
 ### 6. Agent Admin UI (Frontend)
+
 ```
 app/admin/agents/
 ├── page.tsx                # Agent management dashboard
@@ -96,6 +106,7 @@ app/admin/agents/
 - Admin-only access (gated by role)
 
 ## Testing & Acceptance Criteria
+
 - [ ] Intent classifier correctly routes queries to appropriate agents
 - [ ] Agent hand-off preserves conversation context
 - [ ] User sees smooth transition during agent hand-off
@@ -108,26 +119,30 @@ app/admin/agents/
 - [ ] Integration test validates multi-agent conversation flow
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 

@@ -4,12 +4,25 @@
   "compilerOptions": {
     "composite": true,
     "outDir": "./.next",
+    "baseUrl": ".",
     "plugins": [
       {
         "name": "next"
       }
-    ]
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
-  "include": ["src/**/*", "next-env.d.ts"],
-  "exclude": ["node_modules"]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    ".next/cache",
+    ".next/server",
+    ".next/static",
+    ".next/standalone",
+    ".next/BUILD_ID",
+    ".next/*.json",
+    ".next/*.js"
+  ]
 }
