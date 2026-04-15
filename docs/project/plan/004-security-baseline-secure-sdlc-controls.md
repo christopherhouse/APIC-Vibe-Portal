@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Security: Entra ID, RBAC, security trimming, threat model
 - [Product Charter](../apic_product_charter.md) — Security and compliance requirements
 - [Product Spec](../apic_portal_spec.md) — Security features
 
 ## Overview
+
 Establish the security baseline and Secure SDLC controls that must be in place before implementing feature-heavy work. This includes threat modeling, CI security gates, secrets management, and global API protections.
 
 ## Dependencies
+
 - **001** — Repository scaffolding (CI/CD pipeline foundation)
 - **002** — Azure infrastructure (Key Vault, security resources)
 - **003** — CI/CD pipeline (security gate integration points)
@@ -20,7 +23,9 @@ Establish the security baseline and Secure SDLC controls that must be in place b
 ## Implementation Details
 
 ### 1. Threat Model Baseline
+
 Document threat models for key attack surfaces:
+
 ```
 docs/security/
 ├── threat-model-overview.md
@@ -30,6 +35,7 @@ docs/security/
 ```
 
 For each surface, document:
+
 - **Assets**: What data/resources are being protected
 - **Threat actors**: Who might attack (external attackers, malicious insiders)
 - **Attack vectors**: XSS, CSRF, SQL injection, API abuse, unauthorized access, data leakage
@@ -37,39 +43,47 @@ For each surface, document:
 - **Residual risks**: Accepted risks with justification
 
 Key threat scenarios to address:
+
 - Frontend: XSS via API data, CSRF, token theft, sensitive data in client-side storage
 - BFF: API abuse, injection attacks, unauthorized data access, token validation bypass
 - Agent/Data paths: Prompt injection, data poisoning, unauthorized agent invocation, PII leakage in logs
 
 ### 2. CI Security Gates
+
 Integrate automated security scanning into the CI/CD pipeline:
 
 **SAST (Static Application Security Testing)**
+
 - Tool: GitHub CodeQL or Semgrep
 - Scan: TypeScript, JavaScript (frontend/shared), Python (BFF) for security issues
 - Action: Block PR merge on high/critical findings
 
 **Dependency Scanning**
+
 - Tool: GitHub Dependabot, npm audit (frontend/shared), UV/pip audit (BFF Python)
 - Scan: npm and Python dependencies for known vulnerabilities
 - Action: Auto-create PRs for security updates, block on critical CVEs
 
 **Container Scanning**
+
 - Tool: Trivy or Microsoft Defender for Containers
 - Scan: Docker images for vulnerabilities and misconfigurations
 - Action: Block deployment on high/critical vulnerabilities
 
 **Secret Scanning**
+
 - Tool: GitHub Secret Scanning or GitGuardian
 - Scan: Commits for leaked secrets (API keys, tokens, passwords)
 - Action: Block commits, alert security team
 
 **SBOM & Provenance**
+
 - Generate Software Bill of Materials (SBOM) for each release
 - Use SLSA framework for supply chain security
 - Store SBOM artifacts in container registry
 
 Configuration:
+
 ```
 .github/workflows/
 ├── security-sast.yml
@@ -79,18 +93,22 @@ Configuration:
 ```
 
 ### 3. Secrets Management & Rotation
+
 **Azure Key Vault Integration**
+
 - Provision Azure Key Vault in infrastructure (task 002)
 - Store all secrets in Key Vault: database connection strings, API keys, service principal credentials
 - Use Managed Identity for Key Vault access from Container Apps
 - Document secret rotation policy (90-day rotation for service principals, 1-year for certificates)
 
 **Development Secrets**
+
 - Use `.env.local` for local development (excluded from git)
 - Provide `.env.example` template with placeholder values
 - Document how to access development secrets from Key Vault
 
 **Secret Rotation Automation**
+
 - Create script to rotate service principal credentials
 - Create script to rotate API keys for external services
 - Document manual rotation process for secrets that can't be automated
@@ -103,18 +121,22 @@ scripts/security/
 ```
 
 ### 4. Global API Abuse Protections
+
 **Rate Limiting**
+
 - Implement rate limiting middleware in BFF
 - Defaults: 100 requests/minute per user, 1000 requests/minute per IP
 - Use Azure API Management for global rate limiting (if deployed) or implement in-memory/Redis-based limiter
 - Return `429 Too Many Requests` with `Retry-After` header
 
 **Bot Mitigation**
+
 - Implement basic bot detection heuristics (User-Agent analysis, request patterns)
 - Consider Azure Front Door WAF for advanced bot protection (document as optional enhancement)
 - Block common bot signatures
 
 **Input Validation & Sanitization**
+
 - Document input validation rules for all BFF endpoints
 - Sanitize HTML/Markdown in user-generated content
 - Validate API Center query parameters to prevent injection
@@ -132,7 +154,9 @@ src/bff/tests/
 ```
 
 ### 5. Security Policy & Reporting
+
 Create security policy documentation:
+
 ```
 SECURITY.md                    # Root-level security policy
 docs/security/
@@ -142,19 +166,23 @@ docs/security/
 ```
 
 Include:
+
 - Supported versions for security updates
 - How to report vulnerabilities (security@example.com or GitHub Security Advisories)
 - Expected response times (acknowledge within 48 hours, fix critical within 7 days)
 - Coordinated disclosure policy
 
 ### 6. Secure Development Guidelines
+
 Document secure coding practices:
+
 ```
 docs/security/
 └── secure-coding-guidelines.md
 ```
 
 Topics:
+
 - Authentication and authorization best practices
 - Input validation and output encoding
 - Sensitive data handling (no PII in logs, encrypt at rest/in transit)
@@ -163,6 +191,7 @@ Topics:
 - Error handling (no stack traces in production, log securely)
 
 ## Testing & Acceptance Criteria
+
 - [x] Threat models exist for frontend, BFF, and agent/data paths
 - [x] SAST, dependency scanning, container scanning, and secret scanning are integrated into CI/CD
 - [x] Security gates block PRs/deployments on high/critical findings
@@ -177,6 +206,7 @@ Topics:
 - [x] CI pipeline successfully runs all security scans on a test commit
 
 ## Implementation Notes
+
 <!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
@@ -184,10 +214,11 @@ Topics:
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
-| 2026-04-15 | ✅ Complete | Claude (Sonnet 4) | All deliverables implemented: threat models, CI security workflows, secrets management, BFF security middleware, security policy docs, secure coding guidelines. 53 unit tests passing. |
+
+| Date       | Status         | Author            | Notes                                                                                                                                                                                   |
+| ---------- | -------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —                 | Task created                                                                                                                                                                            |
+| 2026-04-15 | ✅ Complete    | Claude (Sonnet 4) | All deliverables implemented: threat models, CI security workflows, secrets management, BFF security middleware, security policy docs, secure coding guidelines. 53 unit tests passing. |
 
 ### Technical Decisions
 
@@ -220,6 +251,7 @@ Topics:
 ### Validation Results
 
 **Unit Tests**: ✅ 53 PASSED (0 failed)
+
 ```
 tests/middleware/test_bot_detection.py .......... (16 tests)
 tests/middleware/test_input_validation.py .......... (19 tests)
@@ -228,12 +260,14 @@ tests/test_placeholder.py . (1 test)
 ```
 
 **Lint/Format Check**: ✅ PASSED
+
 ```bash
 uv run ruff check .     # All checks passed
 uv run ruff format --check .  # All files formatted
 ```
 
 **YAML Validation**: ✅ PASSED
+
 ```
 ✅ .github/workflows/security-sast.yml
 ✅ .github/workflows/security-dependencies.yml
@@ -243,6 +277,7 @@ uv run ruff format --check .  # All files formatted
 ```
 
 **Files Created**:
+
 ```
 # Threat Models
 docs/security/threat-model-overview.md
@@ -282,7 +317,6 @@ src/bff/tests/middleware/test_rate_limit.py
 src/bff/tests/middleware/test_bot_detection.py
 src/bff/tests/middleware/test_input_validation.py
 ```
-
 
 ## Coding Agent Prompt
 

@@ -1,22 +1,25 @@
 # BFF Threat Model — APIC Vibe Portal AI
 
 ## Component Overview
+
 The Backend-for-Frontend (BFF) is a Python 3.14 FastAPI application that acts as an orchestration layer between the frontend SPA and Azure backend services (API Center, AI Search, OpenAI, Foundry Agent Service, Cosmos DB). It authenticates users via Entra ID token validation and accesses Azure services via Managed Identity.
 
 ## Assets
-| Asset | Description | Sensitivity |
-|-------|-------------|-------------|
-| Entra ID tokens | User access tokens validated by BFF | High |
-| Azure service credentials | Managed Identity credentials | Critical |
-| API catalog data | Data from Azure API Center | Medium |
-| Search index data | AI Search query results | Medium |
-| Chat session data | Stored in Cosmos DB | Medium |
-| Key Vault secrets | Application secrets | Critical |
-| User PII | Names, email from token claims | High |
+
+| Asset                     | Description                         | Sensitivity |
+| ------------------------- | ----------------------------------- | ----------- |
+| Entra ID tokens           | User access tokens validated by BFF | High        |
+| Azure service credentials | Managed Identity credentials        | Critical    |
+| API catalog data          | Data from Azure API Center          | Medium      |
+| Search index data         | AI Search query results             | Medium      |
+| Chat session data         | Stored in Cosmos DB                 | Medium      |
+| Key Vault secrets         | Application secrets                 | Critical    |
+| User PII                  | Names, email from token claims      | High        |
 
 ## Threat Analysis
 
 ### T-BFF-01: API Abuse / Denial of Service
+
 - **Attack vector**: Attacker floods the BFF with requests to exhaust resources or increase Azure costs.
 - **Impact**: Service degradation, increased costs, resource exhaustion.
 - **Likelihood**: High
@@ -29,6 +32,7 @@ The Backend-for-Frontend (BFF) is a Python 3.14 FastAPI application that acts as
 - **Residual risk**: Medium — Sophisticated distributed attacks may bypass per-IP limits.
 
 ### T-BFF-02: Injection Attacks (SQL, NoSQL, Command)
+
 - **Attack vector**: Malicious input in query parameters, request bodies, or headers that gets passed to backend services.
 - **Impact**: Data exfiltration, unauthorized data modification, command execution.
 - **Likelihood**: Medium
@@ -41,6 +45,7 @@ The Backend-for-Frontend (BFF) is a Python 3.14 FastAPI application that acts as
 - **Residual risk**: Low — Pydantic validation and parameterized queries are effective.
 
 ### T-BFF-03: Token Validation Bypass
+
 - **Attack vector**: Attacker presents a forged, expired, or stolen token to access BFF endpoints.
 - **Impact**: Unauthorized access to user data and API operations.
 - **Likelihood**: Medium
@@ -52,6 +57,7 @@ The Backend-for-Frontend (BFF) is a Python 3.14 FastAPI application that acts as
 - **Residual risk**: Low — Standard OIDC token validation is robust.
 
 ### T-BFF-04: Unauthorized Data Access
+
 - **Attack vector**: Authenticated user accesses data belonging to other users or exceeds their authorization level.
 - **Impact**: Data breach, privacy violation.
 - **Likelihood**: Medium
@@ -63,6 +69,7 @@ The Backend-for-Frontend (BFF) is a Python 3.14 FastAPI application that acts as
 - **Residual risk**: Low — With proper security trimming implementation.
 
 ### T-BFF-05: Information Leakage via Error Responses
+
 - **Attack vector**: Detailed error messages or stack traces reveal internal implementation details.
 - **Impact**: Reconnaissance for further attacks.
 - **Likelihood**: Medium
@@ -74,6 +81,7 @@ The Backend-for-Frontend (BFF) is a Python 3.14 FastAPI application that acts as
 - **Residual risk**: Low
 
 ### T-BFF-06: Server-Side Request Forgery (SSRF)
+
 - **Attack vector**: Attacker manipulates BFF to make requests to internal or unintended services.
 - **Impact**: Access to internal services, metadata endpoints, or other Azure resources.
 - **Likelihood**: Low
@@ -84,6 +92,7 @@ The Backend-for-Frontend (BFF) is a Python 3.14 FastAPI application that acts as
 - **Residual risk**: Low — BFF only connects to known Azure services.
 
 ### T-BFF-07: Dependency Vulnerability
+
 - **Attack vector**: Known vulnerability in a Python dependency is exploited.
 - **Impact**: Varies (RCE, data breach, DoS).
 - **Likelihood**: Medium
@@ -95,6 +104,7 @@ The Backend-for-Frontend (BFF) is a Python 3.14 FastAPI application that acts as
 - **Residual risk**: Low — Automated scanning and lock files reduce risk.
 
 ### T-BFF-08: Secret Exposure
+
 - **Attack vector**: Secrets (API keys, connection strings) exposed in code, logs, or environment variables.
 - **Impact**: Unauthorized access to Azure services.
 - **Likelihood**: Medium
@@ -107,15 +117,16 @@ The Backend-for-Frontend (BFF) is a Python 3.14 FastAPI application that acts as
 - **Residual risk**: Low — Key Vault + Managed Identity eliminates most exposure vectors.
 
 ## Security Controls Summary
-| Control | Status |
-|---------|--------|
-| Rate limiting middleware | This task |
-| Bot detection middleware | This task |
-| Input validation middleware | This task |
-| Pydantic request models | Planned (Task 006) |
-| Entra ID token validation | Planned (Task 008) |
-| Security trimming | Planned (Task 020) |
-| Key Vault integration | This task |
-| CodeQL SAST | This task |
-| Dependency scanning | This task |
-| Container scanning | This task |
+
+| Control                     | Status             |
+| --------------------------- | ------------------ |
+| Rate limiting middleware    | This task          |
+| Bot detection middleware    | This task          |
+| Input validation middleware | This task          |
+| Pydantic request models     | Planned (Task 006) |
+| Entra ID token validation   | Planned (Task 008) |
+| Security trimming           | Planned (Task 020) |
+| Key Vault integration       | This task          |
+| CodeQL SAST                 | This task          |
+| Dependency scanning         | This task          |
+| Container scanning          | This task          |

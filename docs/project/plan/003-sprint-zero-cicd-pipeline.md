@@ -5,20 +5,24 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Deployment: Azure Container Apps, ACR
 - [Product Charter](../apic_product_charter.md) — Rapid iteration and phased delivery
 - [Product Spec](../apic_portal_spec.md) — Continuous deployment requirements
 
 ## Overview
+
 Set up GitHub Actions workflows for continuous integration and continuous deployment. This enables every subsequent task to be rapidly built, tested, and deployed to Azure.
 
 ## Dependencies
+
 - **001** — Repository scaffolding (workspace structure, tooling)
 - **002** — Bicep templates (infrastructure deployment)
 
 ## Implementation Details
 
 ### 1. Workflow Files
+
 ```
 /.github/workflows/
 ├── ci.yml                  # Lint, test, build on PRs
@@ -28,9 +32,11 @@ Set up GitHub Actions workflows for continuous integration and continuous deploy
 ```
 
 ### 2. CI Workflow (`ci.yml`)
+
 Triggers: `push` to `main`, `pull_request` to `main`
 
 Jobs:
+
 1. **lint** — Run ESLint across frontend/shared workspaces, run Ruff on BFF Python code
 2. **test-frontend** — Run frontend unit tests (Jest + RTL)
 3. **test-bff** — Run BFF unit tests (pytest)
@@ -41,9 +47,11 @@ Jobs:
 Use npm workspace commands for frontend/shared and UV commands for the BFF where appropriate.
 
 ### 3. Infrastructure Deployment (`deploy-infra.yml`)
+
 Triggers: `push` to `main` (changes in `/infra/**`), `workflow_dispatch`
 
 Jobs:
+
 1. **validate** — `az bicep build` and `az deployment group validate`
 2. **deploy-dev** — Deploy to dev environment
 3. **deploy-staging** — Deploy to staging (requires approval)
@@ -52,9 +60,11 @@ Jobs:
 Use GitHub environments for approval gates. Authenticate with Azure using OIDC (federated credentials, no secrets).
 
 ### 4. Application Deployment (`deploy-app.yml`)
+
 Triggers: `push` to `main` (changes in `/src/**`), `workflow_dispatch`
 
 Jobs:
+
 1. **build-and-push-frontend** — Build Docker image for frontend, push to ACR
 2. **build-and-push-bff** — Build Docker image for BFF, push to ACR
 3. **deploy-dev** — Update Container Apps with new images
@@ -62,19 +72,24 @@ Jobs:
 5. **deploy-prod** — Deploy to prod (requires approval)
 
 ### 5. PR Quality Gates (`pr-checks.yml`)
+
 Triggers: `pull_request`
 
 Jobs:
+
 1. **labeler** — Auto-label PRs based on changed paths
 2. **size-check** — Warn on large PRs
 3. **plan-reference** — Check PR description references a plan step
 
 ### 6. Dockerfiles
+
 Create Dockerfiles for the frontend and BFF:
+
 ```
 /src/frontend/Dockerfile
 /src/bff/Dockerfile
 ```
+
 - Multi-stage builds (build stage + production stage)
 - Frontend: Use `node:24-alpine` as base
 - BFF: Use a Python 3.14 base image, install UV, and use `uv sync` for dependency installation
@@ -82,12 +97,14 @@ Create Dockerfiles for the frontend and BFF:
 - Health check endpoints
 
 ### 7. GitHub Actions Configuration
+
 - Define reusable composite actions where patterns repeat
 - Use GitHub environments: `dev`, `staging`, `prod`
 - Store Azure credentials as OIDC federated identity (document setup steps)
 - Use `azure/login@v2` with OIDC
 
 ## Testing & Acceptance Criteria
+
 - [ ] CI workflow runs successfully on a PR with lint, test, and build jobs
 - [ ] CI workflow properly fails when lint errors or test failures exist
 - [ ] Infrastructure deployment workflow validates Bicep templates
@@ -98,18 +115,20 @@ Create Dockerfiles for the frontend and BFF:
 - [ ] All workflow files pass `actionlint` validation
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
-| 2026-04-14 | ✅ Complete | Claude (Sonnet 4.5) | All CI/CD workflows, Dockerfiles, deployment script, and documentation created successfully. |
-| 2026-04-15 | ✅ Updated | Claude (Sonnet 4.5) | Refactored to use GitHub environment-scoped variables for resource groups instead of per-environment secrets. |
+
+| Date       | Status         | Author              | Notes                                                                                                         |
+| ---------- | -------------- | ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —                   | Task created                                                                                                  |
+| 2026-04-14 | ✅ Complete    | Claude (Sonnet 4.5) | All CI/CD workflows, Dockerfiles, deployment script, and documentation created successfully.                  |
+| 2026-04-15 | ✅ Updated     | Claude (Sonnet 4.5) | Refactored to use GitHub environment-scoped variables for resource groups instead of per-environment secrets. |
 
 ### Technical Decisions
 
@@ -142,6 +161,7 @@ None. All requirements from the original plan were implemented as specified.
 ### Validation Results
 
 **YAML Syntax Validation**: ✅ PASSED
+
 ```bash
 # All workflow files validated with Python YAML parser
 python3 -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml'))"
@@ -152,6 +172,7 @@ python3 -c "import yaml; yaml.safe_load(open('.github/workflows/pr-checks.yml'))
 ```
 
 **Workflow Files Created**: ✅ VERIFIED
+
 ```
 /.github/workflows/
 ├── ci.yml                  # Lint, test, build on PRs
@@ -161,18 +182,22 @@ python3 -c "import yaml; yaml.safe_load(open('.github/workflows/pr-checks.yml'))
 ```
 
 **Dockerfile Validation**: ✅ VERIFIED
+
 - `/src/frontend/Dockerfile` — Multi-stage build, Node.js 24-alpine, non-root user, health check
 - `/src/bff/Dockerfile` — Multi-stage build, Python 3.14-slim, non-root user, health check, UV package manager
 
 **Deployment Script**: ✅ VERIFIED
+
 - `/scripts/deploy-container-apps.sh` — Executable bash script for Container Apps deployment
 - Handles both create and update operations
 - Configures ingress, scaling, managed identity, and ACR authentication
 
 **Documentation**: ✅ COMPLETE
+
 - `/docs/CI_CD_SETUP.md` — Complete setup guide for OIDC authentication, GitHub environments, Azure configuration
 
 **Acceptance Criteria**: ✅ ALL MET
+
 - [x] CI workflow runs successfully on a PR with lint, test, and build jobs
 - [x] CI workflow properly fails when lint errors or test failures exist (configured with proper exit codes)
 - [x] Infrastructure deployment workflow validates Bicep templates
@@ -183,6 +208,7 @@ python3 -c "import yaml; yaml.safe_load(open('.github/workflows/pr-checks.yml'))
 - [x] All workflow files pass YAML validation
 
 **Key Features Validated**:
+
 - ✅ OIDC-based Azure authentication (azure/login@v2 with federated credentials)
 - ✅ GitHub environments with approval gates (dev, staging, prod)
 - ✅ Multi-stage Docker builds for both frontend and BFF
@@ -194,12 +220,14 @@ python3 -c "import yaml; yaml.safe_load(open('.github/workflows/pr-checks.yml'))
 - ✅ Dynamic image tagging with docker/metadata-action
 
 **Workflow Triggers Validated**:
+
 - CI: push to main, pull_request to main
-- Deploy Infrastructure: push to main (infra/** changes), workflow_dispatch
-- Deploy Application: push to main (src/** changes), workflow_dispatch
+- Deploy Infrastructure: push to main (infra/\*\* changes), workflow_dispatch
+- Deploy Application: push to main (src/\*\* changes), workflow_dispatch
 - PR Checks: pull_request events
 
 **Note**: Workflows are syntactically valid and ready for use. Actual execution requires:
+
 1. GitHub environments configured (dev, staging, prod)
 2. Azure OIDC federated credentials set up
 3. GitHub secrets configured (AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, resource group names)
@@ -207,7 +235,6 @@ python3 -c "import yaml; yaml.safe_load(open('.github/workflows/pr-checks.yml'))
 5. Appropriate RBAC roles assigned to service principal
 
 See `/docs/CI_CD_SETUP.md` for complete setup instructions.
-
 
 ## Coding Agent Prompt
 
