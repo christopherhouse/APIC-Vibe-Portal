@@ -109,6 +109,7 @@ Create Dockerfiles for the frontend and BFF:
 |------|--------|--------|-------|
 | — | 🔲 Not Started | — | Task created |
 | 2026-04-14 | ✅ Complete | Claude (Sonnet 4.5) | All CI/CD workflows, Dockerfiles, deployment script, and documentation created successfully. |
+| 2026-04-15 | ✅ Updated | Claude (Sonnet 4.5) | Refactored to use GitHub environment-scoped variables for resource groups instead of per-environment secrets. |
 
 ### Technical Decisions
 
@@ -131,6 +132,8 @@ Create Dockerfiles for the frontend and BFF:
 9. **Health Checks in Dockerfiles**: Embedded health check commands directly in Dockerfiles for both frontend and BFF to enable Container Apps health probes and automatic restart on failure.
 
 10. **PR Quality Gates**: Implemented automated PR checks (auto-labeling, size warnings, plan reference validation) to maintain code quality and ensure traceability to implementation plan steps.
+
+11. **Environment-Scoped Variables for Resource Groups** (2026-04-15): Refactored workflows to use GitHub environment-scoped variables (`vars.AZURE_RESOURCE_GROUP`) instead of per-environment secrets (`AZURE_RESOURCE_GROUP_DEV`, `AZURE_RESOURCE_GROUP_STAGING`, `AZURE_RESOURCE_GROUP_PROD`). This approach is cleaner, more maintainable, and follows GitHub Actions best practices by keeping the variable name consistent across environments while allowing environment-specific values to be set once per environment.
 
 ### Deviations from Plan
 
