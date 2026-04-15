@@ -47,7 +47,7 @@ Complete usage analytics, metadata scoring, performance optimization, and launch
 |---|------|--------|-----------------|
 | [001](001-sprint-zero-repo-scaffolding.md) | Repository Scaffolding & GitHub Copilot Assets | ✅ | — |
 | [002](002-sprint-zero-azure-infra-bicep.md) | Azure Infrastructure as Code (Bicep) | ✅ | 001 |
-| [003](003-sprint-zero-cicd-pipeline.md) | CI/CD Pipeline with GitHub Actions | 🔄 | 001, 002 |
+| [003](003-sprint-zero-cicd-pipeline.md) | CI/CD Pipeline with GitHub Actions | ✅ | 001, 002 |
 | [004](004-security-baseline-secure-sdlc-controls.md) | Security Baseline & Secure SDLC Controls | 🔲 | 001, 002, 003 |
 
 ### Phase 1 — MVP

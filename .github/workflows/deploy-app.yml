@@ -1,0 +1,257 @@
+name: Deploy Application
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - '.github/workflows/deploy-app.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push-frontend:
+    name: Build and Push Frontend Image
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get ACR name
+        id: acr
+        run: |
+          ACR_NAME=$(az deployment group show \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --name main \
+            --query properties.outputs.acrName.value -o tsv)
+          echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
+          echo "login-server=${ACR_NAME}.azurecr.io" >> $GITHUB_OUTPUT
+
+      - name: Login to ACR
+        run: az acr login --name ${{ steps.acr.outputs.name }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.acr.outputs.login-server }}/frontend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./src/frontend
+          file: ./src/frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  build-and-push-bff:
+    name: Build and Push BFF Image
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get ACR name
+        id: acr
+        run: |
+          ACR_NAME=$(az deployment group show \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --name main \
+            --query properties.outputs.acrName.value -o tsv)
+          echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
+          echo "login-server=${ACR_NAME}.azurecr.io" >> $GITHUB_OUTPUT
+
+      - name: Login to ACR
+        run: az acr login --name ${{ steps.acr.outputs.name }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.acr.outputs.login-server }}/bff
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./src/bff
+          file: ./src/bff/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    needs: [build-and-push-frontend, build-and-push-bff]
+    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'dev'
+    environment:
+      name: dev
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get deployment outputs
+        id: infra
+        run: |
+          DEPLOYMENT=$(az deployment group show \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --name main \
+            --query properties.outputs)
+          echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
+          echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
+          echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
+          echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
+          echo "managed-identity=$(echo $DEPLOYMENT | jq -r '.managedIdentityClientId.value')" >> $GITHUB_OUTPUT
+
+      - name: Deploy Container Apps
+        run: |
+          chmod +x scripts/deploy-container-apps.sh
+          ./scripts/deploy-container-apps.sh \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --environment-id ${{ steps.infra.outputs.container-apps-env }} \
+            --frontend-app ${{ steps.infra.outputs.frontend-app }} \
+            --bff-app ${{ steps.infra.outputs.bff-app }} \
+            --acr-server ${{ steps.infra.outputs.acr-server }} \
+            --managed-identity ${{ steps.infra.outputs.managed-identity }} \
+            --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
+            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-and-push-frontend, build-and-push-bff]
+    if: github.event.inputs.environment == 'staging'
+    environment:
+      name: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get deployment outputs
+        id: infra
+        run: |
+          DEPLOYMENT=$(az deployment group show \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_STAGING }} \
+            --name main \
+            --query properties.outputs)
+          echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
+          echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
+          echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
+          echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
+          echo "managed-identity=$(echo $DEPLOYMENT | jq -r '.managedIdentityClientId.value')" >> $GITHUB_OUTPUT
+
+      - name: Deploy Container Apps
+        run: |
+          chmod +x scripts/deploy-container-apps.sh
+          ./scripts/deploy-container-apps.sh \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_STAGING }} \
+            --environment-id ${{ steps.infra.outputs.container-apps-env }} \
+            --frontend-app ${{ steps.infra.outputs.frontend-app }} \
+            --bff-app ${{ steps.infra.outputs.bff-app }} \
+            --acr-server ${{ steps.infra.outputs.acr-server }} \
+            --managed-identity ${{ steps.infra.outputs.managed-identity }} \
+            --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
+            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
+
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-and-push-frontend, build-and-push-bff]
+    if: github.event.inputs.environment == 'prod'
+    environment:
+      name: prod
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get deployment outputs
+        id: infra
+        run: |
+          DEPLOYMENT=$(az deployment group show \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_PROD }} \
+            --name main \
+            --query properties.outputs)
+          echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
+          echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
+          echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
+          echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
+          echo "managed-identity=$(echo $DEPLOYMENT | jq -r '.managedIdentityClientId.value')" >> $GITHUB_OUTPUT
+
+      - name: Deploy Container Apps
+        run: |
+          chmod +x scripts/deploy-container-apps.sh
+          ./scripts/deploy-container-apps.sh \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_PROD }} \
+            --environment-id ${{ steps.infra.outputs.container-apps-env }} \
+            --frontend-app ${{ steps.infra.outputs.frontend-app }} \
+            --bff-app ${{ steps.infra.outputs.bff-app }} \
+            --acr-server ${{ steps.infra.outputs.acr-server }} \
+            --managed-identity ${{ steps.infra.outputs.managed-identity }} \
+            --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
+            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
