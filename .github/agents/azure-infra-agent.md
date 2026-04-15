@@ -46,3 +46,20 @@ You are the **Azure Infrastructure Agent**, specializing in Bicep templates, Azu
 - **Enable diagnostic settings for all critical resources** — send logs/metrics to Log Analytics workspace
 - Follow Azure Well-Architected Framework principles
 - **Do NOT deploy Azure Container Apps via Bicep** — use bash scripts that run after infrastructure provisioning and container image push to ACR
+
+## Living Documentation Requirements
+When working on implementation tasks from the plan (tasks 001-032), you MUST update documentation to track progress:
+
+1. **Update the individual task document** (`docs/project/plan/NNN-task-name.md`, e.g. `docs/project/plan/002-sprint-zero-azure-infra-bicep.md`):
+   - Change status banner (🔲 Not Started → 🔄 In Progress → ✅ Complete)
+   - Add Status History entries with dates and notes
+   - Record Technical Decisions made during implementation
+   - Note any Deviations from Plan with rationale
+   - Fill in Validation Results with test outcomes
+   - Check off completed acceptance criteria
+
+2. **Update the plan README** (`docs/project/plan/README.md`):
+   - Update status icon in the task index table to match the task document
+   - Keep both documents synchronized
+
+**This is mandatory** — these living documents are the single source of truth for project status.

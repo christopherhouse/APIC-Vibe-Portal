@@ -1,3 +1,8 @@
+import typescriptEslint from '@typescript-eslint/eslint-plugin';
+import typescriptParser from '@typescript-eslint/parser';
+import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
+
 export default [
   {
     ignores: [
@@ -13,7 +18,7 @@ export default [
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
-      parser: await import('@typescript-eslint/parser'),
+      parser: typescriptParser,
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
@@ -23,9 +28,9 @@ export default [
       },
     },
     plugins: {
-      '@typescript-eslint': await import('@typescript-eslint/eslint-plugin'),
-      'react': await import('eslint-plugin-react'),
-      'react-hooks': await import('eslint-plugin-react-hooks'),
+      '@typescript-eslint': typescriptEslint,
+      react: react,
+      'react-hooks': reactHooks,
     },
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],

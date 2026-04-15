@@ -38,3 +38,20 @@ Refer to these documents for architectural context:
 - Keep the BFF thin; push business logic to agents or backend services where appropriate
 - Design for observability (structured logging, tracing, metrics)
 - Align recommendations with the phased timeline in the product charter
+
+## Living Documentation Requirements
+When working on implementation tasks from the plan (tasks 001-032), you MUST update documentation to track progress:
+
+1. **Update the individual task document** (`docs/project/plan/NNN-task-name.md`, e.g. `docs/project/plan/016-persistence-data-governance-baseline.md`):
+   - Change status banner (🔲 Not Started → 🔄 In Progress → ✅ Complete)
+   - Add Status History entries with dates and notes
+   - Record Technical Decisions made during implementation
+   - Note any Deviations from Plan with rationale
+   - Fill in Validation Results with test outcomes
+   - Check off completed acceptance criteria
+
+2. **Update the plan README** (`docs/project/plan/README.md`):
+   - Update status icon in the task index table to match the task document
+   - Keep both documents synchronized
+
+**This is mandatory** — these living documents are the single source of truth for project status.
