@@ -71,11 +71,7 @@ resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2024-12-01-previ
     publicNetworkAccess: enablePrivateEndpoint ? 'Disabled' : 'Enabled'
     networkAclBypass: 'AzureServices'
     disableLocalAuth: disableLocalAuth
-    capabilities: [
-      {
-        name: 'EnableServerless' // Serverless capacity mode
-      }
-    ]
+    capacityMode: 'Serverless' // Serverless capacity mode (replaces deprecated EnableServerless capability)
   }
 }
 

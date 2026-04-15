@@ -73,7 +73,7 @@ var resourceNames = {
   logAnalytics: '${namePrefix}-law-${environmentName}-${uniqueSuffix}'
   appInsights: '${namePrefix}-ai-${environmentName}-${uniqueSuffix}'
   managedIdentity: '${namePrefix}-id-${environmentName}-${uniqueSuffix}'
-  keyVault: '${namePrefix}-kv-${environmentName}-${uniqueSuffix}'
+  keyVault: '${namePrefix}kv${environmentName}${uniqueSuffix}' // No hyphens - KV has 24 char limit
   containerRegistry: '${namePrefix}acr${environmentName}${uniqueSuffix}'
   containerAppsEnv: '${namePrefix}-cae-${environmentName}-${uniqueSuffix}'
   frontendApp: '${namePrefix}-frontend-${environmentName}'
