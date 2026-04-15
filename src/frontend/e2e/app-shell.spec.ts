@@ -4,9 +4,7 @@ test.describe('Application Shell', () => {
   test('homepage renders with welcome message', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: /welcome to apic vibe portal/i })).toBeVisible();
-    await expect(
-      page.getByText(/discover, understand, and use apis faster/i)
-    ).toBeVisible();
+    await expect(page.getByText(/discover, understand, and use apis faster/i)).toBeVisible();
   });
 
   test('header displays app title and search bar', async ({ page }) => {

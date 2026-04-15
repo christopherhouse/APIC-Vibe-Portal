@@ -10,12 +10,14 @@ If you discover a security vulnerability in the APIC Vibe Portal, please report 
 2. **Email**: Send details to the repository maintainers via the contact information in the repository.
 
 ### What to Include
+
 - Description of the vulnerability
 - Steps to reproduce
 - Potential impact
 - Suggested fix (if any)
 
 ### Response Timeline
+
 - **Acknowledgment**: Within 48 hours
 - **Initial assessment**: Within 5 business days
 - **Fix for critical issues**: Within 7 days
@@ -23,9 +25,9 @@ If you discover a security vulnerability in the APIC Vibe Portal, please report 
 
 ## Supported Versions
 
-| Version | Supported |
-|---------|-----------|
-| Latest on `main` | ✅ |
+| Version           | Supported   |
+| ----------------- | ----------- |
+| Latest on `main`  | ✅          |
 | Previous releases | Best effort |
 
 ## Security Measures

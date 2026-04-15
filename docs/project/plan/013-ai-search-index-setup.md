@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Search Layer: Azure AI Search; Hybrid search for retrieval
 - [Product Charter](../apic_product_charter.md) — Improve API discovery through intelligent search
 - [Product Spec](../apic_portal_spec.md) — Search functionality requirements
 
 ## Overview
+
 Set up Azure AI Search with an index schema for API metadata and an indexing pipeline that synchronizes data from Azure API Center into the search index. This enables the hybrid (keyword + semantic) search that powers API discovery.
 
 ## Dependencies
+
 - **002** — Azure infrastructure (AI Search resource deployed)
 - **006** — BFF API project setup
 - **009** — API Center data layer (data source for indexing)
@@ -20,6 +23,7 @@ Set up Azure AI Search with an index schema for API metadata and an indexing pip
 ## Implementation Details
 
 ### 1. Search Index Schema
+
 Define the AI Search index with fields:
 | Field | Type | Searchable | Filterable | Sortable | Facetable |
 |-------|------|-----------|------------|----------|-----------|
@@ -39,6 +43,7 @@ Define the AI Search index with fields:
 | `contentVector` | Collection(Single) | — | — | — | — |
 
 ### 2. Semantic Configuration
+
 - Enable semantic search with semantic ranking
 - Semantic configuration:
   - Title field: `title`
@@ -46,12 +51,15 @@ Define the AI Search index with fields:
   - Keyword fields: `apiName`, `tags`
 
 ### 3. Vector Search Configuration
+
 - Add vector search profile using HNSW algorithm
 - Vector field: `contentVector` (dimensions matching OpenAI embedding model, e.g., 1536 for text-embedding-ada-002)
 - Use Azure OpenAI embeddings for vectorization
 
 ### 4. Indexing Pipeline
+
 Create an indexing service in the BFF:
+
 ```
 src/bff/src/bff/services/
 ├── search_indexer_service.py       # Indexing pipeline
@@ -59,19 +67,23 @@ src/bff/src/bff/services/
 ```
 
 Operations:
+
 - `fullReindex()` — Fetch all APIs from API Center, generate embeddings, upsert into index
 - `incrementalIndex(apiId: string)` — Reindex a single API
 - `deleteFromIndex(apiId: string)` — Remove an API from the index
 - `getIndexStats()` — Return document count and index size
 
 ### 5. Embedding Generation
+
 - Use Azure OpenAI embeddings API to generate vectors
 - Combine `title`, `description`, and `specContent` for embedding input
 - Chunk large spec content to fit token limits
 - Cache embeddings to avoid redundant generation
 
 ### 6. Index Management Scripts
+
 Create scripts for operational tasks:
+
 ```
 scripts/
 ├── reindex.py          # Full reindex trigger
@@ -79,11 +91,14 @@ scripts/
 ```
 
 ### 7. Bicep Updates
+
 Add to the AI Search Bicep module:
+
 - Index definition (or document the manual/script-based index creation)
 - Skillset for integrated vectorization (optional)
 
 ## Testing & Acceptance Criteria
+
 - [ ] Search index is created with correct schema
 - [ ] Semantic search configuration is valid
 - [ ] Vector search profile is configured with correct dimensions
@@ -95,26 +110,30 @@ Add to the AI Search Bicep module:
 - [ ] Reindex script runs successfully end-to-end (integration test)
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 

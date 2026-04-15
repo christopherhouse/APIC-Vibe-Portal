@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — BFF required for orchestration between frontend and Azure services
 - [Product Charter](../apic_product_charter.md) — Improve API discovery
 - [Product Spec](../apic_portal_spec.md) — API catalog browsing requirements
 
 ## Overview
+
 Implement the REST API endpoints in the BFF that expose API catalog data to the frontend. These endpoints serve as the contract between the Next.js frontend and the Azure API Center data layer.
 
 ## Dependencies
+
 - **006** — BFF API project setup (FastAPI app, routing)
 - **007** — Shared types package (DTOs)
 - **009** — API Center data layer (service and client)
@@ -20,6 +23,7 @@ Implement the REST API endpoints in the BFF that expose API catalog data to the 
 ## Implementation Details
 
 ### 1. Route Definitions
+
 ```
 src/bff/src/bff/routers/
 ├── api_catalog.py              # API catalog endpoints
@@ -37,13 +41,16 @@ Endpoints:
 | `GET` | `/api/environments` | List environments |
 
 ### 2. Request Validation
+
 - Use Pydantic models and FastAPI's built-in validation for:
   - Query parameters: `page`, `page_size`, `sort`, `filter`, `lifecycle`
   - Path parameters: `api_id`, `version_id`
 - Return `422` with structured errors for invalid inputs (FastAPI default behavior)
 
 ### 3. Response Format
+
 All responses follow a consistent envelope:
+
 ```typescript
 interface ApiResponse<T> {
   data: T;
@@ -57,6 +64,7 @@ interface ApiResponse<T> {
 ```
 
 Error responses:
+
 ```typescript
 interface ApiErrorResponse {
   error: {
@@ -68,24 +76,29 @@ interface ApiErrorResponse {
 ```
 
 ### 4. Controller Layer
+
 Create controller functions that:
+
 - Parse and validate request parameters
 - Call the appropriate service method
 - Map results to response DTOs
 - Handle errors and return appropriate status codes
 
 ### 5. Pagination
+
 - Default page size: 20
 - Max page size: 100
 - Include `totalCount` and `totalPages` in meta
 - Support cursor-based pagination for large datasets (optional)
 
 ### 6. Filtering & Sorting
+
 - Filter by: `lifecycle` (design, development, production, deprecated, retired), `kind` (REST, GraphQL, gRPC)
 - Sort by: `name`, `updatedAt`, `createdAt`
 - Sort direction: `asc`, `desc`
 
 ## Testing & Acceptance Criteria
+
 - [ ] `GET /api/catalog` returns paginated list of APIs
 - [ ] `GET /api/catalog?lifecycle=production` filters correctly
 - [ ] `GET /api/catalog?sort=name&direction=asc` sorts correctly
@@ -98,26 +111,30 @@ Create controller functions that:
 - [ ] API response times are logged
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 

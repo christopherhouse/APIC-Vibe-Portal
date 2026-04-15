@@ -55,12 +55,7 @@ export default function Header() {
       }}
     >
       <Toolbar>
-        <IconButton
-          color="inherit"
-          aria-label="toggle navigation"
-          edge="start"
-          sx={{ mr: 2 }}
-        >
+        <IconButton color="inherit" aria-label="toggle navigation" edge="start" sx={{ mr: 2 }}>
           <MenuIcon />
         </IconButton>
         <Typography variant="h6" noWrap component="div" sx={{ whiteSpace: 'nowrap' }}>

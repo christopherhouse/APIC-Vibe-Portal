@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Azure OpenAI for AI features
 - [Product Charter](../apic_product_charter.md) — Enable AI-assisted workflows
 - [Product Spec](../apic_portal_spec.md) — AI-powered features requirements
 
 ## Overview
+
 Integrate Azure OpenAI into the BFF to power AI-assisted API discovery through a conversational chat interface. This enables developers to ask natural language questions about APIs and receive contextual, grounded answers.
 
 ## Dependencies
+
 - **002** — Azure infrastructure (OpenAI resource deployed)
 - **006** — BFF API project setup
 - **007** — Shared types package (chat DTOs)
@@ -22,6 +25,7 @@ Integrate Azure OpenAI into the BFF to power AI-assisted API discovery through a
 ## Implementation Details
 
 ### 1. OpenAI Client
+
 ```
 src/bff/src/bff/clients/
 ├── openai_client.py           # Azure OpenAI client wrapper
@@ -34,6 +38,7 @@ src/bff/src/bff/clients/
 - Support streaming responses
 
 ### 2. RAG (Retrieval-Augmented Generation) Service
+
 ```
 src/bff/src/bff/services/
 ├── ai_chat_service.py          # RAG-powered chat service
@@ -41,6 +46,7 @@ src/bff/src/bff/services/
 ```
 
 Implement a RAG pipeline:
+
 1. **Receive** user question
 2. **Retrieve** relevant API documents from AI Search (hybrid search from task 014)
 3. **Augment** the prompt with retrieved context
@@ -48,7 +54,9 @@ Implement a RAG pipeline:
 5. **Return** response with citations to source APIs
 
 ### 3. System Prompt
+
 Design a system prompt that:
+
 - Identifies the assistant as an API discovery helper
 - Instructs it to answer questions about APIs in the catalog
 - Requires citations to specific APIs when referencing them
@@ -57,6 +65,7 @@ Design a system prompt that:
 - Encourages users to explore the catalog for more details
 
 ### 4. Chat Endpoints
+
 ```
 POST /api/chat              # Send a message, get response
 POST /api/chat/stream       # Send a message, get streaming response (SSE)
@@ -65,15 +74,17 @@ DELETE /api/chat/history     # Clear chat history
 ```
 
 Request body:
+
 ```typescript
 interface ChatRequest {
   message: string;
-  sessionId?: string;         // For conversation continuity
-  includeContext?: boolean;    // Include RAG context in response
+  sessionId?: string; // For conversation continuity
+  includeContext?: boolean; // Include RAG context in response
 }
 ```
 
 Response:
+
 ```typescript
 interface ChatResponse {
   message: ChatMessage;
@@ -91,18 +102,21 @@ interface Citation {
 ```
 
 ### 5. Conversation Management
+
 - Maintain conversation history per session (in-memory for MVP)
 - Include recent conversation turns in the prompt (sliding window: last 10 messages)
 - Session expiry after 30 minutes of inactivity
 - Each session has a unique ID returned to the frontend
 
 ### 6. Streaming Support
+
 - Use Server-Sent Events (SSE) for streaming responses (via FastAPI `StreamingResponse`)
 - Stream tokens as they are generated
 - Include a final event with citations and metadata
 - Frontend can show incremental text rendering
 
 ### 7. Token Management, Estimation & Usage Metrics
+
 - Use `tiktoken` to estimate token counts before each OpenAI call:
   - Encode system prompt, conversation history, RAG context, and user message
   - Use `tiktoken.encoding_for_model(model)` for accurate model-specific counts
@@ -116,6 +130,7 @@ interface Citation {
 - Rate limiting per session (e.g., 30 messages per minute)
 
 ## Testing & Acceptance Criteria
+
 - [ ] `POST /api/chat` returns an AI-generated response grounded in API catalog data
 - [ ] Responses include citations to specific APIs
 - [ ] Conversation history is maintained within a session
@@ -131,26 +146,30 @@ interface Citation {
 - [ ] Session cleanup works after expiry
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 
