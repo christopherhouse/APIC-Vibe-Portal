@@ -3,12 +3,16 @@ name = "apic-vibe-portal-bff"
 version = "0.0.0"
 description = "Backend-for-Frontend API for APIC Vibe Portal"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "starlette>=0.46.0",
+]
 
 [dependency-groups]
 dev = [
     "ruff>=0.7.0",
     "pytest>=8.0.0",
+    "httpx>=0.28.0",
+    "pytest-asyncio>=1.0.0",
 ]
 
 [build-system]
