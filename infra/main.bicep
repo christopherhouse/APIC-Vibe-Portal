@@ -179,7 +179,6 @@ module apiCenter 'modules/api-center.bicep' = {
     location: location
     apiCenterName: resourceNames.apiCenter
     managedIdentityPrincipalId: managedIdentity.outputs.principalId
-    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     tags: tags
   }
 }
