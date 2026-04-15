@@ -56,6 +56,9 @@ param openAiSku string = 'S0'
 @description('Cosmos DB failover locations (empty for single-region serverless)')
 param cosmosDbLocations array = []
 
+@description('Azure region for Cosmos DB (defaults to main location if not specified)')
+param cosmosDbLocation string = location
+
 @description('Enable private endpoints for resources (recommended for prod)')
 param enablePrivateEndpoints bool = environmentName == 'prod'
 
@@ -226,7 +229,7 @@ module openAi 'modules/openai.bicep' = {
 module cosmosDb 'modules/cosmosdb.bicep' = {
   name: 'cosmosdb-deployment'
   params: {
-    location: location
+    location: cosmosDbLocation
     cosmosDbAccountName: resourceNames.cosmosDb
     managedIdentityPrincipalId: managedIdentity.outputs.principalId
     additionalLocations: cosmosDbLocations
