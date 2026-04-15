@@ -14,6 +14,7 @@ from apic_vibe_portal_bff.middleware.request_logger import RequestLoggerMiddlewa
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_app(*, debug: bool = False) -> FastAPI:
     """Build a minimal FastAPI app with our middleware stack."""
     app = FastAPI()
@@ -41,6 +42,7 @@ async def _client(app: FastAPI):
 # ---------------------------------------------------------------------------
 # Error handler middleware
 # ---------------------------------------------------------------------------
+
 
 class TestErrorHandlerMiddleware:
     """Test the global error handler."""
@@ -97,6 +99,7 @@ class TestErrorHandlerMiddleware:
 # Request logger middleware
 # ---------------------------------------------------------------------------
 
+
 class TestRequestLoggerMiddleware:
     """Test the request logging middleware."""
 
@@ -128,6 +131,7 @@ class TestRequestLoggerMiddleware:
 # ---------------------------------------------------------------------------
 # Auth middleware (placeholder)
 # ---------------------------------------------------------------------------
+
 
 class TestAuthMiddleware:
     """Test the auth middleware placeholder."""

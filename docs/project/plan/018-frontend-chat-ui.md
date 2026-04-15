@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — AI-powered discovery through conversational interface
 - [Product Charter](../apic_product_charter.md) — Enable AI-assisted workflows; reduce time to find APIs
 - [Product Spec](../apic_portal_spec.md) — Chat UI requirements
 
 ## Overview
+
 Build the AI-powered chat interface in the frontend that allows developers to discover and learn about APIs through natural language conversation. The chat connects to the BFF's OpenAI-powered RAG endpoints.
 
 ## Dependencies
+
 - **005** — Frontend project setup (components, layout)
 - **007** — Shared types package (chat models)
 - **017** — OpenAI BFF integration (chat API endpoints)
@@ -20,6 +23,7 @@ Build the AI-powered chat interface in the frontend that allows developers to di
 ## Implementation Details
 
 ### 1. Chat Components
+
 ```
 app/chat/
 ├── page.tsx                # Full-page chat view
@@ -35,6 +39,7 @@ app/chat/
 ```
 
 ### 2. Full-Page Chat (`/chat`)
+
 - Centered chat interface with message history
 - Input area at bottom with send button
 - Messages scroll from bottom to top (newest at bottom)
@@ -46,6 +51,7 @@ app/chat/
   - "Help me find an API for user authentication"
 
 ### 3. Embedded Chat Panel
+
 - Collapsible side panel accessible from any page via floating button
 - Same chat functionality as full-page but in a compact panel
 - Persists conversation as user navigates between pages
@@ -53,6 +59,7 @@ app/chat/
 - Panel slides in from the right side
 
 ### 4. Message Rendering
+
 - **User messages**: Right-aligned, colored bubble
 - **Assistant messages**: Left-aligned, rendered as markdown (support code blocks, lists, bold)
 - **Citations**: Inline linked references to APIs (clicking opens API detail page)
@@ -61,6 +68,7 @@ app/chat/
 - **Copy button**: Copy assistant message text to clipboard
 
 ### 5. Chat Input
+
 - Multi-line text area (auto-expand up to 4 lines)
 - Send on Enter (Shift+Enter for new line)
 - Send button with loading state
@@ -68,29 +76,34 @@ app/chat/
 - Character count indicator near limits
 
 ### 6. Citations Component
+
 - Citations displayed as clickable chips below the assistant message
 - Each citation shows: API name, relevance indicator
 - Clicking a citation navigates to the API detail page (`/catalog/:apiId`)
 - Hover shows excerpt preview
 
 ### 7. Streaming Integration
+
 - Connect to `POST /api/chat/stream` using `fetch()` and consume the streamed response via `ReadableStream`
 - Render tokens incrementally in the message bubble as chunks arrive
 - Show typing indicator until first token arrives
 - Handle stream errors gracefully (retry the request when appropriate or show an error)
 
 ### 8. Session Management
+
 - Store session ID in React state (or context)
 - Session persists across page navigation (via React context provider)
 - "New conversation" button creates a new session
 - Session-level state managed in a ChatProvider context
 
 ### 9. Responsive Design
+
 - Full-page chat: centered, max-width container
 - Embedded panel: fixed-width right sidebar
 - Mobile: full-screen overlay for embedded chat
 
 ## Testing & Acceptance Criteria
+
 - [ ] Full-page chat at `/chat` renders correctly
 - [ ] User can type and send messages
 - [ ] Assistant responses appear with streaming text
@@ -107,26 +120,30 @@ app/chat/
 - [ ] Playwright e2e tests added in `src/frontend/e2e/chat.spec.ts` covering chat page rendering, message sending, suggested prompts, and embedded panel interaction
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 

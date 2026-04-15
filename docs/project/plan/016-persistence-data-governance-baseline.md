@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Data architecture, storage strategy, Cosmos DB
 - [Product Charter](../apic_product_charter.md) — Data governance, compliance, retention policies
 - [Product Spec](../apic_portal_spec.md) — Data persistence requirements
 
 ## Overview
+
 Establish the persistence and data governance baseline before implementing features that depend on storing chat history, governance snapshots, or analytics telemetry. This includes storage strategy, retention policies, schema management, and query optimization for trend workloads. All Cosmos DB containers use **serverless capacity mode** (pay-per-request, no provisioned throughput) to optimize for the portal's variable-traffic pattern.
 
 ## Dependencies
+
 - **002** — Azure infrastructure (Cosmos DB)
 - **006** — BFF API setup (data layer integration points)
 - **007** — Shared types package (data models)
@@ -23,9 +26,11 @@ Establish the persistence and data governance baseline before implementing featu
 ## Implementation Details
 
 ### 1. Storage Strategy by Data Class
+
 Define and document storage choices for each data class:
 
 **Chat Session Data**
+
 - **Storage**: Azure Cosmos DB (NoSQL, serverless)
 - **Container**: `chat-sessions`
 - **Partition Key**: `/userId`
@@ -33,6 +38,7 @@ Define and document storage choices for each data class:
 - **Schema**: Session ID, user ID, messages[], created, updated, metadata (model, tokens used)
 
 **Governance Snapshots**
+
 - **Storage**: Azure Cosmos DB (NoSQL, serverless)
 - **Container**: `governance-snapshots`
 - **Partition Key**: `/apiId`
@@ -40,6 +46,7 @@ Define and document storage choices for each data class:
 - **Schema**: Snapshot ID, API ID, timestamp, findings[], compliance score, agent ID
 
 **Analytics Telemetry**
+
 - **Storage**: Azure Cosmos DB (NoSQL, serverless) or Azure Storage (hot/cool tiers)
 - **Container**: `analytics-events`
 - **Partition Key**: `/eventType` or `/date` (e.g., `/2026-04-14`)
@@ -49,27 +56,31 @@ Define and document storage choices for each data class:
 > **Note**: Large artifact storage (SBOMs, reports) is deferred. If a need materializes, Azure Blob Storage can be added as a file mount on Container Apps or a standalone storage account. For now, Cosmos DB serverless covers all persistence needs.
 
 Document storage decisions:
+
 ```
 docs/architecture/
 └── storage-strategy.md
 ```
 
 ### 2. Retention & Deletion Policy
+
 Define retention policies for each data class:
 
-| Data Class | Retention Period | Rationale | Deletion Method |
-|------------|------------------|-----------|-----------------|
-| Chat sessions | 90 days | Privacy, compliance | Soft delete, then purge via TTL |
-| Governance snapshots | 2 years | Audit, compliance | Archive to cold storage, then purge |
-| Analytics telemetry | 1 year hot, 3 years cold | Trend analysis, cost optimization | Auto-tier to cool/archive, then purge |
+| Data Class           | Retention Period         | Rationale                         | Deletion Method                       |
+| -------------------- | ------------------------ | --------------------------------- | ------------------------------------- |
+| Chat sessions        | 90 days                  | Privacy, compliance               | Soft delete, then purge via TTL       |
+| Governance snapshots | 2 years                  | Audit, compliance                 | Archive to cold storage, then purge   |
+| Analytics telemetry  | 1 year hot, 3 years cold | Trend analysis, cost optimization | Auto-tier to cool/archive, then purge |
 
 **PII Handling**
+
 - Identify PII fields (user ID, email, IP address, query text)
 - Mask or redact PII in logs
 - Support user data deletion requests (GDPR right to erasure)
 - Document PII fields and handling in `docs/architecture/pii-handling.md`
 
 **Soft Delete Implementation**
+
 - Add `isDeleted` flag and `deletedAt` timestamp to schemas
 - Filter out soft-deleted records in queries
 - Implement hard delete via scheduled job (Azure Function) that purges soft-deleted records after retention period
@@ -84,12 +95,15 @@ src/bff/src/bff/jobs/
 ```
 
 ### 3. Partition, Index & Query Strategy
+
 **Cosmos DB Partitioning**
+
 - Chat sessions: Partition by `/userId` (ensures single-user queries are efficient, co-locates user data)
 - Governance snapshots: Partition by `/apiId` (co-locates all snapshots for an API, supports API-level queries)
 - Analytics events: Partition by `/date` (time-series queries, easy archival of old partitions)
 
 **Indexing Strategy**
+
 - Default indexing policy: Index all fields (Cosmos DB default)
 - Exclude large text fields from indexing (chat message content, compliance findings)
 - Create composite indexes for common queries:
@@ -98,34 +112,41 @@ src/bff/src/bff/jobs/
   - Analytics events: `(eventType, timestamp)` descending
 
 **Query Optimization**
+
 - Use partition key in all queries where possible
 - Limit result sets (pagination with continuation tokens)
 - Use point reads (by ID) instead of queries where possible
 - Monitor RU consumption and optimize hot queries
 
 Document indexing and query patterns:
+
 ```
 docs/architecture/
 └── cosmos-db-indexing.md
 ```
 
 ### 4. Schema Ownership, Versioning & Migration
+
 **Schema Ownership**
+
 - Define TypeScript interfaces in `src/shared/types/data-models.ts`
 - Use Pydantic for runtime validation (BFF side); use Zod for frontend/shared TypeScript types
 - Document breaking changes in CHANGELOG
 
 **Schema Versioning**
+
 - Add `schemaVersion` field to all documents
 - Increment version on breaking changes
 - Support backward-compatible reads (read v1 and v2, write v2)
 
 **Migration Strategy**
+
 - No automatic migrations (Cosmos DB is schema-less)
 - Implement lazy migration: Read old schema, transform to new schema, write new schema on next update
 - For breaking changes requiring bulk migration, create one-time migration script (Azure Function or script in `scripts/migrations/`)
 
 **Example: Chat Session Schema Evolution**
+
 ```typescript
 // v1 (initial)
 interface ChatSessionV1 {
@@ -145,8 +166,8 @@ interface ChatSessionV2 {
   messages: Message[];
   created: string;
   updated: string;
-  model?: string;         // New field
-  tokensUsed?: number;    // New field
+  model?: string; // New field
+  tokensUsed?: number; // New field
 }
 
 // Migration function
@@ -159,13 +180,16 @@ function migrateChatSession(session: ChatSessionV1 | ChatSessionV2): ChatSession
 ```
 
 Document migration approach:
+
 ```
 docs/architecture/
 └── schema-versioning.md
 ```
 
 ### 5. Data Access Layer (BFF)
+
 Create a data access layer in the BFF:
+
 ```
 src/bff/src/bff/data/
 ├── cosmos_client.py               # Cosmos DB client initialization
@@ -184,6 +208,7 @@ src/bff/src/bff/data/
 ```
 
 **Repository Pattern**
+
 - Abstract Cosmos DB queries behind repositories
 - Implement CRUD operations: `create`, `findById`, `findByPartitionKey`, `update`, `delete` (soft delete)
 - Handle pagination with continuation tokens
@@ -191,6 +216,7 @@ src/bff/src/bff/data/
 
 **Configuration**
 BFF environment variables:
+
 - `COSMOS_DB_ENDPOINT`
 - `COSMOS_DB_KEY` (or use Managed Identity)
 - `COSMOS_DB_DATABASE_NAME`
@@ -199,7 +225,9 @@ BFF environment variables:
 - `COSMOS_DB_ANALYTICS_CONTAINER`
 
 ### 6. Data Governance Documentation
+
 Create comprehensive data governance documentation:
+
 ```
 docs/architecture/
 ├── storage-strategy.md            # Storage decisions by data class
@@ -210,6 +238,7 @@ docs/architecture/
 ```
 
 ## Testing & Acceptance Criteria
+
 - [ ] Storage strategy document exists and covers all data classes
 - [ ] Data retention policy document exists with clear retention periods
 - [ ] PII handling document identifies PII fields and redaction rules
@@ -225,6 +254,7 @@ docs/architecture/
 - [ ] Integration tests verify Cosmos DB queries work as expected
 
 ## Implementation Notes
+
 <!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
@@ -232,19 +262,22 @@ docs/architecture/
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 

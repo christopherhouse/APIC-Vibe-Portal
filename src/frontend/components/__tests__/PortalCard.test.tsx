@@ -8,7 +8,11 @@ describe('PortalCard', () => {
   });
 
   it('renders title and subheader', () => {
-    render(<PortalCard title="API Name" subheader="v2.0">Body</PortalCard>);
+    render(
+      <PortalCard title="API Name" subheader="v2.0">
+        Body
+      </PortalCard>
+    );
     expect(screen.getByText('API Name')).toBeInTheDocument();
     expect(screen.getByText('v2.0')).toBeInTheDocument();
   });

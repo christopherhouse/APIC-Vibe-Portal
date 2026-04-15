@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Frontend: Next.js SPA; governance visibility
 - [Product Charter](../apic_product_charter.md) — Provide governance visibility; metadata completeness as success metric
 - [Product Spec](../apic_portal_spec.md) — Governance dashboard requirements
 
 ## Overview
+
 Build the governance dashboard in the frontend that provides a visual overview of API governance health across the organization. This includes compliance scores, trend indicators, and drill-down capabilities to identify and remediate governance issues.
 
 ## Dependencies
+
 - **005** — Frontend project setup
 - **023** — Governance Agent (governance scoring and compliance data)
 - **010** — BFF API catalog endpoints (API listing data)
@@ -22,6 +25,7 @@ Build the governance dashboard in the frontend that provides a visual overview o
 ## Implementation Details
 
 ### 1. Governance BFF Endpoints
+
 ```
 src/bff/src/bff/routers/
 ├── governance.py                   # Governance dashboard endpoints (FastAPI router)
@@ -38,6 +42,7 @@ Endpoints:
 | `GET` | `/api/governance/trends` | Governance score trends over time |
 
 ### 2. Governance Summary Service
+
 ```
 src/bff/src/bff/services/
 ├── governance_dashboard_service.py
@@ -50,6 +55,7 @@ src/bff/src/bff/services/
 - Track score trends (store periodic snapshots)
 
 ### 3. Frontend Dashboard Page
+
 ```
 app/governance/
 ├── page.tsx                # Governance dashboard
@@ -68,19 +74,23 @@ app/governance/
 ```
 
 ### 4. Dashboard Overview
+
 Top-level KPI cards:
+
 - **Overall Score**: Average governance score across all APIs (with trend arrow)
 - **Compliant APIs**: Count/percentage meeting minimum threshold (e.g., score ≥ 75)
 - **Critical Issues**: Count of APIs with critical rule failures
 - **Improvement**: Score change over last 30 days
 
 ### 5. Visualizations
+
 - **Score Distribution**: Histogram or donut chart showing APIs by score range (Excellent/Good/Needs Improvement/Poor)
 - **Rule Compliance**: Horizontal bar chart showing compliance rate per governance rule
 - **Trend Chart**: Line chart showing average score over time (weekly/monthly)
 - Use a charting library: `recharts`, `chart.js`, or `nivo`
 
 ### 6. API Scores Table
+
 - Sortable table with columns: API Name, Score, Status, Top Issues, Last Checked
 - Color-coded score badges (green/yellow/orange/red)
 - Filter by score range, status, specific failing rule
@@ -88,6 +98,7 @@ Top-level KPI cards:
 - Export to CSV option
 
 ### 7. Single API Compliance Detail (`/governance/:apiId`)
+
 - Header with API name and overall score
 - Rule-by-rule breakdown:
   - Rule name, description
@@ -98,6 +109,7 @@ Top-level KPI cards:
 - "Ask Governance Agent" button (opens chat with context)
 
 ### 8. Remediation Panel
+
 - When a failing rule is selected, show:
   - What is required
   - Current state of the API metadata
@@ -105,6 +117,7 @@ Top-level KPI cards:
   - Link to relevant documentation
 
 ## Testing & Acceptance Criteria
+
 - [ ] Dashboard overview shows accurate KPI cards
 - [ ] Score distribution chart renders correctly
 - [ ] Rule compliance chart shows per-rule compliance rates
@@ -120,26 +133,30 @@ Top-level KPI cards:
 - [ ] Playwright e2e tests added in `src/frontend/e2e/governance.spec.ts` covering dashboard rendering, chart interactions, table sorting/filtering, and drill-down navigation
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 

@@ -67,6 +67,7 @@ resource foundryAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
 }
 
 // Foundry Project (attached to account)
+#disable-next-line BCP081
 resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2024-10-01' = {
   parent: foundryAccount
   name: foundryProjectName
@@ -79,6 +80,7 @@ resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2024-10-0
 }
 
 // Capability Host for Standard Agent Services (on account level)
+#disable-next-line BCP081
 resource accountCapabilityHost 'Microsoft.CognitiveServices/accounts/capabilityHosts@2024-10-01' = {
   parent: foundryAccount
   name: 'agents'
@@ -92,6 +94,7 @@ resource accountCapabilityHost 'Microsoft.CognitiveServices/accounts/capabilityH
 }
 
 // Capability Host for Standard Agent Services (on project level)
+#disable-next-line BCP081
 resource projectCapabilityHost 'Microsoft.CognitiveServices/accounts/projects/capabilityHosts@2024-10-01' = {
   parent: foundryProject
   name: 'agents'
