@@ -3,13 +3,39 @@
   "version": "0.0.0",
   "private": true,
   "description": "Shared types and utilities for APIC Vibe Portal",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "echo 'Shared package setup pending - see task 007'",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:fixcjs",
+    "build:esm": "tsc --project tsconfig.esm.json",
+    "build:cjs": "tsc --project tsconfig.cjs.json",
+    "build:fixcjs": "echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
     "lint": "eslint .",
-    "test": "echo 'Shared package setup pending - see task 007'"
+    "test": "node --experimental-vm-modules ../../node_modules/.bin/jest",
+    "test:ci": "node --experimental-vm-modules ../../node_modules/.bin/jest --ci --coverage",
+    "clean": "rm -rf dist"
   },
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.0"
+  }
 }
