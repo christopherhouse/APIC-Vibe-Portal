@@ -1,1 +1,1 @@
-"""Security middleware for the APIC Vibe Portal BFF."""
+"""Middleware for the APIC Vibe Portal BFF."""
