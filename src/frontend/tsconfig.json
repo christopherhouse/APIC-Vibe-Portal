@@ -4,6 +4,7 @@
   "compilerOptions": {
     "composite": true,
     "outDir": "./.next",
+    "baseUrl": ".",
     "plugins": [
       {
         "name": "next"
@@ -21,6 +22,12 @@
   ],
   "exclude": [
     "node_modules",
-    ".next"
+    ".next/cache",
+    ".next/server",
+    ".next/static",
+    ".next/standalone",
+    ".next/BUILD_ID",
+    ".next/*.json",
+    ".next/*.js"
   ]
 }

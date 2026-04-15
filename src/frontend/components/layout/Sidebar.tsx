@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import Drawer from '@mui/material/Drawer';
 import Toolbar from '@mui/material/Toolbar';
 import List from '@mui/material/List';
@@ -35,7 +36,7 @@ const secondaryNavItems: NavItem[] = [
 ];
 
 export default function Sidebar() {
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const pathname = usePathname();
 
   return (
     <Drawer
@@ -51,11 +52,12 @@ export default function Sidebar() {
     >
       <Toolbar />
       <List component="nav" aria-label="main navigation">
-        {mainNavItems.map((item, index) => (
+        {mainNavItems.map((item) => (
           <ListItem key={item.label} disablePadding>
             <ListItemButton
-              selected={selectedIndex === index}
-              onClick={() => setSelectedIndex(index)}
+              component={Link}
+              href={item.href}
+              selected={pathname === item.href}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} />
@@ -67,7 +69,11 @@ export default function Sidebar() {
       <List component="nav" aria-label="secondary navigation">
         {secondaryNavItems.map((item) => (
           <ListItem key={item.label} disablePadding>
-            <ListItemButton>
+            <ListItemButton
+              component={Link}
+              href={item.href}
+              selected={pathname === item.href}
+            >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} />
             </ListItemButton>

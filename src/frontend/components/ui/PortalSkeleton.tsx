@@ -22,11 +22,11 @@ export default function PortalSkeleton({ lines = 1, ...props }: PortalSkeletonPr
         <MuiSkeleton
           key={i}
           {...props}
-          sx={{
-            mb: 1,
-            ...(i === lines - 1 ? { width: '60%' } : {}),
-            ...(props.sx ?? {}),
-          }}
+          sx={[
+            { mb: 1 },
+            i === lines - 1 && { width: '60%' },
+            ...(Array.isArray(props.sx) ? props.sx : props.sx ? [props.sx] : []),
+          ]}
         />
       ))}
     </Box>

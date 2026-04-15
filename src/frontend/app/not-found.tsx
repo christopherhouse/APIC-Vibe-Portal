@@ -2,7 +2,6 @@ import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
-import Link from 'next/link';
 
 export default function NotFound() {
   return (
@@ -17,9 +16,9 @@ export default function NotFound() {
         <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
           The page you are looking for does not exist or has been moved.
         </Typography>
-        <Link href="/">
-          <Button variant="contained">Go to homepage</Button>
-        </Link>
+        <Button variant="contained" href="/">
+          Go to homepage
+        </Button>
       </Box>
     </Container>
   );
