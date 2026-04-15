@@ -43,7 +43,7 @@ param tags object
 // ============================================================================
 
 // Foundry Account (AI Services account with kind: AIServices)
-resource foundryAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
+resource foundryAccount 'Microsoft.CognitiveServices/accounts@2026-03-01' = {
   name: foundryAccountName
   location: location
   tags: tags
@@ -68,7 +68,7 @@ resource foundryAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
 
 // Foundry Project (attached to account)
 #disable-next-line BCP081
-resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2024-10-01' = {
+resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2026-03-01' = {
   parent: foundryAccount
   name: foundryProjectName
   location: location
@@ -81,7 +81,7 @@ resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2024-10-0
 
 // Capability Host for Standard Agent Services (on account level)
 #disable-next-line BCP081
-resource accountCapabilityHost 'Microsoft.CognitiveServices/accounts/capabilityHosts@2024-10-01' = {
+resource accountCapabilityHost 'Microsoft.CognitiveServices/accounts/capabilityHosts@2026-03-01' = {
   parent: foundryAccount
   name: 'agents'
   properties: {
@@ -95,7 +95,7 @@ resource accountCapabilityHost 'Microsoft.CognitiveServices/accounts/capabilityH
 
 // Capability Host for Standard Agent Services (on project level)
 #disable-next-line BCP081
-resource projectCapabilityHost 'Microsoft.CognitiveServices/accounts/projects/capabilityHosts@2024-10-01' = {
+resource projectCapabilityHost 'Microsoft.CognitiveServices/accounts/projects/capabilityHosts@2026-03-01' = {
   parent: foundryProject
   name: 'agents'
   properties: {
