@@ -179,7 +179,6 @@ module apiCenter 'modules/api-center.bicep' = {
     location: location
     apiCenterName: resourceNames.apiCenter
     managedIdentityPrincipalId: managedIdentity.outputs.principalId
-    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     tags: tags
   }
 }
@@ -234,6 +233,7 @@ module cosmosDb 'modules/cosmosdb.bicep' = {
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
+    enableZoneRedundancy: environmentName == 'prod'
     tags: tags
   }
 }

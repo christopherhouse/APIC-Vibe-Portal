@@ -26,6 +26,9 @@ param privateEndpointSubnetId string
 @description('Disable local (key-based) authentication in favour of RBAC (recommended)')
 param disableLocalAuth bool = true
 
+@description('Enable zone redundancy for high availability (recommended for prod)')
+param enableZoneRedundancy bool = false
+
 @description('Resource tags')
 param tags object
 
@@ -35,21 +38,28 @@ param tags object
 
 var databaseName = 'apic-vibe-portal'
 
-// Build additional locations array
-var additionalLocationsArray = [for (loc, i) in additionalLocations: {
+// Build additional locations array (conditionally include isZoneRedundant only when enabled)
+var additionalLocationsArray = [for (loc, i) in additionalLocations: enableZoneRedundancy ? {
   locationName: loc
   failoverPriority: i + 1
-  isZoneRedundant: false
+  isZoneRedundant: true
+} : {
+  locationName: loc
+  failoverPriority: i + 1
 }]
 
+// Build primary location object (conditionally include isZoneRedundant only when enabled)
+var primaryLocation = enableZoneRedundancy ? {
+  locationName: location
+  failoverPriority: 0
+  isZoneRedundant: true
+} : {
+  locationName: location
+  failoverPriority: 0
+}
+
 // Build full locations array (primary + additional)
-var locations = concat([
-  {
-    locationName: location
-    failoverPriority: 0
-    isZoneRedundant: false
-  }
-], additionalLocationsArray)
+var locations = concat([primaryLocation], additionalLocationsArray)
 
 // ============================================================================
 // RESOURCES
