@@ -92,7 +92,7 @@ Charts:
 - Scheduled email reports (future enhancement placeholder)
 
 ### 8. Access Control
-- Dashboard requires `Portal.Admin` or `API.Owner` role
+- Dashboard requires `Portal.Admin` or `Portal.Maintainer` role
 - API owners see analytics scoped to their APIs
 - Admins see organization-wide analytics
 

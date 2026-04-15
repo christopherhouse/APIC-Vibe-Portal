@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/catalog", tags=["catalog"])
 
 @router.get(
     "/",
-    dependencies=[Depends(require_any_role(["Portal.User", "Portal.Admin", "API.Owner"]))],
+    dependencies=[Depends(require_any_role(["Portal.User", "Portal.Admin", "Portal.Maintainer"]))],
 )
 async def list_apis() -> dict[str, str]:
     """Placeholder — list APIs from Azure API Center."""

@@ -27,7 +27,7 @@ Document (and optionally script) the creation of two app registrations:
 Configure:
 - Frontend app requests token for BFF API scope
 - BFF validates tokens from frontend
-- Define app roles: `Portal.User`, `Portal.Admin`, `API.Owner`
+- Define app roles: `Portal.User`, `Portal.Admin`, `Portal.Maintainer`
 
 ### 2. Frontend Authentication (MSAL)
 ```

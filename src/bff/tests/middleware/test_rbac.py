@@ -30,7 +30,7 @@ def _make_app_with_rbac() -> FastAPI:
 
     @app.get(
         "/any-role",
-        dependencies=[Depends(require_any_role(["Portal.Admin", "API.Owner"]))],
+        dependencies=[Depends(require_any_role(["Portal.Admin", "Portal.Maintainer"]))],
     )
     async def any_role():
         return {"access": "any"}
@@ -105,7 +105,7 @@ class TestRequireAnyRole:
     @pytest.mark.asyncio
     @patch("apic_vibe_portal_bff.middleware.auth.validate_token")
     async def test_user_with_one_of_roles_allowed(self, mock_validate, client):
-        mock_validate.return_value = _mock_validate(roles=["API.Owner"])
+        mock_validate.return_value = _mock_validate(roles=["Portal.Maintainer"])
         response = await client.get("/any-role", headers={"Authorization": "Bearer tok"})
         assert response.status_code == 200
 
@@ -119,7 +119,7 @@ class TestRequireAnyRole:
     @pytest.mark.asyncio
     @patch("apic_vibe_portal_bff.middleware.auth.validate_token")
     async def test_user_with_multiple_matching_roles(self, mock_validate, client):
-        mock_validate.return_value = _mock_validate(roles=["Portal.Admin", "API.Owner"])
+        mock_validate.return_value = _mock_validate(roles=["Portal.Admin", "Portal.Maintainer"])
         response = await client.get("/any-role", headers={"Authorization": "Bearer tok"})
         assert response.status_code == 200
 

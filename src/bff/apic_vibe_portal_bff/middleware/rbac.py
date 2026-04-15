@@ -10,7 +10,7 @@ Usage::
     @router.get("/admin", dependencies=[Depends(require_role("Portal.Admin"))])
     async def admin_endpoint(): ...
 
-    @router.get("/api", dependencies=[Depends(require_any_role(["Portal.User", "API.Owner"]))])
+    @router.get("/api", dependencies=[Depends(require_any_role(["Portal.User", "Portal.Maintainer"]))])
     async def api_endpoint(): ...
 """
 
