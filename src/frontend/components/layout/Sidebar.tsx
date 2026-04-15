@@ -54,11 +54,7 @@ export default function Sidebar() {
       <List component="nav" aria-label="main navigation">
         {mainNavItems.map((item) => (
           <ListItem key={item.label} disablePadding>
-            <ListItemButton
-              component={Link}
-              href={item.href}
-              selected={pathname === item.href}
-            >
+            <ListItemButton component={Link} href={item.href} selected={pathname === item.href}>
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} />
             </ListItemButton>
@@ -69,11 +65,7 @@ export default function Sidebar() {
       <List component="nav" aria-label="secondary navigation">
         {secondaryNavItems.map((item) => (
           <ListItem key={item.label} disablePadding>
-            <ListItemButton
-              component={Link}
-              href={item.href}
-              selected={pathname === item.href}
-            >
+            <ListItemButton component={Link} href={item.href} selected={pathname === item.href}>
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} />
             </ListItemButton>

@@ -244,12 +244,12 @@ describe('type-guards', () => {
 
     it('validates items with item guard when provided', () => {
       const isString = (v: unknown): v is string => typeof v === 'string';
-      expect(
-        isSearchResult({ items: ['a', 'b'], totalCount: 2, queryDuration: 5 }, isString)
-      ).toBe(true);
-      expect(
-        isSearchResult({ items: ['a', 42], totalCount: 2, queryDuration: 5 }, isString)
-      ).toBe(false);
+      expect(isSearchResult({ items: ['a', 'b'], totalCount: 2, queryDuration: 5 }, isString)).toBe(
+        true
+      );
+      expect(isSearchResult({ items: ['a', 42], totalCount: 2, queryDuration: 5 }, isString)).toBe(
+        false
+      );
     });
   });
 
@@ -294,12 +294,12 @@ describe('type-guards', () => {
 
     it('validates items with item guard when provided', () => {
       const isNumber = (v: unknown): v is number => typeof v === 'number';
-      expect(
-        isPaginatedResponse({ items: [1, 2], pagination: validPagination }, isNumber)
-      ).toBe(true);
-      expect(
-        isPaginatedResponse({ items: [1, 'x'], pagination: validPagination }, isNumber)
-      ).toBe(false);
+      expect(isPaginatedResponse({ items: [1, 2], pagination: validPagination }, isNumber)).toBe(
+        true
+      );
+      expect(isPaginatedResponse({ items: [1, 'x'], pagination: validPagination }, isNumber)).toBe(
+        false
+      );
     });
   });
 

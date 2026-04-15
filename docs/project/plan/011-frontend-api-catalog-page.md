@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Frontend: Next.js SPA
 - [Product Charter](../apic_product_charter.md) — Improve API discovery; primary goal
 - [Product Spec](../apic_portal_spec.md) — API catalog browsing UI
 
 ## Overview
+
 Build the API catalog listing page in the frontend — the primary landing experience for developers. This page displays all APIs from Azure API Center in a browsable, filterable, sortable grid/list view.
 
 ## Dependencies
+
 - **005** — Frontend project setup (Next.js, components)
 - **007** — Shared types package (API models)
 - **010** — BFF API catalog endpoints (data source)
@@ -20,10 +23,12 @@ Build the API catalog listing page in the frontend — the primary landing exper
 ## Implementation Details
 
 ### 1. Page Route
+
 - Route: `/catalog` (Next.js App Router page)
 - Also serve as the homepage redirect target (`/` → `/catalog`)
 
 ### 2. Page Structure
+
 ```
 app/catalog/
 ├── page.tsx            # Server component: initial data fetch
@@ -39,7 +44,9 @@ app/catalog/
 ```
 
 ### 3. API Card Component
+
 Each API card displays:
+
 - API name/title
 - Description (truncated)
 - API kind badge (REST, GraphQL, gRPC)
@@ -49,36 +56,43 @@ Each API card displays:
 - Click navigates to detail page (`/catalog/:apiId`)
 
 ### 4. Filtering
+
 - **Lifecycle Stage**: Multi-select checkboxes (Design, Development, Production, Deprecated, Retired)
 - **API Kind**: Multi-select checkboxes (REST, GraphQL, gRPC, SOAP)
 - Filters reflected in URL query parameters for shareability
 - Filter state managed via URL search params (Next.js `useSearchParams`)
 
 ### 5. Sorting
+
 - Sort by: Name (A-Z, Z-A), Last Updated, Created Date
 - Default: Last Updated (newest first)
 
 ### 6. Pagination
+
 - Page size selector (10, 20, 50)
 - Page number navigation with first/last/prev/next
 - Total count display ("Showing 1-20 of 147 APIs")
 
 ### 7. View Modes
+
 - Grid view (card grid, default)
 - List view (compact table rows)
 - Persist preference in localStorage
 
 ### 8. Data Fetching
+
 - Use server components for initial page load (SSR)
 - Use React hooks (`useSWR` or `@tanstack/react-query`) for client-side refetching when filters/sort/page change
 - Loading skeletons during data fetch
 - Empty state when no APIs match filters
 
 ### 9. Responsive Design
+
 - Grid: 3 columns (desktop) → 2 columns (tablet) → 1 column (mobile)
 - Filters: sidebar (desktop) → collapsible drawer (mobile)
 
 ## Testing & Acceptance Criteria
+
 - [ ] Catalog page renders with API cards from BFF
 - [ ] Lifecycle filter correctly filters displayed APIs
 - [ ] API kind filter correctly filters displayed APIs
@@ -94,26 +108,30 @@ Each API card displays:
 - [ ] Playwright e2e tests added in `src/frontend/e2e/catalog.spec.ts` covering catalog browsing, filtering, sorting, and navigation to detail pages
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 

@@ -5,6 +5,7 @@ This directory contains scripts for managing secrets and security operations for
 ## Scripts
 
 ### `rotate-service-principal.sh`
+
 Rotates the client secret for an Azure AD service principal and stores the new secret in Azure Key Vault.
 
 ```bash
@@ -16,11 +17,13 @@ Rotates the client secret for an Azure AD service principal and stores the new s
 ```
 
 **Prerequisites:**
+
 - Azure CLI authenticated (`az login`)
 - `Application.ReadWrite.All` permission on the service principal
 - Key Vault `Secrets Officer` role on the target vault
 
 ### `rotate-api-keys.sh`
+
 Rotates API keys for Azure services (OpenAI, AI Search, Cosmos DB) and stores them in Key Vault.
 
 ```bash
@@ -41,13 +44,13 @@ Rotates API keys for Azure services (OpenAI, AI Search, Cosmos DB) and stores th
 
 ## Rotation Policy
 
-| Secret Type | Rotation Frequency | Automated |
-|-------------|-------------------|-----------|
-| Service principal client secrets | 90 days | Script-assisted |
-| Azure OpenAI API keys | 90 days | Script-assisted |
-| AI Search admin keys | 90 days | Script-assisted |
-| Cosmos DB keys | 90 days | Script-assisted |
-| TLS certificates | 1 year | Azure-managed |
+| Secret Type                      | Rotation Frequency | Automated       |
+| -------------------------------- | ------------------ | --------------- |
+| Service principal client secrets | 90 days            | Script-assisted |
+| Azure OpenAI API keys            | 90 days            | Script-assisted |
+| AI Search admin keys             | 90 days            | Script-assisted |
+| Cosmos DB keys                   | 90 days            | Script-assisted |
+| TLS certificates                 | 1 year             | Azure-managed   |
 
 ## Best Practices
 
