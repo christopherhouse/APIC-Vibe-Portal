@@ -43,6 +43,7 @@ jobs:
       - name: Validate deployment
         run: |
           az deployment group validate \
+            --name validate-infra-${{ github.run_number }} \
             --resource-group rg-apic-vibe-portal-dev \
             --template-file infra/main.bicep \
             --parameters infra/parameters/dev.bicepparam
@@ -70,6 +71,7 @@ jobs:
         id: deploy
         run: |
           az deployment group create \
+            --name deploy-infra-dev-${{ github.run_number }} \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters infra/parameters/dev.bicepparam \
@@ -98,6 +100,7 @@ jobs:
         id: deploy
         run: |
           az deployment group create \
+            --name deploy-infra-staging-${{ github.run_number }} \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters infra/parameters/staging.bicepparam \
@@ -126,6 +129,7 @@ jobs:
         id: deploy
         run: |
           az deployment group create \
+            --name deploy-infra-prod-${{ github.run_number }} \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters infra/parameters/prod.bicepparam \
