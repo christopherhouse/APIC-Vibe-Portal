@@ -126,7 +126,7 @@ jobs:
         run: npm sbom --sbom-format cyclonedx > /tmp/npm-sbom.json
 
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-npm
           path: /tmp/npm-sbom.json
