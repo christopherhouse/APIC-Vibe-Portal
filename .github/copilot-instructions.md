@@ -20,7 +20,8 @@ This is an **AI-powered API portal** built on Azure services, designed to help d
 - **Version**: Next.js 16 with App Router
 - **Language**: TypeScript 6.0 in strict mode
 - **UI Framework**: React 19 with functional components and hooks
-- **Styling**: TBD (Task 005)
+- **Component Library**: Material UI (MUI) — pre-built React components, theming, and design system
+- **Styling**: Material UI (MUI) theme + Emotion (MUI's default styling engine)
 - **Testing**: Jest + React Testing Library, Playwright for E2E
 - **Linting**: ESLint 9.x (flat config) + Prettier
 - **Node Version**: >= 24 (see `.nvmrc`)

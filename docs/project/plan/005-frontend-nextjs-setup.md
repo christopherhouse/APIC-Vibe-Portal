@@ -10,7 +10,7 @@
 - [Product Spec](../apic_portal_spec.md) — UI feature requirements
 
 ## Overview
-Scaffold the Next.js frontend application with App Router, TypeScript, Tailwind CSS, and a component library foundation. This establishes the UI project that all subsequent frontend tasks build upon.
+Scaffold the Next.js frontend application with App Router, TypeScript, Material UI (MUI), and a component library foundation. This establishes the UI project that all subsequent frontend tasks build upon.
 
 ## Dependencies
 - **001** — Repository scaffolding (monorepo workspace structure)
@@ -21,16 +21,17 @@ Scaffold the Next.js frontend application with App Router, TypeScript, Tailwind 
 - Use `create-next-app` within `src/frontend/` with the following options:
   - TypeScript: Yes
   - App Router: Yes
-  - Tailwind CSS: Yes
+  - Tailwind CSS: No
   - ESLint: Yes (extend root config)
   - Import alias: `@/`
+- Install Material UI (MUI) packages: `@mui/material`, `@mui/icons-material`, `@emotion/react`, `@emotion/styled`
 - Ensure the project integrates with the root npm workspace.
 
 ### 2. Core Configuration
 - **TypeScript**: Extend `tsconfig.base.json` from root; enable strict mode
 - **ESLint**: Extend root ESLint config; add Next.js specific rules (`next/core-web-vitals`)
 - **Prettier**: Use root Prettier config
-- **Tailwind**: Configure with design tokens (colors, spacing, typography) aligned to portal branding
+- **Material UI Theme**: Configure a custom MUI theme with design tokens (colors, spacing, typography) aligned to portal branding. Set up `ThemeProvider` and `CssBaseline` in the root layout.
 - **Next.js Config**: Enable standalone output for Docker builds, configure image optimization
 
 ### 3. Application Shell
@@ -43,13 +44,14 @@ src/frontend/
 │   ├── loading.tsx         # Global loading state
 │   ├── error.tsx           # Global error boundary
 │   ├── not-found.tsx       # 404 page
-│   └── globals.css         # Tailwind imports + base styles
+│   └── globals.css         # Global resets + base styles (MUI CssBaseline handles most resets)
 ├── components/
 │   ├── ui/                 # Reusable primitives (Button, Input, Card, etc.)
 │   ├── layout/             # Header, Footer, Sidebar, Navigation
 │   └── shared/             # Cross-cutting components
 ├── lib/
 │   ├── api-client.ts       # BFF API client (fetch wrapper)
+│   ├── theme.ts            # MUI custom theme (colors, typography, spacing, component overrides)
 │   └── utils.ts            # Utility functions
 ├── hooks/                  # Custom React hooks
 ├── types/                  # TypeScript type definitions
@@ -57,17 +59,20 @@ src/frontend/
 ```
 
 ### 4. Component Library Foundation
-Create base UI components using Tailwind CSS:
-- `Button` — Primary, secondary, ghost variants; loading state
-- `Input` — Text input with label, error state, helper text
-- `Card` — Content card with header, body, footer slots
-- `Badge` — Status indicators (e.g., API lifecycle state)
-- `Skeleton` — Loading placeholder component
+Leverage Material UI's pre-built components and create thin wrapper components where needed for portal-specific patterns:
+- `Button` — Use MUI `Button` with portal theme variants (contained, outlined, text); add loading state via MUI `LoadingButton` from `@mui/lab`
+- `TextField` — Use MUI `TextField` with label, error state, helper text
+- `Card` — Use MUI `Card`, `CardHeader`, `CardContent`, `CardActions` for content cards
+- `Badge`/`Chip` — Use MUI `Chip` for status indicators (e.g., API lifecycle state) with color-coded variants
+- `Skeleton` — Use MUI `Skeleton` for loading placeholders
+
+Install `@mui/lab` for advanced components (LoadingButton, etc.).
 
 ### 5. Layout Components
-- **Header**: App logo, search bar placeholder, user avatar placeholder
-- **Sidebar/Navigation**: Collapsible navigation with route links
-- **Footer**: Basic footer with links
+Use MUI layout and navigation components:
+- **Header**: MUI `AppBar` + `Toolbar` with app logo, search bar placeholder, user avatar placeholder
+- **Sidebar/Navigation**: MUI `Drawer` (collapsible) with `List`, `ListItem`, `ListItemIcon` for route links
+- **Footer**: Basic footer with MUI `Container` and `Typography`
 
 ### 6. API Client Setup
 Create a typed fetch wrapper in `lib/api-client.ts`:
@@ -105,7 +110,9 @@ Create a typed fetch wrapper in `lib/api-client.ts`:
 | — | 🔲 Not Started | — | Task created |
 
 ### Technical Decisions
-_No technical decisions recorded yet._
+| Date | Decision | Rationale |
+|------|----------|-----------|
+| 2026-04-15 | **Adopted Material UI (MUI) as the UI component library and styling solution**, replacing the original plan of Tailwind CSS + custom components | MUI provides a comprehensive set of pre-built, accessible React components with a robust theming system, reducing the need to build and maintain custom primitives. It includes layout components (AppBar, Drawer, Container), data display (Table, DataGrid, Chip), form controls (TextField, Select, Autocomplete), and feedback (Skeleton, Alert, Snackbar) that directly map to portal requirements. Emotion is used as the default styling engine. This pivot is expected to accelerate frontend development across all phases. |
 
 ### Deviations from Plan
 _No deviations from the original plan._
@@ -123,7 +130,7 @@ Read the full task specification at `docs/project/plan/005-frontend-nextjs-setup
 
 Reference the architecture at `docs/project/apic_architecture.md` (Frontend: Next.js SPA) and the repo structure from `docs/project/plan/001-sprint-zero-repo-scaffolding.md`.
 
-Scaffold a Next.js 16 application in `src/frontend/` using `create-next-app` with App Router, TypeScript 6.0, and Tailwind CSS. Create the application shell (root layout, header, sidebar, footer), base UI components (Button, Input, Card, Badge, Skeleton) with tests, a typed BFF API client, and configure testing with Jest + React Testing Library.
+Scaffold a Next.js 16 application in `src/frontend/` using `create-next-app` with App Router and TypeScript 6.0 (do NOT use Tailwind CSS). Install Material UI (MUI) packages: `@mui/material`, `@mui/icons-material`, `@mui/lab`, `@emotion/react`, `@emotion/styled`. Configure a custom MUI theme with `ThemeProvider` and `CssBaseline` in the root layout. Create the application shell (root layout with `AppBar`, `Drawer` sidebar, footer), wrap/extend MUI components for portal-specific patterns (Button, TextField, Card, Chip, Skeleton) with tests, a typed BFF API client, and configure testing with Jest + React Testing Library.
 
 Ensure the project integrates with the root npm workspace. Verify the dev server starts, the build succeeds, linting passes, and all tests pass.
 

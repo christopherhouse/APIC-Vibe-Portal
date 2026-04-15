@@ -156,6 +156,7 @@ npm run build
 - Next.js 16 (App Router)
 - React 19
 - TypeScript 6.0 (strict mode)
+- Material UI (MUI) — component library, theming, and styling
 - ESLint + Prettier
 - Jest + React Testing Library + Playwright
 
