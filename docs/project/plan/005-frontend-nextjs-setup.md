@@ -1,6 +1,6 @@
 # 005 - Phase 1 MVP: Next.js Frontend Project Setup
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -108,17 +108,36 @@ Create a typed fetch wrapper in `lib/api-client.ts`:
 | Date | Status | Author | Notes |
 |------|--------|--------|-------|
 | — | 🔲 Not Started | — | Task created |
+| 2026-04-15 | ✅ Complete | Copilot | Scaffolded Next.js 16.2.3 with MUI v9, app shell, 5 portal UI components (26 tests passing), typed BFF API client, Jest+RTL testing, ESLint 9 flat config. Build, lint, and tests all pass. |
 
 ### Technical Decisions
 | Date | Decision | Rationale |
 |------|----------|-----------|
 | 2026-04-15 | **Adopted Material UI (MUI) as the UI component library and styling solution**, replacing the original plan of Tailwind CSS + custom components | MUI provides a comprehensive set of pre-built, accessible React components with a robust theming system, reducing the need to build and maintain custom primitives. It includes layout components (AppBar, Drawer, Container), data display (Table, DataGrid, Chip), form controls (TextField, Select, Autocomplete), and feedback (Skeleton, Alert, Snackbar) that directly map to portal requirements. Emotion is used as the default styling engine. This pivot is expected to accelerate frontend development across all phases. |
+| 2026-04-15 | **Used MUI Button native `loading` prop** instead of `@mui/lab` LoadingButton | MUI v9 promotes the loading prop directly on Button; LoadingButton from lab is deprecated. |
+| 2026-04-15 | **Used ESLint directly** instead of `next lint` | Next.js 16 removed the built-in `next lint` CLI command. Lint script uses `eslint .` with an ESLint 9 flat config including `@next/eslint-plugin-next` rules. |
+| 2026-04-15 | **Used `@mui/material-nextjs` AppRouterCacheProvider** | Required for proper Emotion SSR/streaming in Next.js App Router to prevent FOUC. |
+| 2026-04-15 | **Manual scaffold** instead of `create-next-app` | `create-next-app` was unresponsive in the sandboxed environment; project was manually scaffolded with identical structure and configuration. |
+| 2026-04-15 | **Added Playwright e2e testing from the start** (not deferred to task 021) | Per review feedback, e2e tests should be added alongside each feature, not deferred to a single integration testing task. Playwright is configured in `src/frontend/playwright.config.ts` with Chromium, Firefox, and WebKit projects. CI runs e2e tests on every PR. All future frontend tasks must include corresponding e2e tests. |
 
 ### Deviations from Plan
-_No deviations from the original plan._
+- **Manual scaffold instead of `create-next-app`**: The `create-next-app` CLI was unresponsive in the sandboxed environment, so the project was manually scaffolded with the same structure and configuration that `create-next-app` would produce.
+- **`@mui/lab` LoadingButton replaced with native MUI Button loading prop**: MUI v9 deprecated `@mui/lab/LoadingButton`; the native `loading` prop on `@mui/material/Button` is used instead.
+- **`next lint` replaced with `eslint .`**: Next.js 16 removed the `next lint` CLI command; ESLint is run directly with a flat config.
 
 ### Validation Results
-_No validation results yet._
+| Check | Result |
+|-------|--------|
+| `npm run dev` starts dev server | ✅ Ready in 303ms on http://localhost:3000 |
+| `npm run build` production build | ✅ Compiled successfully (Next.js 16.2.3 Turbopack) |
+| `npm run lint` passes | ✅ Zero errors, zero warnings |
+| TypeScript compiles (`--noEmit`) | ✅ No type errors |
+| All UI component tests pass | ✅ 5 suites, 26 tests, 0 failures |
+| App renders shell layout | ✅ AppBar header, Drawer sidebar, footer, content area |
+| API client module exports typed functions | ✅ GET, POST, PUT, PATCH, DELETE with typed responses |
+| localhost:3000 serves landing page | ✅ HTML response with "APIC Vibe Portal" content |
+| Playwright e2e tests pass | ✅ 3 suites, 11 tests, 0 failures (app-shell, navigation, not-found) |
+| E2E CI job configured | ✅ `e2e-frontend` job in `.github/workflows/ci.yml` |
 
 
 ## Coding Agent Prompt

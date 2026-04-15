@@ -109,6 +109,7 @@ Charts:
 - [ ] Charts handle empty/sparse data gracefully
 - [ ] All components have unit tests
 - [ ] Dashboard loads within 3 seconds
+- [ ] Playwright e2e tests added in `src/frontend/e2e/analytics.spec.ts` covering dashboard rendering, time range selection, chart interactions, and access control
 
 ## Implementation Notes
 <!-- 
@@ -143,7 +144,7 @@ Reference `docs/project/plan/028-analytics-data-collection.md` for the analytics
 
 Build the analytics dashboard with: overview page (KPI cards, usage trends, top APIs), search analytics deep-dive (query volume, zero-result queries, click-through rates), API popularity analytics, user engagement analytics, time range selection, and CSV export. Use a charting library consistent with the governance dashboard (task 023). Gate access to admin/API-owner roles.
 
-Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+Write unit tests for all components. Add Playwright e2e tests in `src/frontend/e2e/analytics.spec.ts` covering dashboard rendering, time range selection, chart interactions, and access control. Verify the build succeeds, linting passes, and all tests pass (including `npm run test:e2e`).
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/029-analytics-dashboard.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

@@ -86,6 +86,7 @@ app/catalog/[apiId]/
 - [ ] Loading skeletons display while data fetches
 - [ ] All components have unit tests
 - [ ] Navigating from catalog card lands on correct detail page
+- [ ] Playwright e2e tests added in `src/frontend/e2e/api-detail.spec.ts` covering detail page rendering, tab navigation, version switching, and breadcrumb navigation
 
 ## Implementation Notes
 <!-- 
@@ -120,7 +121,7 @@ Reference `docs/project/plan/010-bff-api-catalog-endpoints.md` for the BFF API e
 
 Create the `/catalog/[apiId]` dynamic route page with: API header, tabbed sections (Overview, Versions, Specification, Deployments), an OpenAPI specification viewer component, version selector, spec download, and deployment table. Use SSR for initial data and client-side fetching for dynamic content.
 
-Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+Write unit tests for all components. Add Playwright e2e tests in `src/frontend/e2e/api-detail.spec.ts` covering detail page rendering, tab navigation, version switching, and breadcrumb navigation. Verify the build succeeds, linting passes, and all tests pass (including `npm run test:e2e`).
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/012-frontend-api-detail-page.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

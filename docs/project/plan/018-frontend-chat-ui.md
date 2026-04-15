@@ -104,6 +104,7 @@ app/chat/
 - [ ] Copy button copies message text to clipboard
 - [ ] All components have unit tests
 - [ ] Responsive layout works on mobile, tablet, and desktop
+- [ ] Playwright e2e tests added in `src/frontend/e2e/chat.spec.ts` covering chat page rendering, message sending, suggested prompts, and embedded panel interaction
 
 ## Implementation Notes
 <!-- 
@@ -138,7 +139,7 @@ Reference `docs/project/plan/017-openai-integration.md` for the BFF chat API con
 
 Build the full-page chat view at `/chat` and an embedded collapsible chat side panel accessible from all pages. Implement message rendering with markdown support, SSE streaming integration, citation chips that link to API detail pages, suggested starter prompts, session management via React context, and responsive layout.
 
-Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+Write unit tests for all components. Add Playwright e2e tests in `src/frontend/e2e/chat.spec.ts` covering chat page rendering, message sending, suggested prompts, and embedded panel interaction. Verify the build succeeds, linting passes, and all tests pass (including `npm run test:e2e`).
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/018-frontend-chat-ui.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

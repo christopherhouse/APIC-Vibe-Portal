@@ -38,6 +38,7 @@ Refer to these documents for architectural context:
 - Keep the BFF thin; push business logic to agents or backend services where appropriate
 - Design for observability (structured logging, tracing, metrics)
 - Align recommendations with the phased timeline in the product charter
+- **E2E Testing**: All frontend features must include Playwright e2e tests in `src/frontend/e2e/`. Tests run in CI on every PR.
 
 ## Living Documentation Requirements
 When working on implementation tasks from the plan (tasks 001-032), you MUST update documentation to track progress:

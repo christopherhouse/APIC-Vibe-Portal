@@ -101,6 +101,7 @@ Each result card shows:
 - [ ] URL reflects search query and filter state
 - [ ] Keyboard navigation works in autocomplete dropdown
 - [ ] All components have unit tests
+- [ ] Playwright e2e tests added in `src/frontend/e2e/search.spec.ts` covering search input, autocomplete, results page navigation, filtering, and no-results state
 
 ## Implementation Notes
 <!-- 
@@ -135,7 +136,7 @@ Reference `docs/project/plan/014-search-api-implementation.md` for the BFF searc
 
 Build the global search bar with autocomplete in the header, the `/search` results page with faceted filtering, search result cards with highlights and semantic captions, search mode toggle, no-results state, and URL-based search state. Use React Query or SWR for data fetching with debouncing and request cancellation.
 
-Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+Write unit tests for all components. Add Playwright e2e tests in `src/frontend/e2e/search.spec.ts` covering search input, autocomplete, results page, filtering, and no-results state. Verify the build succeeds, linting passes, and all tests pass (including `npm run test:e2e`).
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/015-frontend-search-ui.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

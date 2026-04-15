@@ -117,6 +117,7 @@ Top-level KPI cards:
 - [ ] Dashboard is responsive across screen sizes
 - [ ] All components have unit tests
 - [ ] BFF governance endpoints return correct aggregated data
+- [ ] Playwright e2e tests added in `src/frontend/e2e/governance.spec.ts` covering dashboard rendering, chart interactions, table sorting/filtering, and drill-down navigation
 
 ## Implementation Notes
 <!-- 
@@ -151,7 +152,7 @@ Reference `docs/project/plan/023-governance-agent.md` for the governance scoring
 
 Create BFF endpoints for governance summary, scores, and compliance data. Build the `/governance` dashboard page with KPI cards, score distribution chart, rule compliance chart, trend chart, sortable API scores table, and single-API compliance drill-down with remediation guidance. Use a charting library (recharts or similar).
 
-Write unit tests for all components and BFF endpoints. Verify the build succeeds, linting passes, and all tests pass.
+Write unit tests for all components and BFF endpoints. Add Playwright e2e tests in `src/frontend/e2e/governance.spec.ts` covering dashboard rendering, chart interactions, table sorting/filtering, and drill-down navigation. Verify the build succeeds, linting passes, and all tests pass (including `npm run test:e2e`).
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/025-governance-dashboard-ui.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
