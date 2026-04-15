@@ -3,7 +3,7 @@
 # ============================================================================
 
 # Build stage
-FROM node:24-alpine AS builder
+FROM node:25-alpine AS builder
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ COPY .prettierrc.json ./
 RUN npm run build --workspace=@apic-vibe-portal/frontend
 
 # Production stage
-FROM node:24-alpine AS production
+FROM node:25-alpine AS production
 
 WORKDIR /app
 
