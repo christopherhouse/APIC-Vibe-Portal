@@ -1,28 +1,33 @@
 # 006 - Phase 1 MVP: BFF API Project Setup
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Backend (BFF); BFF required for orchestration
 - [Product Charter](../apic_product_charter.md) — AI-assisted workflows require server-side orchestration
 - [Product Spec](../apic_portal_spec.md) — Backend feature requirements
 
 ## Overview
+
 Scaffold the Backend-for-Frontend (BFF) API service using Python 3.14 and FastAPI, with UV managing the Python version and all dependencies. The BFF acts as the orchestration layer between the Next.js frontend and Azure services (API Center, AI Search, OpenAI, Foundry Agents).
 
 ## Dependencies
+
 - **001** — Repository scaffolding (monorepo workspace structure)
 
 ## Implementation Details
 
 ### 1. Project Initialization
+
 - Initialize a Python 3.14 project in `src/bff/` using UV (`uv init`)
 - Use FastAPI as the HTTP framework
 - Use UV to manage the Python version (3.14) and all dependencies — no pip
 
 ### 2. Project Structure
+
 ```
 src/bff/
 ├── src/
@@ -58,6 +63,7 @@ src/bff/
 ```
 
 ### 3. FastAPI App Configuration (`app.py`)
+
 - JSON request parsing with size limits
 - CORS configured for frontend origin (via FastAPI `CORSMiddleware`)
 - Request logging middleware (structured JSON)
@@ -65,6 +71,7 @@ src/bff/
 - Health check endpoints (`/health`, `/health/ready`)
 
 ### 4. Configuration Management (`config/settings.py`)
+
 - Environment-based configuration using Pydantic Settings (`pydantic-settings`)
 - Typed settings model with required fields:
   - `PORT` (default 8000)
@@ -77,21 +84,25 @@ src/bff/
 - Validation on startup (fail fast if required vars missing)
 
 ### 5. Middleware
+
 - **Error Handler**: Catches unhandled errors, returns consistent JSON error responses, logs details
 - **Request Logger**: Logs method, path, status, duration in structured JSON
 - **CORS**: Configurable origins from settings
 - **Auth Placeholder**: Passes through for now; will integrate Entra ID in task 016
 
 ### 6. Health Check Endpoints
+
 - `GET /health` — Simple liveness check (returns 200)
 - `GET /health/ready` — Readiness check that will validate Azure service connectivity (stubs for now)
 
 ### 7. Logging
+
 - Use `structlog` for structured logging
 - JSON format for production, pretty-print for development
 - Correlation ID support via request header
 
 ### 8. Testing Setup
+
 - Configure pytest with `httpx` / `HTTPX AsyncClient` for async endpoint testing
 - Write tests for:
   - Health check endpoints
@@ -100,12 +111,14 @@ src/bff/
   - Configuration validation
 
 ### 9. Development Experience
+
 - Uvicorn with `--reload` for auto-restart during development
 - UV scripts in `pyproject.toml`: `dev`, `test`, `lint`, `format`
 - `src/bff/.env.example` file (gitignored actual `.env`)
 - All dependencies managed via `uv add` (no pip)
 
 ## Testing & Acceptance Criteria
+
 - [ ] `uv run uvicorn bff.main:app --reload` starts the BFF on port 8000 without errors
 - [ ] Python 3.14 is enforced via `.python-version` and UV
 - [ ] `uv run pytest` passes all tests
@@ -118,26 +131,43 @@ src/bff/
 - [ ] CORS properly allows frontend origin and rejects others
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date       | Status         | Author  | Notes                                                                                                      |
+| ---------- | -------------- | ------- | ---------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                                                                               |
+| 2026-04-15 | ✅ Complete    | copilot | Scaffolded FastAPI BFF with middleware, health endpoints, config, structured logging, and 69 passing tests |
 
 ### Technical Decisions
-_No technical decisions recorded yet._
+
+- **No CORS middleware**: Per project owner direction and `copilot-instructions.md`, CORS is handled at the Azure Container Apps ingress layer. The plan's `middleware/cors.py` was intentionally skipped.
+- **Package name**: Kept existing `apic_vibe_portal_bff` flat-layout package (established in task 001/004) rather than the `src/bff/src/bff/` nested layout shown in the plan spec.
+- **Settings defaults**: All Azure service settings default to empty strings (not required) to allow local development without Azure credentials. Production validation can be added later.
+- **structlog configuration**: JSON renderer in production, pretty-print console renderer in development, with stdlib logging integration for compatibility with third-party libraries.
+- **Correlation ID**: Extracted from `X-Request-ID` header or auto-generated UUID; echoed back in response headers.
 
 ### Deviations from Plan
-_No deviations from the original plan._
+
+- **CORS middleware omitted**: The plan specified `middleware/cors.py` with `CORSMiddleware`, but per project owner direction Azure Container Apps handles CORS. No CORS middleware was added.
+- **Package layout**: The plan specified `src/bff/src/bff/` nested layout, but the existing codebase uses `src/bff/apic_vibe_portal_bff/` flat layout. Kept the existing structure for consistency.
+- **UV scripts section removed**: `[project.scripts]` requires Python entry points (not shell commands). Dev server is run directly via `uv run uvicorn apic_vibe_portal_bff.main:app --reload`.
 
 ### Validation Results
-_No validation results yet._
 
+- **Ruff lint**: `uv run ruff check .` — All checks passed (0 errors)
+- **Pytest**: `uv run pytest -v` — 69 tests passed in 0.37s (Python 3.14.4)
+  - 16 bot detection tests, 23 input validation tests, 10 rate limit tests, 4 config tests, 4 health tests, 11 middleware stack tests, 1 placeholder test
+- **Dev server**: `uv run uvicorn apic_vibe_portal_bff.main:app --port 8000` starts successfully
+  - `GET /health` → 200 `{"status": "healthy"}`
+  - `GET /health/ready` → 200 `{"status": "ready"}`
+- **Structured logging**: Request logger outputs structured log entries with correlation ID, method, path, status code, and duration
 
 ## Coding Agent Prompt
 

@@ -5,49 +5,54 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Full stack: Frontend ↔ BFF ↔ Azure services
 - [Product Charter](../apic_product_charter.md) — Phase 1: MVP delivery
 - [Product Spec](../apic_portal_spec.md) — MVP feature completeness
 
 ## Overview
+
 Validate the complete MVP by implementing end-to-end integration tests, performing cross-cutting quality improvements, and ensuring all Phase 1 features work together seamlessly. This task closes out the MVP phase.
 
 ## Dependencies
+
 - **All tasks 001-018** — Complete MVP feature set
 
 ## Implementation Details
 
 ### 1. E2E Test Suite
+
+Playwright is already installed and configured in `src/frontend/` (set up in task 005). The existing e2e tests in `src/frontend/e2e/` cover the application shell, navigation, and 404 pages. This task extends the suite with comprehensive user-flow tests.
+
 ```
-e2e/
-├── playwright.config.ts        # Playwright configuration
-├── tests/
-│   ├── auth.spec.ts            # Login/logout flows
-│   ├── catalog.spec.ts         # API catalog browsing
-│   ├── api-detail.spec.ts      # API detail viewing
-│   ├── search.spec.ts          # Search and filtering
-│   ├── chat.spec.ts            # AI chat interaction
-│   └── navigation.spec.ts      # Full user journey
-├── fixtures/
-│   ├── auth.fixture.ts         # Authenticated test context
-│   └── mock-data.ts            # Test data helpers
-└── package.json
+src/frontend/e2e/
+├── app-shell.spec.ts           # ✅ Already exists (task 005)
+├── navigation.spec.ts          # ✅ Already exists (task 005)
+├── not-found.spec.ts           # ✅ Already exists (task 005)
+├── auth.spec.ts                # Login/logout flows
+├── catalog.spec.ts             # API catalog browsing (may exist from task 011)
+├── api-detail.spec.ts          # API detail viewing (may exist from task 012)
+├── search.spec.ts              # Search and filtering (may exist from task 015)
+├── chat.spec.ts                # AI chat interaction (may exist from task 018)
+└── full-journey.spec.ts        # Full user journey
 ```
 
-- Use Playwright for browser automation
-- Configure for Chromium, Firefox, and WebKit
+- Use Playwright for browser automation (already installed and configured in `src/frontend/playwright.config.ts`)
+- Configure for Chromium, Firefox, and WebKit (projects already defined in config)
+- CI runs e2e tests via the `e2e-frontend` job in `.github/workflows/ci.yml` — extend this as needed
 - Run against local dev environment with mocked Azure services
-- Run against deployed dev environment for integration validation
 
 ### 2. E2E Test Scenarios
 
 #### Authentication Flow
+
 - User navigates to portal → redirected to login
 - User logs in → redirected back to catalog
 - User sees their name in header
 - User logs out → redirected to login page
 
 #### API Catalog Journey
+
 - Authenticated user sees catalog page with API cards
 - User filters by lifecycle "Production" → only production APIs shown
 - User sorts by name A-Z → APIs sorted alphabetically
@@ -56,21 +61,25 @@ e2e/
 - User downloads API specification
 
 #### Search Journey
+
 - User types in global search bar → autocomplete appears
 - User submits search → results page shows matches with highlights
 - User applies filters → results narrow down
 - User clicks a result → navigates to API detail
 
 #### AI Chat Journey
+
 - User opens chat page → suggested prompts shown
 - User sends a message → AI responds with relevant API information
 - Response includes citations → clicking citation opens API detail
 - Conversation maintains context across multiple messages
 
 #### Full User Journey
+
 - Login → Browse catalog → Search for an API → View detail → Ask AI for help → Logout
 
 ### 3. MVP Polish Checklist
+
 - [ ] All pages have proper page titles and meta tags
 - [ ] Loading states are consistent across all pages
 - [ ] Error states are user-friendly with recovery options
@@ -83,6 +92,7 @@ e2e/
 - [ ] API response times are acceptable (< 2s for page loads)
 
 ### 4. Performance Baseline
+
 - Measure and document:
   - Lighthouse scores (Performance, Accessibility, Best Practices, SEO)
   - Core Web Vitals (LCP, FID, CLS)
@@ -91,11 +101,13 @@ e2e/
   - Chat response time (time to first token)
 
 ### 5. Documentation Update
+
 - Update README with MVP feature overview
 - Add architecture diagram with deployed component URLs
 - Document known limitations and Phase 2 roadmap items
 
 ## Testing & Acceptance Criteria
+
 - [ ] All E2E tests pass on Chromium, Firefox, and WebKit
 - [ ] Authentication flow works end-to-end
 - [ ] Catalog browsing, filtering, and sorting work end-to-end
@@ -108,26 +120,30 @@ e2e/
 - [ ] Documentation is up to date with MVP features
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 

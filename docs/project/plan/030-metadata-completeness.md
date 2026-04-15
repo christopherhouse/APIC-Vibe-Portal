@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — AI-powered insights; multi-agent capabilities
 - [Product Charter](../apic_product_charter.md) — Improved metadata completeness as success metric
 - [Product Spec](../apic_portal_spec.md) — Metadata quality feature requirements
 
 ## Overview
+
 Build an intelligent metadata completeness scoring system with AI-powered recommendations for improving API documentation quality. This feature helps API owners understand what's missing from their APIs and provides actionable guidance to improve discoverability.
 
 ## Dependencies
+
 - **009** — API Center data layer (API metadata)
 - **023** — Governance Agent (governance rules as foundation)
 - **017** — OpenAI integration (AI-powered recommendations)
@@ -22,6 +25,7 @@ Build an intelligent metadata completeness scoring system with AI-powered recomm
 ## Implementation Details
 
 ### 1. Completeness Scoring Service
+
 ```
 src/bff/src/bff/services/
 ├── metadata_completeness_service.py
@@ -29,23 +33,26 @@ src/bff/src/bff/services/
 ```
 
 #### Scoring Dimensions
+
 Score each API across multiple dimensions (0-100 each):
 
-| Dimension | Weight | What's Measured |
-|-----------|--------|-----------------|
-| **Basic Info** | 20% | Title, description length, contacts |
-| **Versioning** | 15% | Active version, version count, semver compliance |
-| **Specification** | 25% | Spec present, validates, endpoint count, schema coverage |
-| **Documentation** | 15% | External docs, examples, changelog |
-| **Classification** | 10% | Tags, custom properties, lifecycle stage |
-| **Security** | 15% | Auth schemes defined, security requirements documented |
+| Dimension          | Weight | What's Measured                                          |
+| ------------------ | ------ | -------------------------------------------------------- |
+| **Basic Info**     | 20%    | Title, description length, contacts                      |
+| **Versioning**     | 15%    | Active version, version count, semver compliance         |
+| **Specification**  | 25%    | Spec present, validates, endpoint count, schema coverage |
+| **Documentation**  | 15%    | External docs, examples, changelog                       |
+| **Classification** | 10%    | Tags, custom properties, lifecycle stage                 |
+| **Security**       | 15%    | Auth schemes defined, security requirements documented   |
 
 #### Scoring Rules
+
 - Each dimension has sub-rules with individual scores
 - Overall score = weighted average of dimension scores
 - Track score history for trend analysis
 
 ### 2. AI Recommendation Engine
+
 ```
 src/bff/src/bff/services/
 ├── metadata_recommendations_service.py
@@ -62,20 +69,22 @@ src/bff/src/bff/services/
 - Cache recommendations per API (refresh on API update)
 
 ### 3. BFF Endpoints
+
 ```
 src/bff/src/bff/routers/
 ├── metadata.py
 └── test_metadata.py
 ```
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/metadata/:apiId/score` | Get completeness score for an API |
-| `GET` | `/api/metadata/:apiId/recommendations` | Get AI recommendations |
-| `GET` | `/api/metadata/overview` | Organization-wide completeness overview |
-| `GET` | `/api/metadata/leaderboard` | Top and bottom APIs by completeness |
+| Method | Path                                   | Description                             |
+| ------ | -------------------------------------- | --------------------------------------- |
+| `GET`  | `/api/metadata/:apiId/score`           | Get completeness score for an API       |
+| `GET`  | `/api/metadata/:apiId/recommendations` | Get AI recommendations                  |
+| `GET`  | `/api/metadata/overview`               | Organization-wide completeness overview |
+| `GET`  | `/api/metadata/leaderboard`            | Top and bottom APIs by completeness     |
 
 ### 4. Frontend Components
+
 ```
 app/catalog/[apiId]/components/
 ├── CompletenessScore.tsx           # Score badge/ring on API detail
@@ -89,26 +98,32 @@ app/governance/components/
 ```
 
 ### 5. API Detail Integration
+
 Add a "Metadata Quality" tab to the API detail page (from task 012):
+
 - Completeness score ring/gauge (with letter grade: A, B, C, D, F)
 - Dimension breakdown with progress bars
 - AI-generated recommendations list
 - "Improve this API" call-to-action linking to API Center editing
 
 ### 6. Governance Dashboard Integration
+
 Add to the governance dashboard (from task 023):
+
 - Organization-wide average completeness score
 - Completeness distribution chart
 - Leaderboard: Top 5 most complete and Bottom 5 least complete APIs
 - Trend: Average completeness over time
 
 ### 7. Notification System (Placeholder)
+
 - Design (but don't implement) a notification system for:
   - API owners when their API's completeness drops below threshold
   - Weekly digest of metadata improvement suggestions
   - Document the API for future implementation
 
 ## Testing & Acceptance Criteria
+
 - [ ] Completeness scoring produces accurate scores across all dimensions
 - [ ] Weighted overall score calculates correctly
 - [ ] AI recommendations are relevant and actionable
@@ -121,26 +136,30 @@ Add to the governance dashboard (from task 023):
 - [ ] Recommendations handle APIs with varying levels of completeness
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 

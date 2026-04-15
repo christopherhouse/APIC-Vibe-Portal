@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Frontend: Next.js SPA; comprehensive API information display
 - [Product Charter](../apic_product_charter.md) — Enable developers to understand and use APIs faster
 - [Product Spec](../apic_portal_spec.md) — API detail and specification viewing
 
 ## Overview
+
 Build the API detail page that displays comprehensive information about a single API, including metadata, versions, deployments, and the rendered API specification (OpenAPI/Swagger).
 
 ## Dependencies
+
 - **005** — Frontend project setup (Next.js, components)
 - **007** — Shared types package
 - **010** — BFF API catalog endpoints (detail, versions, deployments, definition)
@@ -21,9 +24,11 @@ Build the API detail page that displays comprehensive information about a single
 ## Implementation Details
 
 ### 1. Page Route
+
 - Route: `/catalog/[apiId]` (dynamic route)
 
 ### 2. Page Structure
+
 ```
 app/catalog/[apiId]/
 ├── page.tsx            # Server component: fetch API details
@@ -40,6 +45,7 @@ app/catalog/[apiId]/
 ```
 
 ### 3. API Header
+
 - API title and description
 - Lifecycle badge (color-coded)
 - API kind badge (REST, GraphQL, etc.)
@@ -47,12 +53,14 @@ app/catalog/[apiId]/
 - Breadcrumb navigation: Catalog → API Name
 
 ### 4. Tab Sections
+
 1. **Overview** — Description, contacts, license, terms, external docs, custom properties
 2. **Versions** — List of API versions with lifecycle states; version selector
 3. **Specification** — Rendered OpenAPI/Swagger UI for the selected version
 4. **Deployments** — Where this API is deployed and environment details
 
 ### 5. API Specification Viewer
+
 - Use a library like `swagger-ui-react` or `@scalar/api-reference-react` to render OpenAPI specs
 - Support OpenAPI 2.0 (Swagger) and 3.x
 - Try/It feature for testing endpoints (optional in MVP)
@@ -60,21 +68,25 @@ app/catalog/[apiId]/
 - Version dropdown to switch between API versions
 
 ### 6. Deployments View
+
 - Table showing: environment name, server URL, lifecycle state
 - Link to environment details if applicable
 
 ### 7. Data Fetching
+
 - Server-side fetch for initial API detail
 - Client-side fetch for version switching and spec loading
 - Cache API detail data with SWR/React Query
 - Loading states for each section independently
 
 ### 8. Error Handling
+
 - API not found → custom 404 page with link back to catalog
 - Failed to load spec → error state with retry button
 - Partial data → render available sections, show errors inline
 
 ## Testing & Acceptance Criteria
+
 - [ ] Detail page renders complete API information
 - [ ] Breadcrumb navigation works (Catalog → API Name)
 - [ ] Tab navigation switches between Overview, Versions, Specification, Deployments
@@ -86,28 +98,33 @@ app/catalog/[apiId]/
 - [ ] Loading skeletons display while data fetches
 - [ ] All components have unit tests
 - [ ] Navigating from catalog card lands on correct detail page
+- [ ] Playwright e2e tests added in `src/frontend/e2e/api-detail.spec.ts` covering detail page rendering, tab navigation, version switching, and breadcrumb navigation
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 
@@ -120,7 +137,7 @@ Reference `docs/project/plan/010-bff-api-catalog-endpoints.md` for the BFF API e
 
 Create the `/catalog/[apiId]` dynamic route page with: API header, tabbed sections (Overview, Versions, Specification, Deployments), an OpenAPI specification viewer component, version selector, spec download, and deployment table. Use SSR for initial data and client-side fetching for dynamic content.
 
-Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+Write unit tests for all components. Add Playwright e2e tests in `src/frontend/e2e/api-detail.spec.ts` covering detail page rendering, tab navigation, version switching, and breadcrumb navigation. Verify the build succeeds, linting passes, and all tests pass (including `npm run test:e2e`).
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/012-frontend-api-detail-page.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

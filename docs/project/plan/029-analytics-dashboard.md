@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Frontend: Next.js SPA; data visualization
 - [Product Charter](../apic_product_charter.md) — Phase 3: Analytics; increased portal adoption as success metric
 - [Product Spec](../apic_portal_spec.md) — Analytics dashboard requirements
 
 ## Overview
+
 Build the analytics dashboard that provides portal administrators and API owners with insights into portal usage, API popularity, search effectiveness, and user engagement patterns.
 
 ## Dependencies
+
 - **005** — Frontend project setup
 - **028** — Analytics data collection (data source)
 - **008** — Entra ID authentication (admin role for dashboard access)
@@ -20,6 +23,7 @@ Build the analytics dashboard that provides portal administrators and API owners
 ## Implementation Details
 
 ### 1. Dashboard Page Structure
+
 ```
 app/analytics/
 ├── page.tsx                    # Analytics overview dashboard
@@ -44,7 +48,9 @@ app/analytics/
 ```
 
 ### 2. Analytics Overview (main dashboard)
+
 KPI Cards:
+
 - **Total Users**: Unique users in selected time range (with trend)
 - **Page Views**: Total page views (with trend)
 - **Search Queries**: Total searches performed (with trend)
@@ -52,12 +58,14 @@ KPI Cards:
 - **Average Session Duration**: Mean time on portal
 
 Charts:
+
 - **Usage Trend**: Line chart of daily active users over time
 - **Feature Adoption**: Stacked area chart showing catalog/search/chat/compare usage
 - **Top 10 APIs**: Horizontal bar chart of most viewed APIs
 - **Search Terms**: Top search queries list with frequency
 
 ### 3. Search Analytics (`/analytics/search`)
+
 - **Query Volume**: Searches per day/week trend line
 - **Top Queries**: Most frequent search terms with result counts
 - **Zero Result Queries**: Searches that returned no results (opportunities for improvement)
@@ -66,6 +74,7 @@ Charts:
 - **Average Results Clicked**: Mean number of results viewed per search
 
 ### 4. API Popularity Analytics (`/analytics/apis`)
+
 - **Most Viewed APIs**: Ranked list with view counts and trends
 - **Most Downloaded Specs**: APIs with most specification downloads
 - **Most Discussed (Chat)**: APIs most frequently referenced in chat
@@ -73,6 +82,7 @@ Charts:
 - **New API Awareness**: Time from API creation to first user view
 
 ### 5. User Engagement Analytics (`/analytics/users`)
+
 - **Active Users**: Daily/weekly/monthly active user counts
 - **Session Duration Distribution**: Histogram of session lengths
 - **Pages Per Session**: Average pages viewed per visit
@@ -81,22 +91,26 @@ Charts:
 - **User Journey Flows**: Common navigation paths (Sankey diagram optional)
 
 ### 6. Time Range Selection
+
 - Predefined ranges: Last 7 days, 30 days, 90 days, Year
 - Custom date range picker
 - All charts update based on selected range
 - Comparison to previous period (optional)
 
 ### 7. Data Export
+
 - Export chart data as CSV
 - Export dashboard summary as PDF (optional)
 - Scheduled email reports (future enhancement placeholder)
 
 ### 8. Access Control
+
 - Dashboard requires `Portal.Admin` or `API.Owner` role
 - API owners see analytics scoped to their APIs
 - Admins see organization-wide analytics
 
 ## Testing & Acceptance Criteria
+
 - [ ] Analytics overview page displays KPI cards with correct data
 - [ ] Usage trend chart renders accurately for selected time range
 - [ ] Top APIs chart shows most viewed APIs in correct order
@@ -109,28 +123,33 @@ Charts:
 - [ ] Charts handle empty/sparse data gracefully
 - [ ] All components have unit tests
 - [ ] Dashboard loads within 3 seconds
+- [ ] Playwright e2e tests added in `src/frontend/e2e/analytics.spec.ts` covering dashboard rendering, time range selection, chart interactions, and access control
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 
@@ -143,7 +162,7 @@ Reference `docs/project/plan/028-analytics-data-collection.md` for the analytics
 
 Build the analytics dashboard with: overview page (KPI cards, usage trends, top APIs), search analytics deep-dive (query volume, zero-result queries, click-through rates), API popularity analytics, user engagement analytics, time range selection, and CSV export. Use a charting library consistent with the governance dashboard (task 023). Gate access to admin/API-owner roles.
 
-Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+Write unit tests for all components. Add Playwright e2e tests in `src/frontend/e2e/analytics.spec.ts` covering dashboard rendering, time range selection, chart interactions, and access control. Verify the build succeeds, linting passes, and all tests pass (including `npm run test:e2e`).
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/029-analytics-dashboard.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`

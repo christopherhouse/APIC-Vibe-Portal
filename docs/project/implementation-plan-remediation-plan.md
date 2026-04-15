@@ -3,9 +3,11 @@
 Date: 2026-04-14
 
 ## Goal
+
 Apply the assessment findings by fixing sequencing, dependencies, and task coverage so execution can proceed in strict numeric order.
 
 ## Execution Constraints
+
 1. Task flow must be contiguous and ordered: `001 -> 002 -> 003 -> ...`.
 2. Any reordered task must be renumbered (file name, in-file title, dependencies, prompts, and README references).
 3. Keep existing task content unless required by dependency/security/persistence remediations.
@@ -15,48 +17,50 @@ Apply the assessment findings by fixing sequencing, dependencies, and task cover
 
 ## Target Sequenced Plan (New Numbering)
 
-| New # | Source | Task |
-|---|---|---|
-| 001 | existing 001 | Sprint Zero: Repository Scaffolding & GitHub Copilot Assets |
-| 002 | existing 002 | Sprint Zero: Azure Infrastructure as Code (Bicep) |
-| 003 | existing 003 | Sprint Zero: CI/CD Pipeline with GitHub Actions |
-| 004 | **new** | Security Baseline & Secure SDLC Controls |
-| 005 | existing 004 | Frontend Next.js Setup |
-| 006 | existing 005 | BFF API Setup |
-| 007 | existing 006 | Shared Types Package |
-| 008 | existing 016 | Entra ID Authentication Integration |
-| 009 | existing 007 | API Center Data Layer |
-| 010 | existing 008 | BFF Catalog Endpoints |
-| 011 | existing 009 | Frontend Catalog Page |
-| 012 | existing 010 | Frontend API Detail Page |
-| 013 | existing 011 | AI Search Index Setup |
-| 014 | existing 012 | Search API Implementation |
-| 015 | existing 013 | Frontend Search UI |
-| 016 | **new** | Persistence & Data Governance Baseline |
-| 017 | existing 014 | OpenAI Integration |
-| 018 | existing 015 | Frontend Chat UI |
-| 019 | existing 017 | Observability (App Insights) |
-| 020 | existing 018 | Security Trimming |
-| 021 | existing 019 | MVP E2E Testing & Polish |
-| 022 | existing 020 | Foundry Agent Setup |
-| 023 | existing 021 | Governance Agent |
-| 024 | existing 022 | API Comparison Feature |
-| 025 | existing 023 | Governance Dashboard UI |
-| 026 | existing 024 | Multi-Agent Orchestration |
-| 027 | existing 025 | Phase 2 Integration Testing |
-| 028 | existing 026 | Analytics Data Collection |
-| 029 | existing 027 | Analytics Dashboard |
-| 030 | existing 028 | Metadata Completeness |
-| 031 | existing 029 | Performance & Accessibility |
-| 032 | existing 030 | Final Integration & Launch |
+| New # | Source       | Task                                                        |
+| ----- | ------------ | ----------------------------------------------------------- |
+| 001   | existing 001 | Sprint Zero: Repository Scaffolding & GitHub Copilot Assets |
+| 002   | existing 002 | Sprint Zero: Azure Infrastructure as Code (Bicep)           |
+| 003   | existing 003 | Sprint Zero: CI/CD Pipeline with GitHub Actions             |
+| 004   | **new**      | Security Baseline & Secure SDLC Controls                    |
+| 005   | existing 004 | Frontend Next.js Setup                                      |
+| 006   | existing 005 | BFF API Setup                                               |
+| 007   | existing 006 | Shared Types Package                                        |
+| 008   | existing 016 | Entra ID Authentication Integration                         |
+| 009   | existing 007 | API Center Data Layer                                       |
+| 010   | existing 008 | BFF Catalog Endpoints                                       |
+| 011   | existing 009 | Frontend Catalog Page                                       |
+| 012   | existing 010 | Frontend API Detail Page                                    |
+| 013   | existing 011 | AI Search Index Setup                                       |
+| 014   | existing 012 | Search API Implementation                                   |
+| 015   | existing 013 | Frontend Search UI                                          |
+| 016   | **new**      | Persistence & Data Governance Baseline                      |
+| 017   | existing 014 | OpenAI Integration                                          |
+| 018   | existing 015 | Frontend Chat UI                                            |
+| 019   | existing 017 | Observability (App Insights)                                |
+| 020   | existing 018 | Security Trimming                                           |
+| 021   | existing 019 | MVP E2E Testing & Polish                                    |
+| 022   | existing 020 | Foundry Agent Setup                                         |
+| 023   | existing 021 | Governance Agent                                            |
+| 024   | existing 022 | API Comparison Feature                                      |
+| 025   | existing 023 | Governance Dashboard UI                                     |
+| 026   | existing 024 | Multi-Agent Orchestration                                   |
+| 027   | existing 025 | Phase 2 Integration Testing                                 |
+| 028   | existing 026 | Analytics Data Collection                                   |
+| 029   | existing 027 | Analytics Dashboard                                         |
+| 030   | existing 028 | Metadata Completeness                                       |
+| 031   | existing 029 | Performance & Accessibility                                 |
+| 032   | existing 030 | Final Integration & Launch                                  |
 
 ## Required File Rename Map
 
 ### New task files to add
+
 - `docs/project/plan/004-security-baseline-secure-sdlc-controls.md`
 - `docs/project/plan/016-persistence-data-governance-baseline.md`
 
 ### Existing files to rename
+
 - `004-frontend-nextjs-setup.md` -> `005-frontend-nextjs-setup.md`
 - `005-bff-api-setup.md` -> `006-bff-api-setup.md`
 - `006-shared-types-package.md` -> `007-shared-types-package.md`
@@ -97,20 +101,25 @@ Apply the assessment findings by fixing sequencing, dependencies, and task cover
 ## New Task Scope Requirements
 
 ### 004 — Security Baseline & Secure SDLC Controls
+
 Must define and enforce before feature implementation:
+
 - Threat model baseline for frontend, BFF, and agent/data paths.
 - CI security gates: SAST, dependency/container scanning, secret scanning, SBOM/provenance.
 - Secrets management and rotation policy.
 - Global API abuse protections (rate limiting and bot mitigation baseline).
 
 ### 016 — Persistence & Data Governance Baseline
+
 Must define before trend/history-dependent work:
+
 - Storage strategy by data class (chat, governance snapshots, analytics telemetry).
 - Retention/deletion policy and PII handling.
 - Partition/index/query strategy for trend workloads.
 - Schema ownership/versioning and migration approach.
 
 ## Cloud Agent Execution Checklist
+
 - [ ] Add the two new task docs using the existing task template structure.
 - [ ] Rename task files to the new numbering.
 - [ ] Update each task document title (`# NNN - ...`) and all intra-plan references.
@@ -120,6 +129,7 @@ Must define before trend/history-dependent work:
 - [ ] Validate no stale old-step references remain (search for old filenames/IDs).
 
 ## Validation Commands (post-change)
+
 Run from repo root:
 
 ```bash
@@ -129,6 +139,7 @@ rg "Implement plan step" docs/project/plan/*.md
 ```
 
 Success criteria:
+
 - No broken references to pre-remediation numbering.
 - README and task docs are internally consistent with 001–032 flow.
 - Dependency lists reflect remediation fixes.
