@@ -69,11 +69,16 @@ param privateEndpointSubnetId string = ''
 // VARIABLES
 // ============================================================================
 
+// Key Vault and Storage Account have strict 24-char limits
+// Format: prefix + env (first letter) + suffix (e.g., 'apicvibekd' + suffix = 23 chars max)
+var kvPrefix = '${namePrefix}kv${substring(environmentName, 0, 1)}' // e.g., 'apicvibekd' (10 chars)
+var kvSuffix = substring(uniqueSuffix, 0, 13) // Use first 13 chars of suffix
+
 var resourceNames = {
   logAnalytics: '${namePrefix}-law-${environmentName}-${uniqueSuffix}'
   appInsights: '${namePrefix}-ai-${environmentName}-${uniqueSuffix}'
   managedIdentity: '${namePrefix}-id-${environmentName}-${uniqueSuffix}'
-  keyVault: '${namePrefix}kv${environmentName}${uniqueSuffix}' // No hyphens - KV has 24 char limit
+  keyVault: '${kvPrefix}${kvSuffix}' // Max 24 chars: 10 (prefix) + 13 (suffix) = 23
   containerRegistry: '${namePrefix}acr${environmentName}${uniqueSuffix}'
   containerAppsEnv: '${namePrefix}-cae-${environmentName}-${uniqueSuffix}'
   frontendApp: '${namePrefix}-frontend-${environmentName}'
