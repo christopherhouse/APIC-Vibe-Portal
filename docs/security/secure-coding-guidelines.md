@@ -1,6 +1,7 @@
 # Secure Coding Guidelines — APIC Vibe Portal AI
 
 ## Overview
+
 These guidelines define secure coding practices for all contributors to the APIC Vibe Portal AI project. They apply to the frontend (TypeScript/Next.js), BFF (Python/FastAPI), and infrastructure (Bicep/GitHub Actions).
 
 ---
@@ -8,6 +9,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 ## Authentication & Authorization
 
 ### Do
+
 - Use **Entra ID (Azure AD)** for all user authentication.
 - Validate JWT tokens on **every** BFF endpoint (signature, expiration, issuer, audience).
 - Implement **security trimming** — filter query results by user permissions.
@@ -15,6 +17,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 - Apply the **principle of least privilege** for RBAC roles.
 
 ### Don't
+
 - Never implement custom authentication schemes.
 - Never trust client-provided user IDs for authorization decisions.
 - Never store authentication tokens in `localStorage` or `sessionStorage`.
@@ -25,6 +28,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 ## Input Validation & Output Encoding
 
 ### Do
+
 - Validate **all** user input using Pydantic models (BFF) or Zod schemas (frontend).
 - Use **parameterized queries** for all database operations (Cosmos DB).
 - Sanitize HTML/Markdown content before rendering with `DOMPurify` or similar.
@@ -32,6 +36,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 - Limit request body sizes.
 
 ### Don't
+
 - Never construct queries from raw user input (SQL injection, NoSQL injection).
 - Never use `dangerouslySetInnerHTML` without sanitization.
 - Never trust `Content-Type` headers without validation.
@@ -42,6 +47,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 ## Sensitive Data Handling
 
 ### Do
+
 - Store **all secrets** in Azure Key Vault.
 - Use `.env.local` for local development secrets (gitignored).
 - Encrypt sensitive data at rest (Azure-managed encryption).
@@ -49,6 +55,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 - Clear sensitive state from memory when no longer needed.
 
 ### Don't
+
 - **Never** hardcode secrets, API keys, or passwords in code.
 - **Never** log tokens, passwords, API keys, or PII.
 - **Never** include secrets in system prompts or AI agent configurations.
@@ -60,6 +67,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 ## API Security
 
 ### Do
+
 - Implement rate limiting on all public endpoints.
 - Return `429 Too Many Requests` with `Retry-After` headers.
 - Use structured error responses (no implementation details in production).
@@ -67,6 +75,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 - Validate all path parameters and query strings.
 
 ### Don't
+
 - **Never** add CORS middleware to the BFF (Azure Container Apps handles CORS).
 - **Never** expose internal service endpoints publicly.
 - **Never** return unbounded result sets (always paginate).
@@ -77,6 +86,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 ## Dependency Management
 
 ### Do
+
 - Run `npm audit` and dependency scanning in CI on every PR.
 - Pin dependency versions via lock files (`package-lock.json`, `uv.lock`).
 - Review dependency changes carefully in pull requests.
@@ -84,6 +94,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 - Prefer well-maintained, widely-used packages.
 
 ### Don't
+
 - **Never** disable security audit checks to make CI pass.
 - **Never** use deprecated or unmaintained packages.
 - **Never** bypass lock files (no `--no-lock`, `--force` for dependency installs).
@@ -94,6 +105,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 ## Error Handling & Logging
 
 ### Do
+
 - Return generic error messages to clients in production.
 - Log errors with structured fields (correlation ID, timestamp, error type).
 - Use different log levels for development vs. production.
@@ -101,6 +113,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 - Implement global exception handlers in the BFF.
 
 ### Don't
+
 - **Never** expose stack traces, file paths, or internal IPs to clients.
 - **Never** log PII (email addresses, usernames, IP addresses in error details).
 - **Never** catch and silently ignore exceptions.
@@ -111,6 +124,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 ## Container Security
 
 ### Do
+
 - Use **multi-stage Docker builds** (separate build and production stages).
 - Run containers as **non-root users**.
 - Use **minimal base images** (alpine, slim variants).
@@ -119,6 +133,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 - Include **health check endpoints** in all containers.
 
 ### Don't
+
 - **Never** install unnecessary tools in production images (curl, wget, etc.).
 - **Never** run containers as root.
 - **Never** embed secrets in Docker images or Dockerfiles.
@@ -129,6 +144,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 ## Infrastructure as Code (Bicep)
 
 ### Do
+
 - Enable **diagnostic settings** on all Azure resources.
 - Configure **network restrictions** (firewalls, private endpoints) where possible.
 - Use **Managed Identity** instead of connection strings.
@@ -136,6 +152,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 - Use **OIDC** for CI/CD authentication (no stored secrets).
 
 ### Don't
+
 - **Never** hardcode secrets in Bicep parameters.
 - **Never** deploy Container Apps via Bicep (use deployment scripts).
 - **Never** disable Azure security features to "simplify" deployments.
@@ -145,6 +162,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 ## AI & Agent Security
 
 ### Do
+
 - Sanitize user input before passing to AI models or agents.
 - Use system prompts with clear instruction boundaries.
 - Implement token count limits on user inputs.
@@ -152,6 +170,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 - Monitor agent responses for unexpected data leakage.
 
 ### Don't
+
 - **Never** include secrets or credentials in system prompts.
 - **Never** allow agents unrestricted access to all data.
 - **Never** log full AI prompts or responses (PII risk).
@@ -160,6 +179,7 @@ These guidelines define secure coding practices for all contributors to the APIC
 ---
 
 ## Code Review Checklist
+
 When reviewing PRs, check for:
 
 - [ ] No hardcoded secrets or credentials

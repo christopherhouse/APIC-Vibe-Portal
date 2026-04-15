@@ -5,17 +5,21 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Product Charter](../apic_product_charter.md) — Project scope, goals, and phased timeline
 - [Architecture Document](../apic_architecture.md) — Component overview: Next.js SPA, BFF, Agent Layer, Search Layer, Observability
 - [Product Spec](../apic_portal_spec.md) — Feature requirements
 
 ## Overview
+
 Bootstrap the repository with a monorepo structure, developer tooling, and GitHub Copilot assets. This is the foundation every subsequent task builds upon.
 
 ## Implementation Details
 
 ### 1. Monorepo Structure
+
 Create the following top-level directory layout:
+
 ```
 /
 ├── src/
@@ -41,6 +45,7 @@ Create the following top-level directory layout:
 ```
 
 ### 2. Root Workspace Configuration
+
 - Initialize a root `package.json` with npm workspaces pointing to `src/frontend` and `src/shared` (the BFF is a Python project managed by UV, not part of the npm workspace).
 - Add a `.nvmrc` file pinning Node.js >=24 (for the frontend and shared packages).
 - Add a `.python-version` file pinning Python 3.14 (for the BFF, managed via UV).
@@ -50,7 +55,9 @@ Create the following top-level directory layout:
 ### 3. GitHub Copilot Assets
 
 #### Copilot Instructions (`.github/copilot-instructions.md`)
+
 Create instructions that describe:
+
 - The project is an AI-powered API portal built on Azure services
 - Tech stack: Next.js 16 (App Router), TypeScript 6.0 (frontend), Python 3.14 + FastAPI BFF (managed with UV), Azure API Center, Azure AI Search, Azure OpenAI, Foundry Agent Service
 - Coding conventions: TypeScript 6.0 strict mode, ESLint + Prettier, functional React components with hooks
@@ -60,7 +67,9 @@ Create instructions that describe:
 - Deployment target: Azure Container Apps via ACR
 
 #### Custom Copilot Agents (`.github/agents/`)
+
 Create agent definitions for:
+
 - **api-portal-architect**: Understands the architecture doc, helps with design decisions, component interactions
 - **azure-infra-agent**: Specializes in Bicep templates, Azure resource configuration, deployment
 - **frontend-agent**: Next.js, React, TypeScript UI development, accessibility
@@ -68,13 +77,16 @@ Create agent definitions for:
 - **tech-writer-agent**: Writes engaging, well-organized documentation with emojis for flair, generates SVG images and diagrams, uses Mermaid for architecture/flow diagrams, and ensures all docs are visually appealing and developer-friendly
 
 #### MCP Servers
+
 Document the available MCP (Model Context Protocol) servers in copilot instructions and agent definitions so that Copilot and agents can leverage external context:
+
 - **Microsoft Learn** — Azure SDK docs, Azure service references, best practices
 - **Context7** — Up-to-date library documentation and API references
 - **Next.js DevTools** — Next.js-specific development tooling and guidance
 - **Snyk** — Security scanning for vulnerabilities in dependencies and code
 
 ### 4. Developer Tooling
+
 - Add ESLint and Prettier configuration at the root level (shared across frontend/shared TypeScript workspaces).
 - Add TypeScript 6.0 base configuration (`tsconfig.base.json`) that frontend and shared workspaces extend.
 - Add Ruff configuration for BFF Python linting and formatting.
@@ -82,14 +94,18 @@ Document the available MCP (Model Context Protocol) servers in copilot instructi
 - Use UV for all Python dependency management in the BFF (no pip).
 
 ### 5. PR Template
+
 Create `.github/PULL_REQUEST_TEMPLATE.md` with sections for:
+
 - Summary of changes
 - Related task/plan step reference
 - Testing performed
 - Checklist (tests pass, lint clean, docs updated)
 
 ### 6. README
+
 Update the root `README.md` with:
+
 - Project name and description
 - Architecture overview (reference architecture doc)
 - Getting started / prerequisites
@@ -97,6 +113,7 @@ Update the root `README.md` with:
 - Link to plan docs
 
 ## Testing & Acceptance Criteria
+
 - [ ] Repository clones cleanly and `npm install` succeeds at the root (frontend + shared)
 - [ ] Workspace structure resolves correctly (`npm ls` shows frontend and shared)
 - [ ] BFF Python project initializes correctly with `uv sync` in `src/bff/`
@@ -109,17 +126,19 @@ Update the root `README.md` with:
 - [ ] `README.md` contains accurate project overview and links
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
-| 2026-04-14 | ✅ Complete | Claude Code Agent | Successfully scaffolded monorepo structure, tooling, and GitHub Copilot assets |
+
+| Date       | Status         | Author            | Notes                                                                          |
+| ---------- | -------------- | ----------------- | ------------------------------------------------------------------------------ |
+| —          | 🔲 Not Started | —                 | Task created                                                                   |
+| 2026-04-14 | ✅ Complete    | Claude Code Agent | Successfully scaffolded monorepo structure, tooling, and GitHub Copilot assets |
 
 ### Technical Decisions
 
@@ -136,6 +155,7 @@ Update the root `README.md` with:
 ### Deviations from Plan
 
 **None**. All requirements from the plan were implemented as specified. The only additions were:
+
 - Created minimal `apic_vibe_portal_bff/__init__.py` package to satisfy UV/Hatchling build requirements (not explicitly mentioned in plan but necessary for `uv sync` to succeed)
 
 ### Validation Results
@@ -177,7 +197,6 @@ Update the root `README.md` with:
 
 10. ✅ `README.md` contains accurate project overview and links
     - Includes architecture diagram (Mermaid), getting started instructions, tech stack, and documentation links
-
 
 ## Coding Agent Prompt
 

@@ -1,22 +1,25 @@
 # Agent & Data Path Threat Model — APIC Vibe Portal AI
 
 ## Component Overview
+
 The agent and data paths encompass Azure OpenAI, Foundry Agent Service (multi-agent orchestration), Azure AI Search, Azure API Center, and Azure Cosmos DB. The BFF mediates all interactions; no direct client-to-service communication exists.
 
 ## Assets
-| Asset | Description | Sensitivity |
-|-------|-------------|-------------|
-| AI model access | Azure OpenAI endpoints and API keys | Critical |
-| Agent configurations | Foundry Agent definitions and tools | High |
-| Search index | AI Search index with API metadata | Medium |
-| API Center data | Full API catalog metadata | Medium |
-| Cosmos DB data | Chat sessions, governance snapshots, analytics | Medium–High |
-| User prompts | Natural language queries from users | Medium |
-| AI responses | Generated content from agents/OpenAI | Medium |
+
+| Asset                | Description                                    | Sensitivity |
+| -------------------- | ---------------------------------------------- | ----------- |
+| AI model access      | Azure OpenAI endpoints and API keys            | Critical    |
+| Agent configurations | Foundry Agent definitions and tools            | High        |
+| Search index         | AI Search index with API metadata              | Medium      |
+| API Center data      | Full API catalog metadata                      | Medium      |
+| Cosmos DB data       | Chat sessions, governance snapshots, analytics | Medium–High |
+| User prompts         | Natural language queries from users            | Medium      |
+| AI responses         | Generated content from agents/OpenAI           | Medium      |
 
 ## Threat Analysis
 
 ### T-AD-01: Prompt Injection
+
 - **Attack vector**: User crafts input that manipulates AI agent behavior to bypass instructions, extract system prompts, or perform unauthorized actions.
 - **Impact**: Data leakage, unauthorized agent actions, misleading responses.
 - **Likelihood**: High
@@ -30,6 +33,7 @@ The agent and data paths encompass Azure OpenAI, Foundry Agent Service (multi-ag
 - **Residual risk**: Medium — Prompt injection remains an evolving threat with no complete solution.
 
 ### T-AD-02: Data Poisoning
+
 - **Attack vector**: Malicious data injected into the AI Search index or API Center that corrupts AI responses.
 - **Impact**: Incorrect governance advice, misleading search results, reputational damage.
 - **Likelihood**: Low
@@ -41,6 +45,7 @@ The agent and data paths encompass Azure OpenAI, Foundry Agent Service (multi-ag
 - **Residual risk**: Low — Write access is tightly controlled.
 
 ### T-AD-03: Unauthorized Agent Invocation
+
 - **Attack vector**: Attacker bypasses authorization to invoke Foundry Agents directly or triggers agent capabilities beyond their authorized scope.
 - **Impact**: Unauthorized data access, resource consumption, cost escalation.
 - **Likelihood**: Medium
@@ -53,6 +58,7 @@ The agent and data paths encompass Azure OpenAI, Foundry Agent Service (multi-ag
 - **Residual risk**: Low — BFF mediation provides strong access control.
 
 ### T-AD-04: PII Leakage in Logs
+
 - **Attack vector**: Personally identifiable information from user prompts or agent responses is logged to Application Insights or other log sinks.
 - **Impact**: Privacy violation, regulatory non-compliance.
 - **Likelihood**: Medium
@@ -65,6 +71,7 @@ The agent and data paths encompass Azure OpenAI, Foundry Agent Service (multi-ag
 - **Residual risk**: Medium — PII detection is imperfect; some leakage may occur in edge cases.
 
 ### T-AD-05: Data Exfiltration via AI Responses
+
 - **Attack vector**: AI agent includes sensitive data (from search index, API Center, or Cosmos DB) in responses to unauthorized users.
 - **Impact**: Unauthorized data access, security trimming bypass.
 - **Likelihood**: Medium
@@ -76,6 +83,7 @@ The agent and data paths encompass Azure OpenAI, Foundry Agent Service (multi-ag
 - **Residual risk**: Medium — AI responses are inherently difficult to fully control.
 
 ### T-AD-06: Cosmos DB Data Breach
+
 - **Attack vector**: Attacker gains unauthorized access to Cosmos DB and exfiltrates chat sessions, governance data, or analytics.
 - **Impact**: Data breach, privacy violation, loss of intellectual property.
 - **Likelihood**: Low
@@ -88,6 +96,7 @@ The agent and data paths encompass Azure OpenAI, Foundry Agent Service (multi-ag
 - **Residual risk**: Low — Azure-managed security controls are robust.
 
 ### T-AD-07: AI Search Index Tampering
+
 - **Attack vector**: Attacker modifies or deletes search index entries to disrupt search functionality.
 - **Impact**: Search unavailability, corrupted results, denial of service.
 - **Likelihood**: Low
@@ -99,6 +108,7 @@ The agent and data paths encompass Azure OpenAI, Foundry Agent Service (multi-ag
 - **Residual risk**: Low
 
 ### T-AD-08: Model Denial of Service
+
 - **Attack vector**: Attacker sends expensive queries to Azure OpenAI (long prompts, high token counts) to exhaust quota or increase costs.
 - **Impact**: Service unavailability, cost escalation.
 - **Likelihood**: Medium
@@ -111,13 +121,14 @@ The agent and data paths encompass Azure OpenAI, Foundry Agent Service (multi-ag
 - **Residual risk**: Medium — Some cost escalation risk remains with legitimate-looking queries.
 
 ## Security Controls Summary
-| Control | Status |
-|---------|--------|
-| Input sanitization before agent calls | This task (middleware) |
-| Rate limiting on AI endpoints | This task |
+
+| Control                                 | Status                    |
+| --------------------------------------- | ------------------------- |
+| Input sanitization before agent calls   | This task (middleware)    |
+| Rate limiting on AI endpoints           | This task                 |
 | Managed Identity for all Azure services | Infrastructure (Task 002) |
-| Security trimming | Planned (Task 020) |
-| PII-free logging | Planned (Task 019) |
-| RBAC on data stores | Infrastructure (Task 002) |
-| Azure OpenAI quota management | Planned (Task 017) |
-| Agent guardrails | Planned (Task 022) |
+| Security trimming                       | Planned (Task 020)        |
+| PII-free logging                        | Planned (Task 019)        |
+| RBAC on data stores                     | Infrastructure (Task 002) |
+| Azure OpenAI quota management           | Planned (Task 017)        |
+| Agent guardrails                        | Planned (Task 022)        |
