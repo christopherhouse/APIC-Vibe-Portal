@@ -26,6 +26,7 @@ graph TB
 ```
 
 **Components:**
+
 - **Frontend**: Next.js 16 SPA with TypeScript 6.0
 - **BFF**: Python 3.14 + FastAPI backend (managed with UV)
 - **AI Layer**: Azure OpenAI + Foundry Agent Service
@@ -50,12 +51,14 @@ For detailed architecture, see [docs/project/apic_architecture.md](docs/project/
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/christopherhouse/APIC-Vibe-Portal.git
    cd APIC-Vibe-Portal
    ```
 
 2. **Install frontend and shared dependencies**
+
    ```bash
    npm install
    ```
@@ -70,17 +73,20 @@ For detailed architecture, see [docs/project/apic_architecture.md](docs/project/
 ### Development
 
 #### Run Frontend (Next.js)
+
 ```bash
 npm run dev --workspace=@apic-vibe-portal/frontend
 ```
 
 #### Run BFF (FastAPI)
+
 ```bash
 cd src/bff
 uv run fastapi dev
 ```
 
 #### Lint
+
 ```bash
 # Frontend + Shared
 npm run lint
@@ -91,6 +97,7 @@ uv run ruff check .
 ```
 
 #### Format
+
 ```bash
 # Frontend + Shared
 npm run format
@@ -101,6 +108,7 @@ uv run ruff format .
 ```
 
 #### Test
+
 ```bash
 # Frontend + Shared
 npm run test
@@ -111,6 +119,7 @@ uv run pytest
 ```
 
 #### Build
+
 ```bash
 # Frontend + Shared
 npm run build
@@ -153,13 +162,16 @@ npm run build
 ## 🔧 Tech Stack
 
 ### Frontend
+
 - Next.js 16 (App Router)
 - React 19
 - TypeScript 6.0 (strict mode)
+- Material UI (MUI) — component library, theming, and styling
 - ESLint + Prettier
 - Jest + React Testing Library + Playwright
 
 ### Backend (BFF)
+
 - Python 3.14
 - FastAPI
 - UV (package manager)
@@ -167,6 +179,7 @@ npm run build
 - pytest
 
 ### Azure Services
+
 - Azure API Center
 - Azure AI Search
 - Azure OpenAI
@@ -190,7 +203,9 @@ This project includes custom GitHub Copilot agents and instructions:
   - `tech-writer-agent` — Documentation writing
 
 ### MCP Servers
+
 Available Model Context Protocol servers:
+
 - **Microsoft Learn** — Azure SDK docs and best practices
 - **Context7** — Up-to-date library documentation
 - **Next.js DevTools** — Next.js development tooling

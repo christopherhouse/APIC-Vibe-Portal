@@ -5,19 +5,23 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Deployment: Azure Container Apps, ACR, Key Vault; Components: AI Search, OpenAI, App Insights
 - [Product Charter](../apic_product_charter.md) — Phased delivery timeline; MVP through Analytics
 - [Product Spec](../apic_portal_spec.md) — Feature requirements driving infrastructure needs
 
 ## Overview
+
 Establish the Azure infrastructure foundation using Bicep templates. This creates all the Azure resources needed for the APIC Vibe Portal, parameterized for multi-environment deployment (dev, staging, prod).
 
 ## Dependencies
+
 - **001** — Repository scaffolding (monorepo structure, `/infra` directory)
 
 ## Implementation Details
 
 ### 1. Bicep Project Structure
+
 ```
 /infra/
 ├── main.bicep              # Orchestrator template
@@ -42,6 +46,7 @@ Establish the Azure infrastructure foundation using Bicep templates. This create
 ```
 
 ### 2. Core Resources (main.bicep)
+
 The orchestrator template should deploy the following modules in dependency order:
 
 1. **Resource Group** (or target an existing one via parameter)
@@ -59,6 +64,7 @@ The orchestrator template should deploy the following modules in dependency orde
 13. **Container App (BFF)** — BFF API, initially with placeholder image
 
 ### 3. Parameterization
+
 - Environment name (dev/staging/prod)
 - Resource name prefix/suffix
 - SKU tiers (allow cheaper SKUs for dev)
@@ -67,6 +73,7 @@ The orchestrator template should deploy the following modules in dependency orde
 - Entra ID tenant and app registration IDs
 
 ### 4. Security Configuration
+
 - Key Vault: managed identity has `get` and `list` on secrets
 - ACR: managed identity has `AcrPull` role
 - AI Search: managed identity has `Search Index Data Reader`
@@ -77,7 +84,9 @@ The orchestrator template should deploy the following modules in dependency orde
 - All resources use private endpoints where supported (parameterized, optional for dev)
 
 ### 5. Outputs
+
 The main template should output:
+
 - Container App URLs (frontend, BFF)
 - ACR login server
 - Key Vault URI
@@ -89,6 +98,7 @@ The main template should output:
 - Application Insights connection string
 
 ## Testing & Acceptance Criteria
+
 - [ ] `az bicep build --file infra/main.bicep` succeeds with no errors
 - [ ] All modules compile independently
 - [ ] Parameter files for dev, staging, and prod are valid
@@ -98,17 +108,19 @@ The main template should output:
 - [ ] No secrets are hardcoded; all sensitive values reference Key Vault or parameters
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
-| 2026-04-14 | ✅ Complete | Claude (Sonnet 4.5) | All Bicep templates created and validated successfully. Main orchestrator + 10 modules + 3 environment param files. |
+
+| Date       | Status         | Author              | Notes                                                                                                               |
+| ---------- | -------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —                   | Task created                                                                                                        |
+| 2026-04-14 | ✅ Complete    | Claude (Sonnet 4.5) | All Bicep templates created and validated successfully. Main orchestrator + 10 modules + 3 environment param files. |
 
 ### Technical Decisions
 
@@ -141,6 +153,7 @@ The main template should output:
 ### Validation Results
 
 **Bicep Compilation**: ✅ PASSED
+
 ```bash
 $ az bicep build --file infra/main.bicep
 # Success with expected warnings:
@@ -150,12 +163,14 @@ $ az bicep build --file infra/main.bicep
 ```
 
 **Module Validation**: ✅ PASSED
+
 - All 10 modules compile independently
 - No blocking errors
 - RBAC role assignments correctly configured
 - Diagnostic settings present on all resources
 
 **Template Structure**: ✅ VERIFIED
+
 ```
 /infra/
 ├── main.bicep (orchestrator)
@@ -164,6 +179,7 @@ $ az bicep build --file infra/main.bicep
 ```
 
 **Key Features Validated**:
+
 - ✅ Multi-environment parameterization (dev/staging/prod)
 - ✅ Managed identity with RBAC on all services
 - ✅ Diagnostic settings on all resources
@@ -174,6 +190,7 @@ $ az bicep build --file infra/main.bicep
 - ✅ All required outputs for CI/CD pipeline
 
 **Module API Versions**:
+
 - Log Analytics: `2023-09-01`
 - App Insights: `2020-02-02`
 - Managed Identity: `2023-01-31`
@@ -186,13 +203,13 @@ $ az bicep build --file infra/main.bicep
 - Cosmos DB: `2024-12-01-preview`
 
 **Acceptance Criteria**: ✅ ALL MET
+
 - [x] `az bicep build --file infra/main.bicep` succeeds with no errors
 - [x] All modules compile independently
 - [x] Parameter files for dev, staging, and prod are valid
 - [x] Managed identity has correct role assignments for each resource
 - [x] Outputs are correctly defined and populated
 - [x] No secrets are hardcoded; all sensitive values reference Key Vault or parameters
-
 
 ## Coding Agent Prompt
 

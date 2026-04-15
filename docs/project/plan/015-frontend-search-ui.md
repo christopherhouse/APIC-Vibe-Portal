@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Frontend: Next.js SPA; Search Layer integration
 - [Product Charter](../apic_product_charter.md) — Reduce time to find APIs; primary success metric
 - [Product Spec](../apic_portal_spec.md) — Search interface requirements
 
 ## Overview
+
 Build the search UI components in the frontend, including the global search bar, search results page, and autocomplete functionality. This is the primary API discovery interface.
 
 ## Dependencies
+
 - **005** — Frontend project setup (components, layout)
 - **007** — Shared types package (search models)
 - **014** — Search API implementation (BFF endpoints)
@@ -20,7 +23,9 @@ Build the search UI components in the frontend, including the global search bar,
 ## Implementation Details
 
 ### 1. Global Search Bar (Header)
+
 Enhance the header component from task 005:
+
 - Search input with magnifying glass icon
 - Debounced autocomplete dropdown (300ms debounce)
 - Autocomplete shows top 5 API name/title matches
@@ -31,6 +36,7 @@ Enhance the header component from task 005:
 - Search bar is always visible in the header
 
 ### 2. Search Results Page
+
 ```
 app/search/
 ├── page.tsx            # Search results page
@@ -47,7 +53,9 @@ app/search/
 Route: `/search?q={query}&kind={filter}&lifecycle={filter}&page={n}`
 
 ### 3. Search Result Card
+
 Each result card shows:
+
 - API title with highlighted matching text
 - Description with highlighted snippets
 - Semantic caption (AI-generated relevance summary) when available
@@ -57,6 +65,7 @@ Each result card shows:
 - Click navigates to `/catalog/:apiId`
 
 ### 4. Dynamic Filters
+
 - Faceted filters based on search results
 - Show counts next to each filter option (e.g., "REST (23)")
 - Lifecycle stage filter
@@ -66,11 +75,13 @@ Each result card shows:
 - URL query parameters update to reflect filter state
 
 ### 5. Search Mode Toggle
+
 - Allow users to switch between: Keyword, Semantic, Hybrid (default)
 - Visual indicator of current mode
 - Brief tooltip explaining each mode
 
 ### 6. Data Fetching
+
 - Use React Query / SWR for search requests
 - Debounce search input (300ms)
 - Cancel previous request on new search (AbortController)
@@ -78,16 +89,19 @@ Each result card shows:
 - Cache recent search results
 
 ### 7. No Results State
+
 - Friendly message: "No APIs found matching your search"
 - Suggestions: "Try different keywords" or "Browse the catalog"
 - Link to catalog page
 
 ### 8. Search Analytics (Client-side)
+
 - Track search queries (for future analytics, task 026)
 - Track click-through from results to API detail
 - Store in BFF endpoint (placeholder for now)
 
 ## Testing & Acceptance Criteria
+
 - [ ] Global search bar appears in header on all pages
 - [ ] Autocomplete dropdown appears after typing 2+ characters
 - [ ] Autocomplete debounces correctly (300ms)
@@ -101,28 +115,33 @@ Each result card shows:
 - [ ] URL reflects search query and filter state
 - [ ] Keyboard navigation works in autocomplete dropdown
 - [ ] All components have unit tests
+- [ ] Playwright e2e tests added in `src/frontend/e2e/search.spec.ts` covering search input, autocomplete, results page navigation, filtering, and no-results state
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 
@@ -135,7 +154,7 @@ Reference `docs/project/plan/014-search-api-implementation.md` for the BFF searc
 
 Build the global search bar with autocomplete in the header, the `/search` results page with faceted filtering, search result cards with highlights and semantic captions, search mode toggle, no-results state, and URL-based search state. Use React Query or SWR for data fetching with debouncing and request cancellation.
 
-Write unit tests for all components. Verify the build succeeds, linting passes, and all tests pass.
+Write unit tests for all components. Add Playwright e2e tests in `src/frontend/e2e/search.spec.ts` covering search input, autocomplete, results page, filtering, and no-results state. Verify the build succeeds, linting passes, and all tests pass (including `npm run test:e2e`).
 
 **Living Document Update**: After completing implementation, update this plan document (`docs/project/plan/015-frontend-search-ui.md`):
 1. Change the status banner at the top to `> **✅ Status: Complete**`
