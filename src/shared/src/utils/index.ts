@@ -11,4 +11,10 @@ export {
   isGovernanceStatus,
   isErrorCode,
 } from './type-guards.js';
-export { formatDate, formatRelativeTime, formatBytes, normalizeUrl, truncate } from './formatters.js';
+export {
+  formatDate,
+  formatRelativeTime,
+  formatBytes,
+  normalizeUrl,
+  truncate,
+} from './formatters.js';

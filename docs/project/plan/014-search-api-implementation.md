@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Hybrid search for retrieval; Search Layer: AI Search
 - [Product Charter](../apic_product_charter.md) — Reduce time to find APIs; core success metric
 - [Product Spec](../apic_portal_spec.md) — Search functionality specifications
 
 ## Overview
+
 Implement the search API endpoints in the BFF that perform hybrid search (keyword + semantic + vector) against Azure AI Search, providing intelligent API discovery capabilities.
 
 ## Dependencies
+
 - **006** — BFF API project setup
 - **007** — Shared types package (search DTOs)
 - **013** — AI Search index setup (index must exist with data)
@@ -20,6 +23,7 @@ Implement the search API endpoints in the BFF that perform hybrid search (keywor
 ## Implementation Details
 
 ### 1. Search Client
+
 ```
 src/bff/src/bff/clients/
 ├── ai_search_client.py        # Azure AI Search client wrapper
@@ -31,6 +35,7 @@ src/bff/src/bff/clients/
 - Configure for hybrid search (keyword + semantic + vector)
 
 ### 2. Search Service
+
 ```
 src/bff/src/bff/services/
 ├── search_service.py           # Search business logic
@@ -38,31 +43,35 @@ src/bff/src/bff/services/
 ```
 
 Operations:
+
 - `search(query: SearchRequest): Promise<SearchResponse>` — Full hybrid search
 - `suggest(prefix: string): Promise<SuggestResponse>` — Autocomplete suggestions
 - `getFacets(): Promise<SearchFacets>` — Available filter facets
 
 ### 3. Search Endpoint
+
 ```
 Route: POST /api/search
 ```
 
 Request body:
+
 ```typescript
 interface SearchRequest {
-  query: string;                    // Search text
+  query: string; // Search text
   filters?: {
-    kind?: ApiKind[];               // Filter by API kind
-    lifecycle?: ApiLifecycle[];     // Filter by lifecycle
-    tags?: string[];                // Filter by tags
+    kind?: ApiKind[]; // Filter by API kind
+    lifecycle?: ApiLifecycle[]; // Filter by lifecycle
+    tags?: string[]; // Filter by tags
   };
   page?: number;
   pageSize?: number;
-  searchMode?: 'keyword' | 'semantic' | 'hybrid';  // Default: hybrid
+  searchMode?: 'keyword' | 'semantic' | 'hybrid'; // Default: hybrid
 }
 ```
 
 Response:
+
 ```typescript
 interface SearchResponse {
   results: SearchResultItem[];
@@ -87,11 +96,12 @@ interface SearchResultItem {
     title?: string[];
     description?: string[];
   };
-  semanticCaption?: string;     // AI-generated caption
+  semanticCaption?: string; // AI-generated caption
 }
 ```
 
 ### 4. Suggest Endpoint
+
 ```
 Route: GET /api/search/suggest?q={prefix}
 ```
@@ -99,6 +109,7 @@ Route: GET /api/search/suggest?q={prefix}
 Returns top-5 autocomplete suggestions based on API names and descriptions.
 
 ### 5. Hybrid Search Implementation
+
 - **Keyword search**: Standard full-text search across searchable fields
 - **Semantic search**: Use semantic ranker for natural language queries
 - **Vector search**: Generate query embedding, search contentVector field
@@ -107,10 +118,12 @@ Returns top-5 autocomplete suggestions based on API names and descriptions.
 - Include semantic captions for AI-generated relevance summaries
 
 ### 6. Faceted Results
+
 - Return facet counts for `kind`, `lifecycle`, and `tags`
 - Frontend uses these to display dynamic filter options with counts
 
 ## Testing & Acceptance Criteria
+
 - [ ] `POST /api/search` returns relevant results for text queries
 - [ ] Hybrid search combines keyword, semantic, and vector results
 - [ ] Search results include relevance scores and highlights
@@ -123,26 +136,30 @@ Returns top-5 autocomplete suggestions based on API names and descriptions.
 - [ ] Response times are within acceptable limits (< 500ms for typical queries)
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 

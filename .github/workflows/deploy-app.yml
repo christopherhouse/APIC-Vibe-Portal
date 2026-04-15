@@ -27,6 +27,7 @@ jobs:
   build-and-push-frontend:
     name: Build and Push Frontend Image
     runs-on: ubuntu-latest
+    environment: dev
     outputs:
       image-tag: ${{ steps.meta.outputs.version }}
     steps:
@@ -34,17 +35,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Get ACR name
         id: acr
         run: |
           ACR_NAME=$(az deployment group show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --name main \
             --query properties.outputs.acrName.value -o tsv)
           echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
@@ -66,7 +67,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./src/frontend
           file: ./src/frontend/Dockerfile
@@ -77,6 +78,7 @@ jobs:
   build-and-push-bff:
     name: Build and Push BFF Image
     runs-on: ubuntu-latest
+    environment: dev
     outputs:
       image-tag: ${{ steps.meta.outputs.version }}
     steps:
@@ -84,17 +86,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Get ACR name
         id: acr
         run: |
           ACR_NAME=$(az deployment group show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --name main \
             --query properties.outputs.acrName.value -o tsv)
           echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
@@ -116,7 +118,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./src/bff
           file: ./src/bff/Dockerfile
@@ -136,17 +138,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Get deployment outputs
         id: infra
         run: |
           DEPLOYMENT=$(az deployment group show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --name main \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
@@ -159,7 +161,7 @@ jobs:
         run: |
           chmod +x scripts/deploy-container-apps.sh
           ./scripts/deploy-container-apps.sh \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_DEV }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --environment-id ${{ steps.infra.outputs.container-apps-env }} \
             --frontend-app ${{ steps.infra.outputs.frontend-app }} \
             --bff-app ${{ steps.infra.outputs.bff-app }} \
@@ -180,17 +182,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Get deployment outputs
         id: infra
         run: |
           DEPLOYMENT=$(az deployment group show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_STAGING }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --name main \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
@@ -203,7 +205,7 @@ jobs:
         run: |
           chmod +x scripts/deploy-container-apps.sh
           ./scripts/deploy-container-apps.sh \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_STAGING }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --environment-id ${{ steps.infra.outputs.container-apps-env }} \
             --frontend-app ${{ steps.infra.outputs.frontend-app }} \
             --bff-app ${{ steps.infra.outputs.bff-app }} \
@@ -224,17 +226,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Get deployment outputs
         id: infra
         run: |
           DEPLOYMENT=$(az deployment group show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_PROD }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --name main \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
@@ -247,7 +249,7 @@ jobs:
         run: |
           chmod +x scripts/deploy-container-apps.sh
           ./scripts/deploy-container-apps.sh \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_PROD }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --environment-id ${{ steps.infra.outputs.container-apps-env }} \
             --frontend-app ${{ steps.infra.outputs.frontend-app }} \
             --bff-app ${{ steps.infra.outputs.bff-app }} \

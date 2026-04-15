@@ -56,6 +56,7 @@ _AUTH_HEADERS = {"Authorization": "Bearer test-token"}
 # Error handler middleware
 # ---------------------------------------------------------------------------
 
+
 class TestErrorHandlerMiddleware:
     """Test the global error handler."""
 
@@ -116,6 +117,7 @@ class TestErrorHandlerMiddleware:
 # Request logger middleware
 # ---------------------------------------------------------------------------
 
+
 class TestRequestLoggerMiddleware:
     """Test the request logging middleware."""
 
@@ -150,6 +152,7 @@ class TestRequestLoggerMiddleware:
 # ---------------------------------------------------------------------------
 # Auth middleware
 # ---------------------------------------------------------------------------
+
 
 class TestAuthMiddleware:
     """Test the auth middleware blocks unauthenticated requests."""

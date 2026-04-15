@@ -11,3 +11,4 @@ param aiSearchSku = 'basic'
 param keyVaultSku = 'standard'
 param enablePrivateEndpoints = false
 param privateEndpointSubnetId = ''
+param cosmosDbLocation = 'eastus2'

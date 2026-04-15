@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — Security: Entra ID; RBAC + security trimming
 - [Product Charter](../apic_product_charter.md) — Stakeholders: Developers, API Owners, Platform Teams (role-based access)
 - [Product Spec](../apic_portal_spec.md) — Authentication and authorization requirements
 
 ## Overview
+
 Integrate Microsoft Entra ID (Azure AD) authentication across both the frontend and BFF. This enables secure user login, role-based access control, and prepares for security trimming in later tasks.
 
 ## Dependencies
+
 - **002** — Azure infrastructure (Entra ID app registrations)
 - **005** — Frontend project setup (auth placeholder in layout)
 - **006** — BFF API project setup (auth middleware placeholder)
@@ -20,16 +23,20 @@ Integrate Microsoft Entra ID (Azure AD) authentication across both the frontend 
 ## Implementation Details
 
 ### 1. Entra ID App Registrations
+
 Document (and optionally script) the creation of two app registrations:
+
 - **Frontend SPA App**: Public SPA client, configure redirect URI(s) for the frontend URL, use Authorization Code flow with PKCE via MSAL, and do not enable implicit grant
 - **BFF API App**: Confidential client, expose API with scopes, configure API permissions
 
 Configure:
+
 - Frontend app requests token for BFF API scope
 - BFF validates tokens from frontend
 - Define app roles: `Portal.User`, `Portal.Admin`, `Portal.Maintainer`
 
 ### 2. Frontend Authentication (MSAL)
+
 ```
 src/frontend/
 ├── lib/
@@ -49,6 +56,7 @@ src/frontend/
 - Update API client to inject Bearer token in requests
 
 ### 3. Frontend Auth UI
+
 - **Login button**: In header, triggers MSAL redirect/popup login
 - **User avatar/menu**: After login, show user name, email, avatar
 - **Logout option**: In user dropdown menu
@@ -57,6 +65,7 @@ src/frontend/
 - **Loading state**: Show loading indicator during auth redirect
 
 ### 4. BFF Authentication Middleware
+
 ```
 src/bff/src/bff/middleware/
 ├── auth.py                 # JWT validation middleware (replace placeholder)
@@ -72,6 +81,7 @@ src/bff/src/bff/middleware/
 - Return `403` for insufficient roles
 
 ### 5. Role-Based Access Control (BFF)
+
 ```
 src/bff/src/bff/middleware/
 ├── rbac.py                 # Role checking middleware (FastAPI dependencies)
@@ -84,18 +94,22 @@ src/bff/src/bff/middleware/
 - Admin endpoints require `Portal.Admin`
 
 ### 6. Configuration
+
 Frontend environment variables:
+
 - `NEXT_PUBLIC_MSAL_CLIENT_ID`
 - `NEXT_PUBLIC_MSAL_AUTHORITY`
 - `NEXT_PUBLIC_MSAL_REDIRECT_URI`
 - `NEXT_PUBLIC_BFF_API_SCOPE`
 
 BFF environment variables:
+
 - `ENTRA_TENANT_ID`
 - `ENTRA_CLIENT_ID`
 - `ENTRA_AUDIENCE`
 
 ## Testing & Acceptance Criteria
+
 - [ ] Unauthenticated users are redirected to login
 - [ ] Login via Entra ID works (redirect flow)
 - [ ] After login, user info displays in the header
@@ -109,17 +123,19 @@ BFF environment variables:
 - [ ] Protected routes redirect unauthenticated users
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
-| 2026-04-15 | ✅ Complete | Copilot | Full Entra ID auth integration: MSAL frontend, JWT middleware, RBAC in BFF |
+
+| Date       | Status         | Author | Notes                                                                         |
+| ---------- | -------------- | ------ | ----------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —      | Task created                                                                  |
+| 2026-04-15 | ✅ Complete    | Copilot | Full Entra ID auth integration: MSAL frontend, JWT middleware, RBAC in BFF   |
 
 ### Technical Decisions
 - **PyJWT over python-jose**: Used `PyJWT` with `cryptography` backend for JWT validation. PyJWT is actively maintained, supports RS256 with JWKS, and has a simpler API than python-jose.
@@ -139,7 +155,6 @@ BFF environment variables:
 - **Auth middleware verifies**: Missing token → 401, expired token → 401, wrong audience → 401, valid token → 200 with user context
 - **RBAC verifies**: Missing role → 403, correct role → 200, any-of-roles → 200, no auth → 401
 - **Public paths**: /health, /health/ready, /docs, /openapi.json exempt from auth
-
 
 ## Coding Agent Prompt
 

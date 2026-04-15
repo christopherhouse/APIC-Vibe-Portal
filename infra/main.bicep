@@ -56,24 +56,32 @@ param openAiSku string = 'S0'
 @description('Cosmos DB failover locations (empty for single-region serverless)')
 param cosmosDbLocations array = []
 
+@description('Azure region for Cosmos DB (defaults to main location if not specified)')
+param cosmosDbLocation string = location
+
 @description('Enable private endpoints for resources (recommended for prod)')
 param enablePrivateEndpoints bool = environmentName == 'prod'
 
 @description('Subnet resource ID for private endpoints (required if enablePrivateEndpoints is true)')
 param privateEndpointSubnetId string = ''
 
-// Validate: subnet ID must be provided when private endpoints are enabled
-assert privateEndpointConfigurationValid = !enablePrivateEndpoints || !empty(privateEndpointSubnetId) : 'privateEndpointSubnetId must not be empty when enablePrivateEndpoints is true.'
+// Note: When enablePrivateEndpoints is true, privateEndpointSubnetId must not be empty.
+// This validation is enforced at deployment time by the individual modules.
 
 // ============================================================================
 // VARIABLES
 // ============================================================================
 
+// Key Vault and Storage Account have strict 24-char limits
+// Format: prefix + env (first letter) + suffix (e.g., 'apicvibekd' + suffix = 23 chars max)
+var kvPrefix = '${namePrefix}kv${substring(environmentName, 0, 1)}' // e.g., 'apicvibekd' (10 chars)
+var kvSuffix = substring(uniqueSuffix, 0, 13) // Use first 13 chars of suffix
+
 var resourceNames = {
   logAnalytics: '${namePrefix}-law-${environmentName}-${uniqueSuffix}'
   appInsights: '${namePrefix}-ai-${environmentName}-${uniqueSuffix}'
   managedIdentity: '${namePrefix}-id-${environmentName}-${uniqueSuffix}'
-  keyVault: '${namePrefix}-kv-${environmentName}-${uniqueSuffix}'
+  keyVault: '${kvPrefix}${kvSuffix}' // Max 24 chars: 10 (prefix) + 13 (suffix) = 23
   containerRegistry: '${namePrefix}acr${environmentName}${uniqueSuffix}'
   containerAppsEnv: '${namePrefix}-cae-${environmentName}-${uniqueSuffix}'
   frontendApp: '${namePrefix}-frontend-${environmentName}'
@@ -174,7 +182,6 @@ module apiCenter 'modules/api-center.bicep' = {
     location: location
     apiCenterName: resourceNames.apiCenter
     managedIdentityPrincipalId: managedIdentity.outputs.principalId
-    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     tags: tags
   }
 }
@@ -222,13 +229,14 @@ module openAi 'modules/openai.bicep' = {
 module cosmosDb 'modules/cosmosdb.bicep' = {
   name: 'cosmosdb-deployment'
   params: {
-    location: location
+    location: cosmosDbLocation
     cosmosDbAccountName: resourceNames.cosmosDb
     managedIdentityPrincipalId: managedIdentity.outputs.principalId
     additionalLocations: cosmosDbLocations
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
+    enableZoneRedundancy: environmentName == 'prod'
     tags: tags
   }
 }

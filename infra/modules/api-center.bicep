@@ -11,9 +11,6 @@ param apiCenterName string
 @description('Managed Identity Principal ID for RBAC')
 param managedIdentityPrincipalId string
 
-@description('Log Analytics Workspace ID for diagnostics')
-param logAnalyticsWorkspaceId string
-
 @description('Resource tags')
 param tags object
 
@@ -25,6 +22,9 @@ resource apiCenter 'Microsoft.ApiCenter/services@2024-03-01' = {
   name: apiCenterName
   location: location
   tags: tags
+  sku: {
+    name: 'Free'
+  }
   properties: {}
 }
 
@@ -39,34 +39,7 @@ resource apiCenterDataReaderRole 'Microsoft.Authorization/roleAssignments@2022-0
   }
 }
 
-// Diagnostic settings
-resource diagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: 'diag-${apiCenterName}'
-  scope: apiCenter
-  properties: {
-    workspaceId: logAnalyticsWorkspaceId
-    logs: [
-      {
-        categoryGroup: 'allLogs'
-        enabled: true
-        retentionPolicy: {
-          enabled: false
-          days: 0
-        }
-      }
-    ]
-    metrics: [
-      {
-        category: 'AllMetrics'
-        enabled: true
-        retentionPolicy: {
-          enabled: false
-          days: 0
-        }
-      }
-    ]
-  }
-}
+// Note: Azure API Center does not support diagnostic settings as of API version 2024-03-01
 
 // ============================================================================
 // OUTPUTS

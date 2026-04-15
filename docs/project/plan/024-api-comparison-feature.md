@@ -5,14 +5,17 @@
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
 ## References
+
 - [Architecture Document](../apic_architecture.md) — AI-powered features for API understanding
 - [Product Charter](../apic_product_charter.md) — Phase 2: Governance + Compare
 - [Product Spec](../apic_portal_spec.md) — API comparison requirements
 
 ## Overview
+
 Build the API comparison feature that allows developers to compare two or more APIs side-by-side. This includes both a structured data comparison and an AI-powered analysis that highlights key differences, similarities, and trade-offs.
 
 ## Dependencies
+
 - **009** — API Center data layer (API metadata)
 - **010** — BFF API catalog endpoints (API detail data)
 - **012** — Frontend API detail page (navigation source)
@@ -22,6 +25,7 @@ Build the API comparison feature that allows developers to compare two or more A
 ## Implementation Details
 
 ### 1. Comparison BFF Endpoints
+
 ```
 src/bff/src/bff/routers/
 ├── api_compare.py                  # Comparison endpoints (FastAPI router)
@@ -35,31 +39,34 @@ Endpoints:
 | `POST` | `/api/compare/ai-analysis` | AI-powered comparison analysis |
 
 #### Compare Request
+
 ```typescript
 interface CompareRequest {
-  apiIds: string[];               // 2-5 API IDs to compare
-  aspects?: CompareAspect[];      // Optional: specific aspects to compare
+  apiIds: string[]; // 2-5 API IDs to compare
+  aspects?: CompareAspect[]; // Optional: specific aspects to compare
 }
 
-type CompareAspect = 
-  | 'metadata'        // Name, description, contacts, license
-  | 'versions'        // Version history and current state
-  | 'endpoints'       // API endpoints/operations count and types
-  | 'governance'      // Governance scores and compliance
-  | 'deployments'     // Deployment environments
+type CompareAspect =
+  | 'metadata' // Name, description, contacts, license
+  | 'versions' // Version history and current state
+  | 'endpoints' // API endpoints/operations count and types
+  | 'governance' // Governance scores and compliance
+  | 'deployments' // Deployment environments
   | 'specifications'; // Spec format, schemas, security schemes
 ```
 
 #### Compare Response
+
 ```typescript
 interface CompareResponse {
   apis: CompareApiSummary[];
   aspects: AspectComparison[];
-  aiAnalysis?: string;            // Only in AI analysis endpoint
+  aiAnalysis?: string; // Only in AI analysis endpoint
 }
 ```
 
 ### 2. Comparison Service
+
 ```
 src/bff/src/bff/services/
 ├── api_compare_service.py          # Comparison logic
@@ -72,12 +79,14 @@ src/bff/src/bff/services/
 - Calculate a "similarity score" between APIs
 
 ### 3. AI-Powered Analysis
+
 - Use the agent system (or direct OpenAI) to generate a narrative comparison
 - Prompt includes structured data for all compared APIs
 - Analysis covers: use case fit, trade-offs, recommendations
 - Include governance comparison if scores are available
 
 ### 4. Frontend Comparison UI
+
 ```
 app/compare/
 ├── page.tsx                # Comparison page
@@ -92,6 +101,7 @@ app/compare/
 ```
 
 ### 5. Comparison Table Design
+
 - Side-by-side columns (one per API, max 5)
 - Rows grouped by aspect category
 - Visual diff highlighting (green for advantages, yellow for differences)
@@ -99,18 +109,21 @@ app/compare/
 - Responsive: horizontal scroll on mobile
 
 ### 6. API Selection
+
 - Search-based selection (reuse search component)
 - "Add to compare" button on API detail page and catalog cards
 - Comparison state stored in URL parameters (`?compare=id1,id2,id3`)
 - Minimum 2 APIs required, maximum 5
 
 ### 7. Integration with Catalog & Detail Pages
+
 - Add "Compare" button on API cards in catalog
 - Add "Add to Compare" button on API detail page
 - Show comparison bar at bottom when APIs are selected
 - Comparison bar shows selected API count and "Compare" button
 
 ## Testing & Acceptance Criteria
+
 - [ ] Comparison endpoint accepts 2-5 API IDs and returns structured comparison
 - [ ] Structured comparison covers all aspects (metadata, versions, endpoints, etc.)
 - [ ] AI analysis provides meaningful narrative comparison
@@ -123,26 +136,30 @@ app/compare/
 - [ ] Unit tests cover comparison service and all components
 
 ## Implementation Notes
-<!-- 
+
+<!--
   This section is a living record updated by the implementing agent.
   Update status, log decisions, and record validation results as work progresses.
   When complete, change the Status at the top of this document to ✅ Complete.
 -->
 
 ### Status History
-| Date | Status | Author | Notes |
-|------|--------|--------|-------|
-| — | 🔲 Not Started | — | Task created |
+
+| Date | Status         | Author | Notes        |
+| ---- | -------------- | ------ | ------------ |
+| —    | 🔲 Not Started | —      | Task created |
 
 ### Technical Decisions
+
 _No technical decisions recorded yet._
 
 ### Deviations from Plan
+
 _No deviations from the original plan._
 
 ### Validation Results
-_No validation results yet._
 
+_No validation results yet._
 
 ## Coding Agent Prompt
 
