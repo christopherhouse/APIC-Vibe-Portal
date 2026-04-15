@@ -56,7 +56,7 @@ Complete usage analytics, metadata scoring, performance optimization, and launch
 | [005](005-frontend-nextjs-setup.md) | Next.js Frontend Project Setup | ✅ | 001, 004 |
 | [006](006-bff-api-setup.md) | BFF API Project Setup | ✅ | 001, 004 |
 | [007](007-shared-types-package.md) | Shared Types & Utilities Package | ✅ | 001, 005, 006 |
-| [008](008-entra-id-authentication.md) | Entra ID Authentication Integration | 🔲 | 002, 005, 006 |
+| [008](008-entra-id-authentication.md) | Entra ID Authentication Integration | ✅ | 002, 005, 006 |
 | [009](009-api-center-data-layer.md) | Azure API Center Data Layer Integration | 🔲 | 002, 006, 007 |
 | [010](010-bff-api-catalog-endpoints.md) | BFF API Catalog Endpoints | 🔲 | 006, 007, 009 |
 | [011](011-frontend-api-catalog-page.md) | API Catalog Listing Page (Frontend) | 🔲 | 005, 007, 010 |

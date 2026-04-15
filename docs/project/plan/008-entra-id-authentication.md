@@ -1,6 +1,6 @@
 # 008 - Phase 1 MVP: Entra ID Authentication Integration
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -119,15 +119,32 @@ BFF environment variables:
 | Date | Status | Author | Notes |
 |------|--------|--------|-------|
 | — | 🔲 Not Started | — | Task created |
+| 2026-04-15 | ✅ Complete | copilot | Implemented Entra ID auth across frontend (MSAL React v5) and BFF (PyJWT + JWKS). 94 BFF tests, 66 frontend tests all passing. |
 
 ### Technical Decisions
-_No technical decisions recorded yet._
+- **MSAL v5**: Used `@azure/msal-browser` v5.6.3 and `@azure/msal-react` v5.2.1 (latest major) instead of v4.x as specified in the plan. MSAL v5 removed several deprecated options (`navigateToLoginRequestUrl`, `storeAuthStateInCookie`, `InteractionStatus.Login`).
+- **PyJWT over python-jose**: Used `PyJWT>=2.12.0` with `cryptography>=46.0.5` for JWT validation. PyJWT is actively maintained and is the recommended library for JWT decoding. Security advisory for PyJWT < 2.12.0 (unknown crit header extensions) was resolved by requiring >= 2.12.0.
+- **cachetools for JWKS caching**: Added `cachetools>=5.5.0` for TTL-based caching of the JWKS client (24-hour TTL).
+- **Token provider pattern for API client**: Used a `setTokenProvider()` registration pattern in the API client to decouple the MSAL dependency from the fetch wrapper, enabling easier testing and server-side rendering compatibility.
+- **Auth middleware pass-through in dev**: When `entra_tenant_id` is empty (local development), the auth middleware passes all requests through without authentication.
+- **B008 ruff rule ignored**: Added B008 to ruff ignore list since `Depends()` in function defaults is the standard FastAPI dependency injection pattern.
+- **RBAC via FastAPI dependencies**: Implemented role checks as dependency factories (`require_role`, `require_any_role`) rather than middleware, allowing per-route role requirements.
 
 ### Deviations from Plan
-_No deviations from the original plan._
+- **MSAL v5 instead of v4**: The plan referenced `@azure/msal-react` v3.x/v4.x, but v5 is the current major version. API changes required removing deprecated options.
+- **No separate login page**: A branded login page was listed as optional in the plan. Instead, the Sign In button in the header triggers MSAL redirect flow directly, which is the standard SPA pattern.
+- **Task references**: The plan document and some code placeholders referenced "task 016" instead of "task 008" for this auth integration. Updated all references to align with the actual task number.
+- **File structure**: `test_auth.py` and `test_rbac.py` placed in `tests/middleware/` directory (following existing test conventions) rather than alongside the source files as shown in the plan.
 
 ### Validation Results
-_No validation results yet._
+- **BFF tests**: 94 tests passing (including 10 auth middleware tests, 8 RBAC tests)
+- **Frontend tests**: 66 tests passing (including 6 msal-config tests, 8 useAuth tests, 6 AuthGuard tests, 3 api-client tests)
+- **Frontend lint**: ESLint clean (0 errors, 0 warnings)
+- **BFF lint**: Ruff clean (0 errors)
+- **Frontend build**: Next.js build successful (TypeScript type-checks pass)
+- **Auth middleware coverage**: Valid token, expired token, wrong audience, wrong issuer, missing auth header, invalid format, unconfigured tenant passthrough
+- **RBAC coverage**: User with correct role allowed, user without role rejected (403), unauthenticated user rejected (401), multi-role (any) checks
+- **AuthGuard coverage**: Loading state, redirect to login, protected content rendering, role-based access denied, custom fallback
 
 
 ## Coding Agent Prompt
