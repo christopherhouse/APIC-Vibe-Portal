@@ -1,6 +1,6 @@
 # 006 - Phase 1 MVP: BFF API Project Setup
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -128,15 +128,28 @@ src/bff/
 | Date | Status | Author | Notes |
 |------|--------|--------|-------|
 | — | 🔲 Not Started | — | Task created |
+| 2026-04-15 | ✅ Complete | copilot | Scaffolded FastAPI BFF with middleware, health endpoints, config, structured logging, and 69 passing tests |
 
 ### Technical Decisions
-_No technical decisions recorded yet._
+- **No CORS middleware**: Per project owner direction and `copilot-instructions.md`, CORS is handled at the Azure Container Apps ingress layer. The plan's `middleware/cors.py` was intentionally skipped.
+- **Package name**: Kept existing `apic_vibe_portal_bff` flat-layout package (established in task 001/004) rather than the `src/bff/src/bff/` nested layout shown in the plan spec.
+- **Settings defaults**: All Azure service settings default to empty strings (not required) to allow local development without Azure credentials. Production validation can be added later.
+- **structlog configuration**: JSON renderer in production, pretty-print console renderer in development, with stdlib logging integration for compatibility with third-party libraries.
+- **Correlation ID**: Extracted from `X-Request-ID` header or auto-generated UUID; echoed back in response headers.
 
 ### Deviations from Plan
-_No deviations from the original plan._
+- **CORS middleware omitted**: The plan specified `middleware/cors.py` with `CORSMiddleware`, but per project owner direction Azure Container Apps handles CORS. No CORS middleware was added.
+- **Package layout**: The plan specified `src/bff/src/bff/` nested layout, but the existing codebase uses `src/bff/apic_vibe_portal_bff/` flat layout. Kept the existing structure for consistency.
+- **UV scripts section removed**: `[project.scripts]` requires Python entry points (not shell commands). Dev server is run directly via `uv run uvicorn apic_vibe_portal_bff.main:app --reload`.
 
 ### Validation Results
-_No validation results yet._
+- **Ruff lint**: `uv run ruff check .` — All checks passed (0 errors)
+- **Pytest**: `uv run pytest -v` — 69 tests passed in 0.37s (Python 3.14.4)
+  - 16 bot detection tests, 23 input validation tests, 10 rate limit tests, 4 config tests, 4 health tests, 11 middleware stack tests, 1 placeholder test
+- **Dev server**: `uv run uvicorn apic_vibe_portal_bff.main:app --port 8000` starts successfully
+  - `GET /health` → 200 `{"status": "healthy"}`
+  - `GET /health/ready` → 200 `{"status": "ready"}`
+- **Structured logging**: Request logger outputs structured log entries with correlation ID, method, path, status code, and duration
 
 
 ## Coding Agent Prompt
