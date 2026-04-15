@@ -44,17 +44,9 @@ jobs:
       - name: Get ACR name
         id: acr
         run: |
-          # Get the latest successful infrastructure deployment for dev environment
-          DEPLOYMENT_NAME=$(az deployment group list \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --query "[?contains(name, 'deploy-infra-dev-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
-            -o tsv)
-
-          echo "Using deployment: $DEPLOYMENT_NAME"
-
           ACR_NAME=$(az deployment group show \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name "$DEPLOYMENT_NAME" \
+            --name main \
             --query properties.outputs.acrName.value -o tsv)
           echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
           echo "login-server=${ACR_NAME}.azurecr.io" >> $GITHUB_OUTPUT
@@ -103,17 +95,9 @@ jobs:
       - name: Get ACR name
         id: acr
         run: |
-          # Get the latest successful infrastructure deployment for dev environment
-          DEPLOYMENT_NAME=$(az deployment group list \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --query "[?contains(name, 'deploy-infra-dev-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
-            -o tsv)
-
-          echo "Using deployment: $DEPLOYMENT_NAME"
-
           ACR_NAME=$(az deployment group show \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name "$DEPLOYMENT_NAME" \
+            --name main \
             --query properties.outputs.acrName.value -o tsv)
           echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
           echo "login-server=${ACR_NAME}.azurecr.io" >> $GITHUB_OUTPUT
@@ -163,17 +147,9 @@ jobs:
       - name: Get deployment outputs
         id: infra
         run: |
-          # Get the latest successful infrastructure deployment for dev environment
-          DEPLOYMENT_NAME=$(az deployment group list \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --query "[?contains(name, 'deploy-infra-dev-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
-            -o tsv)
-
-          echo "Using deployment: $DEPLOYMENT_NAME"
-
           DEPLOYMENT=$(az deployment group show \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name "$DEPLOYMENT_NAME" \
+            --name main \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
@@ -215,17 +191,9 @@ jobs:
       - name: Get deployment outputs
         id: infra
         run: |
-          # Get the latest successful infrastructure deployment for staging environment
-          DEPLOYMENT_NAME=$(az deployment group list \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --query "[?contains(name, 'deploy-infra-staging-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
-            -o tsv)
-
-          echo "Using deployment: $DEPLOYMENT_NAME"
-
           DEPLOYMENT=$(az deployment group show \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name "$DEPLOYMENT_NAME" \
+            --name main \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
@@ -267,17 +235,9 @@ jobs:
       - name: Get deployment outputs
         id: infra
         run: |
-          # Get the latest successful infrastructure deployment for production environment
-          DEPLOYMENT_NAME=$(az deployment group list \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --query "[?contains(name, 'deploy-infra-prod-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
-            -o tsv)
-
-          echo "Using deployment: $DEPLOYMENT_NAME"
-
           DEPLOYMENT=$(az deployment group show \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name "$DEPLOYMENT_NAME" \
+            --name main \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
