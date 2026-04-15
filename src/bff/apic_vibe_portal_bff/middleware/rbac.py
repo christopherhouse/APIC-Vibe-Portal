@@ -41,7 +41,7 @@ def require_role(role: str):
     Raises 403 if the user does not have the specified role.
     """
 
-    def _dependency(user: AuthenticatedUser = Depends(get_current_user)) -> AuthenticatedUser:
+    def _dependency(user: AuthenticatedUser = Depends(get_current_user)) -> AuthenticatedUser:  # noqa: B008
         if role not in user.roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -58,7 +58,7 @@ def require_any_role(roles: list[str]):
     Raises 403 if the user does not have any of the specified roles.
     """
 
-    def _dependency(user: AuthenticatedUser = Depends(get_current_user)) -> AuthenticatedUser:
+    def _dependency(user: AuthenticatedUser = Depends(get_current_user)) -> AuthenticatedUser:  # noqa: B008
         if not any(r in user.roles for r in roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

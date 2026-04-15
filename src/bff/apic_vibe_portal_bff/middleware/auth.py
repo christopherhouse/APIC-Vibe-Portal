@@ -7,13 +7,11 @@ Health-check and OpenAPI documentation paths are exempt from authentication.
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import jwt
 from jwt import PyJWKClient
-
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
