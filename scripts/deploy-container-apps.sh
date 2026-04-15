@@ -14,7 +14,10 @@
 #     --acr-server <acr-login-server> \
 #     --managed-identity <managed-identity-client-id> \
 #     --frontend-image-tag <frontend-tag> \
-#     --bff-image-tag <bff-tag>
+#     --bff-image-tag <bff-tag> \
+#     [--entra-tenant-id <tenant-id>] \
+#     [--entra-bff-client-id <bff-client-id>] \
+#     [--entra-bff-audience <bff-audience>]
 # ============================================================================
 
 set -euo pipefail
@@ -54,6 +57,18 @@ while [[ $# -gt 0 ]]; do
       BFF_IMAGE_TAG="$2"
       shift 2
       ;;
+    --entra-tenant-id)
+      ENTRA_TENANT_ID="$2"
+      shift 2
+      ;;
+    --entra-bff-client-id)
+      ENTRA_BFF_CLIENT_ID="$2"
+      shift 2
+      ;;
+    --entra-bff-audience)
+      ENTRA_BFF_AUDIENCE="$2"
+      shift 2
+      ;;
     *)
       echo "Unknown argument: $1"
       exit 1
@@ -65,10 +80,22 @@ done
 if [[ -z "${RESOURCE_GROUP:-}" ]] || [[ -z "${ENVIRONMENT_ID:-}" ]] || \
    [[ -z "${FRONTEND_APP_NAME:-}" ]] || [[ -z "${BFF_APP_NAME:-}" ]] || \
    [[ -z "${ACR_SERVER:-}" ]] || [[ -z "${MANAGED_IDENTITY:-}" ]] || \
-   [[ -z "${FRONTEND_IMAGE_TAG:-}" ]] || [[ -z "${BFF_IMAGE_TAG:-}"]]; then
+   [[ -z "${FRONTEND_IMAGE_TAG:-}" ]] || [[ -z "${BFF_IMAGE_TAG:-}" ]]; then
   echo "Error: Missing required arguments"
   echo "Usage: $0 --resource-group <rg> --environment-id <env-id> --frontend-app <name> --bff-app <name> --acr-server <server> --managed-identity <id> --frontend-image-tag <tag> --bff-image-tag <tag>"
   exit 1
+fi
+
+# Build BFF env vars argument for Container Apps
+BFF_ENV_VARS=""
+if [[ -n "${ENTRA_TENANT_ID:-}" ]]; then
+  BFF_ENV_VARS="ENTRA_TENANT_ID=${ENTRA_TENANT_ID}"
+fi
+if [[ -n "${ENTRA_BFF_CLIENT_ID:-}" ]]; then
+  BFF_ENV_VARS="${BFF_ENV_VARS:+$BFF_ENV_VARS }ENTRA_CLIENT_ID=${ENTRA_BFF_CLIENT_ID}"
+fi
+if [[ -n "${ENTRA_BFF_AUDIENCE:-}" ]]; then
+  BFF_ENV_VARS="${BFF_ENV_VARS:+$BFF_ENV_VARS }ENTRA_AUDIENCE=${ENTRA_BFF_AUDIENCE}"
 fi
 
 echo "============================================================================"
@@ -127,31 +154,39 @@ echo ""
 echo "Deploying BFF Container App..."
 if az containerapp show --name "$BFF_APP_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
   echo "Updating existing BFF Container App..."
-  az containerapp update \
-    --name "$BFF_APP_NAME" \
-    --resource-group "$RESOURCE_GROUP" \
-    --image "${ACR_SERVER}/bff:${BFF_IMAGE_TAG}" \
-    --cpu 0.5 \
-    --memory 1Gi \
-    --min-replicas 1 \
-    --max-replicas 10 \
-    --revision-suffix "$(date +%s)"
+  UPDATE_CMD=(az containerapp update
+    --name "$BFF_APP_NAME"
+    --resource-group "$RESOURCE_GROUP"
+    --image "${ACR_SERVER}/bff:${BFF_IMAGE_TAG}"
+    --cpu 0.5
+    --memory 1Gi
+    --min-replicas 1
+    --max-replicas 10
+    --revision-suffix "$(date +%s)")
+  if [[ -n "${BFF_ENV_VARS:-}" ]]; then
+    UPDATE_CMD+=(--set-env-vars $BFF_ENV_VARS)
+  fi
+  "${UPDATE_CMD[@]}"
 else
   echo "Creating new BFF Container App..."
-  az containerapp create \
-    --name "$BFF_APP_NAME" \
-    --resource-group "$RESOURCE_GROUP" \
-    --environment "$ENVIRONMENT_ID" \
-    --image "${ACR_SERVER}/bff:${BFF_IMAGE_TAG}" \
-    --target-port 8000 \
-    --ingress external \
-    --cpu 0.5 \
-    --memory 1Gi \
-    --min-replicas 1 \
-    --max-replicas 10 \
-    --registry-server "$ACR_SERVER" \
-    --user-assigned "$MANAGED_IDENTITY" \
-    --registry-identity "$MANAGED_IDENTITY"
+  CREATE_CMD=(az containerapp create
+    --name "$BFF_APP_NAME"
+    --resource-group "$RESOURCE_GROUP"
+    --environment "$ENVIRONMENT_ID"
+    --image "${ACR_SERVER}/bff:${BFF_IMAGE_TAG}"
+    --target-port 8000
+    --ingress external
+    --cpu 0.5
+    --memory 1Gi
+    --min-replicas 1
+    --max-replicas 10
+    --registry-server "$ACR_SERVER"
+    --user-assigned "$MANAGED_IDENTITY"
+    --registry-identity "$MANAGED_IDENTITY")
+  if [[ -n "${BFF_ENV_VARS:-}" ]]; then
+    CREATE_CMD+=(--env-vars $BFF_ENV_VARS)
+  fi
+  "${CREATE_CMD[@]}"
 fi
 
 # Get BFF URL

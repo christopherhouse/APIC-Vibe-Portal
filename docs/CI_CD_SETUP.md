@@ -129,6 +129,11 @@ Add the following secrets to your GitHub repository (**Settings** > **Secrets an
 | `AZURE_RESOURCE_GROUP_DEV` | `rg-apic-vibe-portal-dev` | Dev resource group name |
 | `AZURE_RESOURCE_GROUP_STAGING` | `rg-apic-vibe-portal-staging` | Staging resource group name |
 | `AZURE_RESOURCE_GROUP_PROD` | `rg-apic-vibe-portal-prod` | Prod resource group name |
+| `ENTRA_TENANT_ID` | `<TENANT_ID>` | Entra ID tenant ID (for app auth, see [Authentication Setup](authentication-setup.md)) |
+| `ENTRA_BFF_CLIENT_ID` | `<BFF_APP_ID>` | BFF API app registration client ID |
+| `ENTRA_BFF_AUDIENCE` | `api://<BFF_APP_ID>` | BFF API audience (Application ID URI) |
+| `MSAL_CLIENT_ID` | `<FRONTEND_APP_ID>` | Frontend SPA app registration client ID |
+| `BFF_API_SCOPE` | `api://<BFF_APP_ID>/access_as_user` | BFF API scope for frontend token requests |
 
 Get your tenant ID:
 ```bash

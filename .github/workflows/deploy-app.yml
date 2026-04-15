@@ -166,7 +166,10 @@ jobs:
             --acr-server ${{ steps.infra.outputs.acr-server }} \
             --managed-identity ${{ steps.infra.outputs.managed-identity }} \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
-            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
+            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }} \
+            --entra-tenant-id ${{ secrets.ENTRA_TENANT_ID }} \
+            --entra-bff-client-id ${{ secrets.ENTRA_BFF_CLIENT_ID }} \
+            --entra-bff-audience ${{ secrets.ENTRA_BFF_AUDIENCE }}
 
   deploy-staging:
     name: Deploy to Staging
@@ -210,7 +213,10 @@ jobs:
             --acr-server ${{ steps.infra.outputs.acr-server }} \
             --managed-identity ${{ steps.infra.outputs.managed-identity }} \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
-            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
+            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }} \
+            --entra-tenant-id ${{ secrets.ENTRA_TENANT_ID }} \
+            --entra-bff-client-id ${{ secrets.ENTRA_BFF_CLIENT_ID }} \
+            --entra-bff-audience ${{ secrets.ENTRA_BFF_AUDIENCE }}
 
   deploy-prod:
     name: Deploy to Production
@@ -254,4 +260,7 @@ jobs:
             --acr-server ${{ steps.infra.outputs.acr-server }} \
             --managed-identity ${{ steps.infra.outputs.managed-identity }} \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
-            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
+            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }} \
+            --entra-tenant-id ${{ secrets.ENTRA_TENANT_ID }} \
+            --entra-bff-client-id ${{ secrets.ENTRA_BFF_CLIENT_ID }} \
+            --entra-bff-audience ${{ secrets.ENTRA_BFF_AUDIENCE }}
