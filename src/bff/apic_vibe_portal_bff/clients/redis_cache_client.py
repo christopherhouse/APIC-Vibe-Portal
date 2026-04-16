@@ -3,10 +3,11 @@
 Implements the :class:`~apic_vibe_portal_bff.utils.cache.CacheBackend` protocol
 using Azure Cache for Redis via the ``redis-py`` library.
 
-Authentication uses **Entra ID** (user-assigned managed identity) — no
-access keys or connection-string secrets are required.  The BFF acquires a
-short-lived token from ``DefaultAzureCredential``, passes it as the Redis
-password, and refreshes it automatically before expiry.
+Authentication uses **Entra ID** (user-assigned managed identity) via the
+``redis-entraid`` credential provider — no access keys or connection-string
+secrets are required.  The ``credential_provider`` automatically acquires
+and refreshes short-lived Entra tokens, setting the correct username (OID)
+and password (token) for each Redis connection.
 
 Connection is established lazily on first use.  All operations catch Redis
 exceptions and log a warning rather than propagating — a cache failure must
@@ -19,21 +20,15 @@ from __future__ import annotations
 import importlib
 import json
 import logging
-import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import redis as redis_lib
-    from azure.core.credentials import TokenCredential
 
 logger = logging.getLogger(__name__)
 
 # Scope required to obtain a token for Azure Cache for Redis
 _REDIS_AUTH_SCOPE = "https://redis.azure.com/.default"
-
-# Refresh the token this many seconds before it expires to avoid mid-request
-# expiry (Azure tokens are typically valid for 1 hour)
-_TOKEN_REFRESH_BUFFER_SECONDS = 300  # 5 minutes
 
 # Key namespace prefix applied to every key stored in Redis, ensuring the BFF
 # does not clash with other tenants sharing the same Redis instance.
@@ -130,10 +125,10 @@ def _safe_import_model(type_path: str) -> type:  # type: ignore[type-arg]
 class RedisCacheBackend:
     """Redis-backed cache satisfying :class:`~apic_vibe_portal_bff.utils.cache.CacheBackend`.
 
-    Connects to Azure Cache for Redis using Entra ID token authentication.
-    Values are serialized to JSON with embedded type information so that
-    Pydantic model instances and lists thereof can be stored and reconstructed
-    without using ``pickle``.
+    Connects to Azure Cache for Redis using Entra ID token authentication
+    via the ``redis-entraid`` credential provider.  Values are serialized to
+    JSON with embedded type information so that Pydantic model instances and
+    lists thereof can be stored and reconstructed without using ``pickle``.
 
     Parameters
     ----------
@@ -142,10 +137,6 @@ class RedisCacheBackend:
         (e.g. ``my-redis.redis.cache.windows.net``).
     port:
         Redis SSL port — 6380 by default.
-    credential:
-        An ``azure-identity`` ``TokenCredential`` used to obtain Entra tokens.
-        Defaults to ``DefaultAzureCredential()`` (lazily instantiated on first
-        use so unit tests can inject mocks without importing ``azure-identity``).
     default_ttl_seconds:
         Default expiry applied when ``set`` is called without an explicit TTL.
     key_prefix:
@@ -156,55 +147,39 @@ class RedisCacheBackend:
         self,
         host: str,
         port: int = 6380,
-        credential: TokenCredential | None = None,
         default_ttl_seconds: float = 300.0,
         key_prefix: str = _DEFAULT_PREFIX,
     ) -> None:
         self._host = host
         self._port = port
-        self._credential = credential  # lazily default to DefaultAzureCredential
         self._default_ttl = default_ttl_seconds
         self._key_prefix = key_prefix
         self._client: redis_lib.Redis | None = None  # type: ignore[type-arg]
-        self._token_expiry: float = 0.0  # unix timestamp after which we must refresh
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _get_credential(self) -> TokenCredential:
-        """Return the credential, defaulting to ``DefaultAzureCredential``."""
-        if self._credential is None:
-            from azure.identity import DefaultAzureCredential
-
-            self._credential = DefaultAzureCredential()
-        assert self._credential is not None
-        return self._credential
-
     def _redis(self) -> redis_lib.Redis:  # type: ignore[type-arg]
-        """Lazily create/refresh the Redis client when the token is near expiry."""
-        now = time.time()
-        if self._client is None or now >= self._token_expiry:
+        """Lazily create the Redis client with an Entra credential provider.
+
+        Uses ``redis-entraid`` to handle Entra ID token acquisition and
+        automatic refresh.  The credential provider sets the correct OID
+        username and short-lived token password on every connection.
+        """
+        if self._client is None:
             import redis
+            from redis_entraid.cred_provider import create_from_default_azure_credential
 
-            credential = self._get_credential()
-            token = credential.get_token(_REDIS_AUTH_SCOPE)
-            # Schedule refresh before the token expires
-            self._token_expiry = token.expires_on - _TOKEN_REFRESH_BUFFER_SECONDS
-
-            # Close the existing connection (if any) before creating a new one
-            if self._client is not None:
-                try:
-                    self._client.close()
-                except Exception:
-                    pass
+            cred_provider = create_from_default_azure_credential(
+                scopes=(_REDIS_AUTH_SCOPE,),
+            )
 
             self._client = redis.Redis(
                 host=self._host,
                 port=self._port,
                 ssl=True,
-                username="",  # Entra auth — username is unused
-                password=token.token,
+                credential_provider=cred_provider,
                 decode_responses=False,
             )
         return self._client

@@ -3,12 +3,12 @@
 All Redis interactions are exercised via a mocked ``redis.Redis`` client and a
 mocked Azure credential so no real Redis server or Azure connectivity is
 required.  Tests verify serialization, TTL handling, prefix-based invalidation,
-graceful degradation on errors, lazy connection setup, and token refresh logic.
+graceful degradation on errors, lazy connection setup, and credential provider
+wiring.
 """
 
 from __future__ import annotations
 
-import time
 from unittest.mock import MagicMock, patch
 
 from apic_vibe_portal_bff.clients.redis_cache_client import RedisCacheBackend, _serialize
@@ -18,32 +18,18 @@ from apic_vibe_portal_bff.clients.redis_cache_client import RedisCacheBackend, _
 # ---------------------------------------------------------------------------
 
 
-def _make_credential(expires_in: float = 7200.0) -> MagicMock:
-    """Return a mock Azure TokenCredential whose token expires at now + expires_in."""
-    token = MagicMock()
-    token.token = "fake-entra-token"
-    token.expires_on = time.time() + expires_in
-    cred = MagicMock()
-    cred.get_token.return_value = token
-    return cred
-
-
 def _make_backend(
     mock_redis_client: MagicMock | None = None,
-    expires_in: float = 7200.0,
 ) -> tuple[RedisCacheBackend, MagicMock]:
-    """Return a backend with the Redis client and token pre-wired."""
-    credential = _make_credential(expires_in=expires_in)
+    """Return a backend with the Redis client pre-wired."""
     backend = RedisCacheBackend(
         host="test-redis.redis.azure.net",
         port=10000,
-        credential=credential,
         default_ttl_seconds=60.0,
     )
     if mock_redis_client is None:
         mock_redis_client = MagicMock()
-    # Pre-wire a valid token expiry so _redis() doesn't try to fetch a new one
-    backend._token_expiry = time.time() + expires_in
+    # Pre-wire the client so _redis() doesn't try to create one
     backend._client = mock_redis_client
     return backend, mock_redis_client
 
@@ -81,13 +67,10 @@ class TestGet:
         assert result is None  # graceful degradation
 
     def test_key_prefix_applied(self) -> None:
-        credential = _make_credential()
         backend = RedisCacheBackend(
             host="test-redis.redis.azure.net",
-            credential=credential,
             key_prefix="custom:",
         )
-        backend._token_expiry = time.time() + 7200
         backend._client = MagicMock()
         backend._client.get.return_value = _serialize("hello")
 
@@ -234,8 +217,7 @@ class TestClose:
         assert backend._client is None
 
     def test_close_is_idempotent(self) -> None:
-        credential = _make_credential()
-        backend = RedisCacheBackend(host="localhost", credential=credential)
+        backend = RedisCacheBackend(host="localhost")
         backend.close()  # no client created — must not raise
         backend.close()  # second call also safe
 
@@ -247,93 +229,79 @@ class TestClose:
 
 class TestLazyConnection:
     def test_client_created_on_first_get(self) -> None:
-        credential = _make_credential()
-        with patch("redis.Redis") as mock_redis_cls:
+        with (
+            patch("redis.Redis") as mock_redis_cls,
+            patch("redis_entraid.cred_provider.create_from_default_azure_credential") as mock_create,
+        ):
             mock_redis = MagicMock()
             mock_redis_cls.return_value = mock_redis
             mock_redis.get.return_value = None
 
+            mock_provider = MagicMock()
+            mock_create.return_value = mock_provider
+
             backend = RedisCacheBackend(
                 host="test-redis.redis.azure.net",
                 port=10000,
-                credential=credential,
             )
             assert backend._client is None  # not yet connected
 
             backend.get("key")
 
+            mock_create.assert_called_once_with(
+                scopes=("https://redis.azure.com/.default",),
+            )
             mock_redis_cls.assert_called_once_with(
                 host="test-redis.redis.azure.net",
                 port=10000,
                 ssl=True,
-                username="",
-                password="fake-entra-token",
+                credential_provider=mock_provider,
                 decode_responses=False,
             )
             assert backend._client is mock_redis
 
-    def test_default_credential_created_lazily(self) -> None:
-        """DefaultAzureCredential is not imported until _redis() is called."""
-        with patch("redis.Redis") as mock_redis_cls:
+    def test_credential_provider_created_lazily(self) -> None:
+        """credential_provider is not created until _redis() is called."""
+        with (
+            patch("redis.Redis") as mock_redis_cls,
+            patch("redis_entraid.cred_provider.create_from_default_azure_credential") as mock_create,
+        ):
             mock_redis_cls.return_value = MagicMock()
-            mock_token = MagicMock()
-            mock_token.token = "lazy-token"
-            mock_token.expires_on = time.time() + 3600
-            mock_cred = MagicMock()
-            mock_cred.get_token.return_value = mock_token
+            mock_create.return_value = MagicMock()
 
-            with patch("azure.identity.DefaultAzureCredential") as mock_dac:
-                mock_dac.return_value = mock_cred
-                backend = RedisCacheBackend(host="h")
-                assert backend._credential is None  # not created yet
+            backend = RedisCacheBackend(host="h")
+            assert backend._client is None  # not created yet
 
-                backend.get("any")  # triggers lazy init
+            backend.get("any")  # triggers lazy init
 
-                mock_dac.assert_called_once()
-                mock_cred.get_token.assert_called_once_with("https://redis.azure.com/.default")
+            mock_create.assert_called_once_with(
+                scopes=("https://redis.azure.com/.default",),
+            )
 
 
 # ---------------------------------------------------------------------------
-# Token refresh
+# Client reuse (credential provider handles token refresh internally)
 # ---------------------------------------------------------------------------
 
 
-class TestTokenRefresh:
-    def test_client_recreated_when_token_expired(self) -> None:
-        credential = _make_credential(expires_in=7200)
-        with patch("redis.Redis") as mock_redis_cls:
-            first_client = MagicMock()
-            second_client = MagicMock()
-            mock_redis_cls.side_effect = [first_client, second_client]
-            first_client.get.return_value = None
-            second_client.get.return_value = None
+class TestClientReuse:
+    def test_client_created_once_and_reused(self) -> None:
+        """The credential_provider handles token refresh, so the client is created once."""
+        with (
+            patch("redis.Redis") as mock_redis_cls,
+            patch("redis_entraid.cred_provider.create_from_default_azure_credential"),
+        ):
+            mock_redis = MagicMock()
+            mock_redis_cls.return_value = mock_redis
+            mock_redis.get.return_value = None
 
-            backend = RedisCacheBackend(host="h", port=10000, credential=credential)
-            backend.get("a")  # creates first client
-            assert backend._client is first_client
+            backend = RedisCacheBackend(host="h", port=10000)
+            backend.get("a")
+            backend.get("b")
 
-            # Simulate token expiry by setting expiry to the past
-            backend._token_expiry = time.time() - 1
-
-            backend.get("b")  # should create second client
-
-            assert backend._client is second_client
-            assert mock_redis_cls.call_count == 2
-            first_client.close.assert_called_once()  # old client was closed
-
-    def test_token_expiry_set_with_buffer(self) -> None:
-        credential = _make_credential(expires_in=3600)
-        with patch("redis.Redis") as mock_redis_cls:
-            mock_redis_cls.return_value = MagicMock()
-            mock_redis_cls.return_value.get.return_value = None
-
-            backend = RedisCacheBackend(host="h", credential=credential)
-            backend.get("k")
-
-            # Token expires_on was (now + 3600); expiry should be set to (now + 3600 - 300)
-            # Allow ±5 s tolerance for test timing
-            expected = credential.get_token.return_value.expires_on - 300
-            assert abs(backend._token_expiry - expected) < 5
+            # Redis client only created once — credential_provider refreshes tokens
+            mock_redis_cls.assert_called_once()
+            assert backend._client is mock_redis
 
 
 # ---------------------------------------------------------------------------
@@ -345,7 +313,7 @@ class TestProtocolConformance:
     def test_redis_backend_satisfies_cache_backend_protocol(self) -> None:
         from apic_vibe_portal_bff.utils.cache import CacheBackend
 
-        backend = RedisCacheBackend(host="localhost", credential=_make_credential())
+        backend = RedisCacheBackend(host="localhost")
         assert isinstance(backend, CacheBackend)
 
     def test_in_memory_cache_satisfies_cache_backend_protocol(self) -> None:

@@ -11,6 +11,7 @@ dependencies = [
     "pydantic-settings>=2.13.1",
     "pyjwt>=2.12.1",
     "redis>=5.2.0",
+    "redis-entraid>=1.1.0",
     "starlette>=0.46.0",
     "structlog>=25.5.0",
     "uvicorn>=0.44.0",
