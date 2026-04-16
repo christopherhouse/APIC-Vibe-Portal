@@ -48,7 +48,18 @@ class Settings(BaseSettings):
     api_center_subscription_id: str = Field(default="", description="Azure subscription ID containing API Center")
     api_center_resource_group: str = Field(default="", description="Resource group containing API Center")
     api_center_service_name: str = Field(default="", description="API Center service name")
-    cache_ttl_seconds: int = Field(default=300, description="Default in-memory cache TTL in seconds")
+    cache_ttl_seconds: int = Field(
+        default=300, description="Default cache TTL in seconds (Redis and in-memory fallback)"
+    )
+
+    # --- Redis cache ----------------------------------------------------
+    redis_url: str = Field(
+        default="",
+        description=(
+            "Redis connection URL (e.g. rediss://:password@hostname:6380 for Azure Cache for Redis). "
+            "When empty the BFF falls back to a single-process in-memory cache."
+        ),
+    )
 
     # --- Entra ID (authentication) ---------------------------------------
     entra_tenant_id: str = Field(default="", description="Entra ID (Azure AD) tenant ID")

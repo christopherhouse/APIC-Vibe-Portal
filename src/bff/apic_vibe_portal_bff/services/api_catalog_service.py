@@ -1,8 +1,8 @@
 """API catalog service — business logic for API discovery operations.
 
 Orchestrates calls to :class:`ApiCenterClient`, applies the data mapper, and
-caches results using :class:`InMemoryCache`.  This is the primary entry point
-for all API catalog read operations used by the BFF routers.
+caches results using a :class:`~apic_vibe_portal_bff.utils.cache.CacheBackend`
+implementation (Redis in production, in-memory fallback for local development).
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from apic_vibe_portal_bff.models.api_center import (
     PaginatedResponse,
     PaginationMeta,
 )
-from apic_vibe_portal_bff.utils.cache import InMemoryCache
+from apic_vibe_portal_bff.utils.cache import CacheBackend, InMemoryCache
 
 logger = logging.getLogger(__name__)
 
@@ -55,17 +55,23 @@ class ApiCatalogService:
     client:
         :class:`ApiCenterClient` instance used to communicate with Azure
         API Center.
+    cache:
+        Cache backend to use.  Pass a :class:`RedisCacheBackend` in
+        production; defaults to :class:`InMemoryCache` (suitable for local
+        development and single-instance deployments).
     cache_ttl_seconds:
-        Default cache TTL.  Individual operations may use their own TTLs.
+        Default cache TTL used when *cache* is ``None`` and an
+        :class:`InMemoryCache` is created automatically.
     """
 
     def __init__(
         self,
         client: ApiCenterClient,
+        cache: CacheBackend | None = None,
         cache_ttl_seconds: float = 300.0,
     ) -> None:
         self._client = client
-        self._cache: InMemoryCache[object] = InMemoryCache(default_ttl_seconds=cache_ttl_seconds)
+        self._cache: CacheBackend = cache if cache is not None else InMemoryCache(default_ttl_seconds=cache_ttl_seconds)
 
     # ------------------------------------------------------------------
     # Public operations

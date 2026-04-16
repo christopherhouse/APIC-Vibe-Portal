@@ -1,14 +1,50 @@
-"""Simple in-memory TTL cache for Azure API Center responses.
+"""Cache backends for API Center response caching.
 
-The cache stores arbitrary values keyed by string keys and expires entries
-after a configurable TTL.  It is intentionally simple (no LRU eviction,
-single-process only) — sufficient for BFF caching of relatively small API
-Center datasets.
+Provides:
+- :class:`CacheBackend` — structural protocol that all cache implementations must satisfy.
+- :class:`InMemoryCache` — simple in-process TTL cache (single-node/dev fallback).
+
+The Redis-backed implementation lives in
+``apic_vibe_portal_bff.clients.redis_cache_client``.
 """
 
 from __future__ import annotations
 
 import time
+from typing import Protocol, runtime_checkable
+
+
+@runtime_checkable
+class CacheBackend(Protocol):
+    """Structural protocol for all cache backend implementations.
+
+    Any object that provides ``get``, ``set``, ``delete``, ``clear``, and
+    ``invalidate_prefix`` with matching signatures satisfies this protocol
+    without explicit inheritance.
+    """
+
+    def get(self, key: str) -> object | None:
+        """Return the cached value for *key*, or ``None`` if missing/expired."""
+        ...
+
+    def set(self, key: str, value: object, ttl_seconds: float | None = None) -> None:
+        """Cache *value* under *key* with an optional TTL override."""
+        ...
+
+    def delete(self, key: str) -> None:
+        """Remove *key* from the cache (no-op if not present)."""
+        ...
+
+    def clear(self) -> None:
+        """Evict all entries."""
+        ...
+
+    def invalidate_prefix(self, prefix: str) -> int:
+        """Remove all keys that start with *prefix*.
+
+        Returns the number of keys removed.
+        """
+        ...
 
 
 class CacheEntry[V]:
@@ -26,11 +62,11 @@ class CacheEntry[V]:
 
 
 class InMemoryCache[V]:
-    """Thread-unsafe in-memory TTL cache.
+    """Thread-unsafe in-process TTL cache.
 
-    Suitable for single-threaded async FastAPI workloads where the GIL
-    provides sufficient protection.  For multi-process deployments (gunicorn
-    workers) a distributed cache (e.g., Redis) should replace this.
+    Satisfies :class:`CacheBackend`.  Used as a local-development fallback
+    when ``REDIS_URL`` is not configured.  For production (multi-replica
+    Container Apps deployments) the Redis backend should be used instead.
     """
 
     def __init__(self, default_ttl_seconds: float = 300.0) -> None:

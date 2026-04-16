@@ -104,6 +104,7 @@ Add to BFF settings:
 | ---------- | -------------- | ------- | ------------ |
 | —          | 🔲 Not Started | —       | Task created |
 | 2026-04-16 | ✅ Complete    | copilot | Full implementation: ApiCenterClient, ApiCatalogService, data mapper, in-memory cache, Pydantic models. 189 tests passing (94 new). |
+| 2026-04-16 | ✅ Complete    | copilot | Replaced in-memory cache with Azure Cache for Redis (PR review feedback). Redis Bicep module added; BFF now uses RedisCacheBackend (in-memory remains as local dev fallback). 210 tests passing. |
 
 ### Technical Decisions
 
@@ -114,19 +115,23 @@ Add to BFF settings:
 - **Python 3.14 generic syntax** (`class CacheEntry[V]`): Used PEP 695 syntax for generics as enforced by Ruff `UP046` for the target Python version.
 - **StrEnum for domain enums**: Used `StrEnum` (available since Python 3.11) so enum values serialize directly to their string representation in JSON responses without custom serializers.
 - **Differentiated cache TTLs**: API lists (2 min), API details/versions (5 min), specifications (10 min), environments/deployments (15 min) — balancing freshness vs. call reduction.
+- **Redis as primary cache backend**: `RedisCacheBackend` (`clients/redis_cache_client.py`) uses `redis-py>=5.2` with pickle serialization and `rediss://` SSL URLs. `InMemoryCache` remains available as a local dev fallback when `REDIS_URL` is not set. `ApiCatalogService` accepts a `CacheBackend` protocol so the backend is injected (no hard coupling).
+- **Connection string stored in Key Vault**: The Bicep module calls `listKeys` on the Redis resource and writes a `rediss://:key@host:6380` URL to a Key Vault secret (`redis-connection-string`). The BFF reads `REDIS_URL` from its environment (populated from the secret by the deployment script).
+- **Redis SKU per environment**: Basic/C0 (250 MB) for dev, Standard/C1 (1 GB) for staging, Standard/C1 for prod (configurable via `redisSku`/`redisSkuCapacity` Bicep parameters). The `dev.bicepparam` sets `Basic/C0`.
 
 ### Deviations from Plan
 
 - The plan referenced a `src/bff/src/bff/` layout (nested `src` directory); the actual BFF layout uses `src/bff/apic_vibe_portal_bff/` (flat source directory per the existing project structure).
 - Mock responses live in `tests/api_center_mocks.py` rather than `clients/mocks/api_center_responses.py` to keep them alongside the test suite and avoid polluting the production package.
 - Settings added `api_center_subscription_id`, `api_center_resource_group`, `api_center_service_name`, and `cache_ttl_seconds` as new fields alongside the pre-existing `api_center_endpoint` field (retained for potential direct REST usage).
+- In-memory cache was replaced with Azure Cache for Redis after PR review feedback. The original plan did not specify Redis explicitly but the in-memory design was identified as unsuitable for multi-replica deployments.
 
 ### Validation Results
 
-- **Tests**: 189 tests (94 new tests across `test_cache.py`, `test_api_center_mapper.py`, `test_api_center_client.py`, `test_api_catalog_service.py`), all passing
+- **Tests**: 210 tests (21 new Redis tests in `test_redis_cache_client.py`), all passing — no regressions
 - **Lint**: `uv run ruff check .` passes with no errors or warnings
-- **Existing tests**: All 95 pre-existing tests continue to pass (no regressions)
-- **New dependencies added**: `azure-identity>=1.21.0`, `azure-mgmt-apicenter>=1.0.0`
+- **New dependencies added**: `azure-identity>=1.21.0`, `azure-mgmt-apicenter>=1.0.0`, `redis>=5.2.0`
+- **Infrastructure**: `infra/modules/redis-cache.bicep` — Azure Cache for Redis with TLS, Key Vault secret, diagnostics to Log Analytics, private endpoint support
 
 ## Coding Agent Prompt
 

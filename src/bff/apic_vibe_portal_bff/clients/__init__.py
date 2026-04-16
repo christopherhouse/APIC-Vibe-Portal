@@ -7,6 +7,7 @@ from apic_vibe_portal_bff.clients.api_center_client import (
     ApiCenterNotFoundError,
     ApiCenterUnavailableError,
 )
+from apic_vibe_portal_bff.clients.redis_cache_client import RedisCacheBackend
 
 __all__ = [
     "ApiCenterAuthError",
@@ -14,4 +15,5 @@ __all__ = [
     "ApiCenterClientError",
     "ApiCenterNotFoundError",
     "ApiCenterUnavailableError",
+    "RedisCacheBackend",
 ]

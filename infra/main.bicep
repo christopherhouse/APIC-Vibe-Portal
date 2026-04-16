@@ -59,6 +59,13 @@ param cosmosDbLocations array = []
 @description('Azure region for Cosmos DB (defaults to main location if not specified)')
 param cosmosDbLocation string = location
 
+@description('Redis Cache SKU (Basic for dev, Standard for staging/prod)')
+@allowed(['Basic', 'Standard', 'Premium'])
+param redisSku string = environmentName == 'prod' ? 'Standard' : 'Basic'
+
+@description('Redis Cache SKU capacity (0=250 MB, 1=1 GB, 2=2.5 GB …)')
+param redisSkuCapacity int = environmentName == 'prod' ? 1 : 0
+
 @description('Enable private endpoints for resources (recommended for prod)')
 param enablePrivateEndpoints bool = environmentName == 'prod'
 
@@ -92,6 +99,7 @@ var resourceNames = {
   cosmosDb: '${namePrefix}-cosmos-${environmentName}-${uniqueSuffix}'
   foundryAccount: '${namePrefix}-foundry-${environmentName}-${uniqueSuffix}'
   foundryProject: '${namePrefix}-project-${environmentName}'
+  redisCache: '${namePrefix}-redis-${environmentName}-${uniqueSuffix}'
 }
 
 // ============================================================================
@@ -260,6 +268,28 @@ module foundryAgent 'modules/foundry-agent.bicep' = {
 }
 
 // ============================================================================
+// MODULE 11: Azure Cache for Redis
+// ============================================================================
+
+module redisCache 'modules/redis-cache.bicep' = {
+  name: 'redis-${deployment().name}'
+  params: {
+    location: location
+    redisCacheName: resourceNames.redisCache
+    redisSku: redisSku
+    redisSkuCapacity: redisSkuCapacity
+    keyVaultName: keyVault.outputs.keyVaultName
+    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
+    enablePrivateEndpoint: enablePrivateEndpoints
+    privateEndpointSubnetId: privateEndpointSubnetId
+    tags: tags
+  }
+  dependsOn: [
+    keyVault
+  ]
+}
+
+// ============================================================================
 // OUTPUTS
 // ============================================================================
 
@@ -339,6 +369,15 @@ output foundryEndpoint string = foundryAgent.outputs.endpoint
 
 @description('Foundry Project Name')
 output foundryProjectName string = foundryAgent.outputs.projectName
+
+@description('Redis Cache hostname')
+output redisCacheHostName string = redisCache.outputs.hostName
+
+@description('Redis Cache name')
+output redisCacheName string = redisCache.outputs.name
+
+@description('Key Vault secret name for the Redis connection string')
+output redisConnectionStringSecretName string = redisCache.outputs.connectionStringSecretName
 
 // Note: Container App URLs will be available after deployment via bash script
 @description('Frontend Container App Name (deploy separately)')
