@@ -1,9 +1,18 @@
 // ============================================================================
-// Azure Managed Redis Module
+// Azure Cache for Redis Module
 // ============================================================================
-// Deploys an Azure Managed Redis instance (Microsoft.Cache/redisEnterprise)
-// and grants the specified user-assigned managed identity data-plane access
-// via an Entra ID access policy assignment (no access keys required).
+// Deploys an Azure Cache for Redis instance (Microsoft.Cache/redis) and
+// grants the specified user-assigned managed identity data-plane access via
+// an Entra ID access policy assignment (no access keys required).
+//
+// ⚠️  DEPRECATION NOTE (2026-04-16):
+// Azure Cache for Redis is deprecated. This module replaces the previous
+// Azure Managed Redis (Microsoft.Cache/redisEnterprise) module which could
+// not be deployed (ARM failures both in CI and in the Azure Portal).
+// This is an interim solution — revisit and migrate to the successor
+// service once Azure Managed Redis deployment issues are resolved or a
+// GA replacement is available.  See docs/project/apic_architecture.md for
+// the full risk acknowledgment and remediation plan.
 //
 // Authentication: Entra ID / Managed Identity only.
 // Access keys are disabled; the BFF acquires short-lived tokens from
@@ -13,11 +22,26 @@
 @description('Azure region')
 param location string
 
-@description('Azure Managed Redis instance name')
+@description('Azure Cache for Redis instance name')
 param redisCacheName string
 
-@description('Azure Managed Redis SKU name (e.g. Balanced_B0, Balanced_B1, MemoryOptimized_M10)')
-param redisSku string = 'Balanced_B1'
+@description('Azure Cache for Redis SKU name (Basic, Standard, Premium)')
+@allowed([
+  'Basic'
+  'Standard'
+  'Premium'
+])
+param redisSku string = 'Basic'
+
+@description('Azure Cache for Redis SKU family (C = Basic/Standard, P = Premium)')
+@allowed([
+  'C'
+  'P'
+])
+param redisFamily string = 'C'
+
+@description('Azure Cache for Redis capacity (0-6 for C family, 1-5 for P family)')
+param redisCapacity int = 0
 
 @description('Principal ID of the user-assigned managed identity that will access Redis')
 param managedIdentityPrincipalId string
@@ -38,56 +62,51 @@ param tags object
 // VARIABLES
 // ============================================================================
 
-// Azure Managed Redis Enterprise databases use port 10000 by default
-var redisPort = 10000
+// Azure Cache for Redis uses port 6380 for SSL connections
+var redisPort = 6380
 
 // ============================================================================
 // RESOURCES
 // ============================================================================
 
-// Azure Managed Redis cluster (Redis Enterprise)
-resource redisEnterprise 'Microsoft.Cache/redisEnterprise@2025-07-01' = {
+// Azure Cache for Redis
+resource redisCache 'Microsoft.Cache/redis@2024-11-01' = {
   name: redisCacheName
   location: location
   tags: tags
-  sku: {
-    name: redisSku
-  }
   properties: {
+    enableNonSslPort: false
     minimumTlsVersion: '1.2'
     publicNetworkAccess: enablePrivateEndpoint ? 'Disabled' : 'Enabled'
-  }
-}
-
-// Redis database within the cluster
-resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2025-07-01' = {
-  parent: redisEnterprise
-  name: 'default'
-  properties: {
-    accessKeysAuthentication: 'Disabled'  // Entra ID only — no embedded secrets
-    evictionPolicy: 'VolatileLRU'         // Evict TTL-keyed entries, LRU order
-    clusteringPolicy: 'EnterpriseCluster'
-    port: redisPort
-  }
-}
-
-// Grant the user-assigned managed identity data-plane access to the Redis database.
-// The built-in "default" access policy provides read/write access to all keys.
-resource redisAccessPolicyAssignment 'Microsoft.Cache/redisEnterprise/databases/accessPolicyAssignments@2025-07-01' = {
-  parent: redisDatabase
-  name: take('bff-mi-${uniqueString(managedIdentityPrincipalId)}', 24)
-  properties: {
-    accessPolicyName: 'default'
-    user: {
-      objectId: managedIdentityPrincipalId
+    disableAccessKeyAuthentication: true  // Entra ID only — no embedded secrets
+    sku: {
+      name: redisSku
+      family: redisFamily
+      capacity: redisCapacity
+    }
+    redisConfiguration: {
+      'aad-enabled': 'true'
     }
   }
 }
 
-// Diagnostic settings for the Redis Enterprise cluster
-resource clusterDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+// Grant the user-assigned managed identity data-plane access to Redis.
+// The built-in "Data Owner" access policy provides full read/write/admin
+// access to all keys (required for SCAN + UNLINK cache clearing).
+resource redisAccessPolicyAssignment 'Microsoft.Cache/redis/accessPolicyAssignments@2024-11-01' = {
+  parent: redisCache
+  name: take('bff-mi-${uniqueString(managedIdentityPrincipalId)}', 24)
+  properties: {
+    accessPolicyName: 'Data Owner'
+    objectId: managedIdentityPrincipalId
+    objectIdAlias: 'bff-managed-identity'
+  }
+}
+
+// Diagnostic settings for Azure Cache for Redis
+resource cacheDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'diag-${redisCacheName}'
-  scope: redisEnterprise
+  scope: redisCache
   properties: {
     workspaceId: logAnalyticsWorkspaceId
     metrics: [
@@ -116,9 +135,9 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if (e
       {
         name: '${redisCacheName}-pe-connection'
         properties: {
-          privateLinkServiceId: redisEnterprise.id
+          privateLinkServiceId: redisCache.id
           groupIds: [
-            'redisEnterprise'
+            'redisCache'
           ]
         }
       }
@@ -130,14 +149,14 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if (e
 // OUTPUTS
 // ============================================================================
 
-@description('Azure Managed Redis cluster resource ID')
-output id string = redisEnterprise.id
+@description('Azure Cache for Redis resource ID')
+output id string = redisCache.id
 
-@description('Azure Managed Redis cluster name')
-output name string = redisEnterprise.name
+@description('Azure Cache for Redis name')
+output name string = redisCache.name
 
-@description('Azure Managed Redis hostname (set as REDIS_HOST env var on the BFF at deploy time)')
-output hostName string = redisEnterprise.properties.hostName
+@description('Azure Cache for Redis hostname (set as REDIS_HOST env var on the BFF at deploy time)')
+output hostName string = redisCache.properties.hostName
 
-@description('Azure Managed Redis database port (10000)')
+@description('Azure Cache for Redis SSL port (6380)')
 output port int = redisPort

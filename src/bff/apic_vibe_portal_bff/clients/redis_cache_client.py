@@ -1,7 +1,7 @@
 """Redis-backed cache client for API Center response caching.
 
 Implements the :class:`~apic_vibe_portal_bff.utils.cache.CacheBackend` protocol
-using Azure Managed Redis via the ``redis-py`` library.
+using Azure Cache for Redis via the ``redis-py`` library.
 
 Authentication uses **Entra ID** (user-assigned managed identity) — no
 access keys or connection-string secrets are required.  The BFF acquires a
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Scope required to obtain a token for Azure Managed Redis
+# Scope required to obtain a token for Azure Cache for Redis
 _REDIS_AUTH_SCOPE = "https://redis.azure.com/.default"
 
 # Refresh the token this many seconds before it expires to avoid mid-request
@@ -130,7 +130,7 @@ def _safe_import_model(type_path: str) -> type:  # type: ignore[type-arg]
 class RedisCacheBackend:
     """Redis-backed cache satisfying :class:`~apic_vibe_portal_bff.utils.cache.CacheBackend`.
 
-    Connects to Azure Managed Redis using Entra ID token authentication.
+    Connects to Azure Cache for Redis using Entra ID token authentication.
     Values are serialized to JSON with embedded type information so that
     Pydantic model instances and lists thereof can be stored and reconstructed
     without using ``pickle``.
@@ -138,10 +138,10 @@ class RedisCacheBackend:
     Parameters
     ----------
     host:
-        Azure Managed Redis hostname
-        (e.g. ``my-redis.eastus.redis.azure.net``).
+        Azure Cache for Redis hostname
+        (e.g. ``my-redis.redis.cache.windows.net``).
     port:
-        Redis Enterprise database port — 10000 by default.
+        Redis SSL port — 6380 by default.
     credential:
         An ``azure-identity`` ``TokenCredential`` used to obtain Entra tokens.
         Defaults to ``DefaultAzureCredential()`` (lazily instantiated on first
@@ -155,7 +155,7 @@ class RedisCacheBackend:
     def __init__(
         self,
         host: str,
-        port: int = 10000,
+        port: int = 6380,
         credential: TokenCredential | None = None,
         default_ttl_seconds: float = 300.0,
         key_prefix: str = _DEFAULT_PREFIX,

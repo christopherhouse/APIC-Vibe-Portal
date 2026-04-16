@@ -93,7 +93,7 @@ done
 BFF_CORE_ENV_VARS=(
   "AZURE_CLIENT_ID=${MANAGED_IDENTITY}"
   "REDIS_HOST=${REDIS_HOST}"
-  "REDIS_PORT=10000"
+  "REDIS_PORT=6380"
 )
 
 # Append any extra BFF env vars passed via --bff-env-vars
