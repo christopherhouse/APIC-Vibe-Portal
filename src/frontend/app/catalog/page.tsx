@@ -112,9 +112,12 @@ export default function CatalogPage() {
 
   // ---------- event handlers ----------
   const handlePageChange = (newPage: number) => updateSearch({ page: String(newPage) });
-  const handlePageSizeChange = (newSize: number) => updateSearch({ pageSize: String(newSize), page: '1' });
-  const handleSortChange = (s: SortField, d: SortDirection) => updateSearch({ sort: s, direction: d, page: '1' });
-  const handleLifecycleChange = (value: string | undefined) => updateSearch({ lifecycle: value, page: '1' });
+  const handlePageSizeChange = (newSize: number) =>
+    updateSearch({ pageSize: String(newSize), page: '1' });
+  const handleSortChange = (s: SortField, d: SortDirection) =>
+    updateSearch({ sort: s, direction: d, page: '1' });
+  const handleLifecycleChange = (value: string | undefined) =>
+    updateSearch({ lifecycle: value, page: '1' });
   const handleKindChange = (value: string | undefined) => updateSearch({ kind: value, page: '1' });
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
@@ -158,11 +161,7 @@ export default function CatalogPage() {
       {/* Content area */}
       <Box sx={{ display: 'flex', gap: 3 }}>
         {/* Desktop filter sidebar */}
-        {!isMobile && (
-          <Box sx={{ width: FILTER_DRAWER_WIDTH, flexShrink: 0 }}>
-            {filterContent}
-          </Box>
-        )}
+        {!isMobile && <Box sx={{ width: FILTER_DRAWER_WIDTH, flexShrink: 0 }}>{filterContent}</Box>}
 
         {/* Mobile filter drawer */}
         {isMobile && (

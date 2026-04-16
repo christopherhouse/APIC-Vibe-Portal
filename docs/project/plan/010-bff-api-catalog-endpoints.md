@@ -120,20 +120,20 @@ Create controller functions that:
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
-| 2026-04-16 | ✅ Complete | copilot | Full implementation: 6 endpoints (list, detail, versions, definition, deployments, environments), Pydantic request validation, consistent response envelopes (ApiResponse/ApiErrorResponse), pagination, filtering (lifecycle/kind), sorting, RBAC. 36 new integration tests, 252 total passing. |
+| Date       | Status         | Author  | Notes                                                                                                                                                                                                                                                                                            |
+| ---------- | -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| —          | 🔲 Not Started | —       | Task created                                                                                                                                                                                                                                                                                     |
+| 2026-04-16 | ✅ Complete    | copilot | Full implementation: 6 endpoints (list, detail, versions, definition, deployments, environments), Pydantic request validation, consistent response envelopes (ApiResponse/ApiErrorResponse), pagination, filtering (lifecycle/kind), sorting, RBAC. 36 new integration tests, 252 total passing. |
 
 ### Technical Decisions
 
 - **Router without prefix**: The router defines full paths (e.g., `/api/catalog`, `/api/environments`) rather than using FastAPI's `prefix` parameter. This keeps route registration in `app.py` simple and makes the URL structure explicit in the router module.
 - **Dependency injection for service**: `ApiCatalogService` is injected via `Depends(_get_service)`, allowing tests to override via `app.dependency_overrides` without touching real Azure credentials.
-- **Sync handlers for sync service**: All route handlers are declared as regular ``def`` (not ``async def``) because the underlying ``ApiCatalogService`` and Azure SDK are synchronous. FastAPI automatically runs ``def`` handlers in a thread-pool, preventing the event loop from being blocked under load.
-- **Sort-then-paginate in service layer**: Sorting is applied inside ``ApiCatalogService.list_apis()`` *before* pagination so that ordering is consistent across pages. The router translates the API-facing ``SortField`` enum to a model attribute name and forwards it to the service.
+- **Sync handlers for sync service**: All route handlers are declared as regular `def` (not `async def`) because the underlying `ApiCatalogService` and Azure SDK are synchronous. FastAPI automatically runs `def` handlers in a thread-pool, preventing the event loop from being blocked under load.
+- **Sort-then-paginate in service layer**: Sorting is applied inside `ApiCatalogService.list_apis()` _before_ pagination so that ordering is consistent across pages. The router translates the API-facing `SortField` enum to a model attribute name and forwards it to the service.
 - **OData filter construction**: Lifecycle and kind filters are translated to OData `$filter` expressions and passed through to the service layer, which forwards them to the API Center SDK.
-- **Distinct response pagination model**: The router defines ``PaginationMetaOut`` (camelCase JSON aliases) separate from the internal ``PaginationMeta`` in ``models.api_center`` (snake_case only) to keep the HTTP contract and service internals decoupled.
-- **Structured error responses via custom exception**: ``CatalogApiError`` + a registered exception handler produce a top-level ``{error: {code, message, details}}`` JSON body, matching the documented ``ApiErrorResponse`` contract without the ``{detail: …}`` wrapper that ``HTTPException`` would add.
+- **Distinct response pagination model**: The router defines `PaginationMetaOut` (camelCase JSON aliases) separate from the internal `PaginationMeta` in `models.api_center` (snake_case only) to keep the HTTP contract and service internals decoupled.
+- **Structured error responses via custom exception**: `CatalogApiError` + a registered exception handler produce a top-level `{error: {code, message, details}}` JSON body, matching the documented `ApiErrorResponse` contract without the `{detail: …}` wrapper that `HTTPException` would add.
 - **PEP 695 generic syntax**: Used `class ApiResponse[T]` for generic type parameters per PEP 695 (Python 3.14).
 - **`noqa: B008` for FastAPI parameters**: All `Query()` and `Depends()` defaults in endpoint signatures are suppressed for Ruff B008, which is standard practice for FastAPI.
 

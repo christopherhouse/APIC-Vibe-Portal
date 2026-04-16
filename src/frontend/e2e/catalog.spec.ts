@@ -12,8 +12,22 @@ interface MockApiDefinition {
   description: string;
   kind: string;
   lifecycleStage: string;
-  versions: { id: string; name: string; title: string; lifecycleStage: string; createdAt: string; updatedAt: string }[];
-  deployments: { id: string; title: string; environment: { id: string; name: string; title: string; kind: string }; server: { runtimeUri: string[] }; createdAt: string; updatedAt: string }[];
+  versions: {
+    id: string;
+    name: string;
+    title: string;
+    lifecycleStage: string;
+    createdAt: string;
+    updatedAt: string;
+  }[];
+  deployments: {
+    id: string;
+    title: string;
+    environment: { id: string; name: string; title: string; kind: string };
+    server: { runtimeUri: string[] };
+    createdAt: string;
+    updatedAt: string;
+  }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -21,7 +35,10 @@ interface MockApiDefinition {
 /**
  * Generate mock API definitions matching the BFF response shape.
  */
-function makeMockApis(count: number, overrides: Partial<MockApiDefinition> = {}): MockApiDefinition[] {
+function makeMockApis(
+  count: number,
+  overrides: Partial<MockApiDefinition> = {}
+): MockApiDefinition[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `api-${i + 1}`,
     name: `api-${i + 1}`,
@@ -37,14 +54,16 @@ function makeMockApis(count: number, overrides: Partial<MockApiDefinition> = {})
       createdAt: new Date(2026, 2, 15 - i).toISOString(),
       updatedAt: new Date(2026, 2, 15 - i).toISOString(),
     })),
-    deployments: [{
-      id: `dep-${i + 1}`,
-      title: `Deployment ${i + 1}`,
-      environment: { id: 'env-1', name: 'prod', title: 'Production', kind: 'production' },
-      server: { runtimeUri: ['https://api.example.com'] },
-      createdAt: new Date(2026, 2, 15 - i).toISOString(),
-      updatedAt: new Date(2026, 2, 15 - i).toISOString(),
-    }],
+    deployments: [
+      {
+        id: `dep-${i + 1}`,
+        title: `Deployment ${i + 1}`,
+        environment: { id: 'env-1', name: 'prod', title: 'Production', kind: 'production' },
+        server: { runtimeUri: ['https://api.example.com'] },
+        createdAt: new Date(2026, 2, 15 - i).toISOString(),
+        updatedAt: new Date(2026, 2, 15 - i).toISOString(),
+      },
+    ],
     createdAt: new Date(2026, 1, 1).toISOString(),
     updatedAt: new Date(2026, 2, 15 - i).toISOString(),
     ...overrides,
