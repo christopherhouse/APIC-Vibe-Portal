@@ -33,13 +33,24 @@ const INITIAL_STATE: ApiDetailState = {
   specError: null,
 };
 
+export interface UseApiDetailOptions {
+  /** When false the hook returns initial state without calling the API. */
+  enabled?: boolean;
+}
+
 /**
  * React hook for fetching API detail data.
  * Loads API detail, versions, and deployments in parallel on mount.
  * Provides version selection and spec loading.
+ *
+ * When `enabled` is `false` (e.g. user is not authenticated) the hook skips
+ * API calls and returns the initial empty state.
  */
-export function useApiDetail(apiId: string) {
-  const [state, setState] = useState<ApiDetailState>(INITIAL_STATE);
+export function useApiDetail(apiId: string, { enabled = true }: UseApiDetailOptions = {}) {
+  const [state, setState] = useState<ApiDetailState>({
+    ...INITIAL_STATE,
+    isLoading: enabled,
+  });
   const mountedRef = useRef(true);
   const latestSpecRequestRef = useRef<string | null>(null);
 
@@ -125,8 +136,12 @@ export function useApiDetail(apiId: string) {
   );
 
   useEffect(() => {
+    if (!enabled) {
+      setState({ ...INITIAL_STATE, isLoading: false });
+      return;
+    }
     void loadAll();
-  }, [loadAll]);
+  }, [loadAll, enabled]);
 
   return {
     ...state,

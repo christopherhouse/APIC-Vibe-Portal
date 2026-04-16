@@ -15,6 +15,7 @@ import Alert from '@mui/material/Alert';
 
 import { useCatalog } from '@/hooks/use-catalog';
 import type { CatalogListParams } from '@/lib/catalog-api';
+import { useAuth } from '@/lib/auth/use-auth';
 
 import ApiCatalogGrid from './components/ApiCatalogGrid';
 import CatalogFilters from './components/CatalogFilters';
@@ -45,6 +46,7 @@ export default function CatalogPage() {
   const searchParams = useSearchParams();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { isAuthenticated } = useAuth();
 
   // ---------- state from URL (validated / clamped) ----------
   const rawPage = Number(searchParams.get('page') ?? '1');
@@ -90,7 +92,10 @@ export default function CatalogPage() {
     }),
     [page, pageSize, sort, direction, lifecycle, kind]
   );
-  const { items, pagination, isLoading, error } = useCatalog(params);
+  const { items, pagination, isLoading, error } = useCatalog({
+    ...params,
+    enabled: isAuthenticated,
+  });
 
   // ---------- URL update helper ----------
   const updateSearch = useCallback(
