@@ -104,9 +104,9 @@ Frontend environment variables:
 
 BFF environment variables:
 
-- `ENTRA_TENANT_ID`
-- `ENTRA_CLIENT_ID`
-- `ENTRA_AUDIENCE`
+- `BFF_ENTRA_TENANT_ID`
+- `BFF_ENTRA_CLIENT_ID`
+- `BFF_ENTRA_AUDIENCE`
 
 ## Testing & Acceptance Criteria
 

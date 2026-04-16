@@ -39,7 +39,7 @@ interface BffCatalogResponse {
  * to `ApiCatalogItem` summaries for the catalog listing UI.
  */
 export async function fetchCatalogApis(
-  params: CatalogListParams = {},
+  params: CatalogListParams = {}
 ): Promise<CatalogListResponse> {
   const queryParams: Record<string, string> = {};
 

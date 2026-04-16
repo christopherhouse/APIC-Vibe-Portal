@@ -14,10 +14,19 @@
 #     --acr-server <acr-login-server> \
 #     --managed-identity <managed-identity-client-id> \
 #     --frontend-image-tag <frontend-tag> \
-#     --bff-image-tag <bff-tag>
+#     --bff-image-tag <bff-tag> \
+#     --redis-host <redis-hostname> \
+#     --bff-env-vars "KEY1=val1 KEY2=val2 ..."
+#
+# The --bff-env-vars flag accepts a space-separated list of KEY=VALUE pairs
+# that are passed as environment variables to the BFF Container App. This
+# keeps the script generic — add new env vars in the workflow without
+# modifying this script.
 # ============================================================================
 
 set -euo pipefail
+
+BFF_ENV_VARS=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -58,6 +67,10 @@ while [[ $# -gt 0 ]]; do
       REDIS_HOST="$2"
       shift 2
       ;;
+    --bff-env-vars)
+      BFF_ENV_VARS="$2"
+      shift 2
+      ;;
     *)
       echo "Unknown argument: $1"
       exit 1
@@ -71,10 +84,23 @@ required_args=(RESOURCE_GROUP ENVIRONMENT_ID FRONTEND_APP_NAME BFF_APP_NAME \
 for arg in "${required_args[@]}"; do
   if [[ -z "${!arg:-}" ]]; then
     echo "Error: Missing required argument: --$(echo "$arg" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
-    echo "Usage: $0 --resource-group <rg> --environment-id <env-id> --frontend-app <name> --bff-app <name> --acr-server <server> --managed-identity <id> --frontend-image-tag <tag> --bff-image-tag <tag> --redis-host <hostname>"
+    echo "Usage: $0 --resource-group <rg> --environment-id <env-id> --frontend-app <name> --bff-app <name> --acr-server <server> --managed-identity <id> --frontend-image-tag <tag> --bff-image-tag <tag> --redis-host <hostname> [--bff-env-vars \"KEY=val ...\"]"
     exit 1
   fi
 done
+
+# Build the array of BFF env vars (always includes core infra vars)
+BFF_CORE_ENV_VARS=(
+  "AZURE_CLIENT_ID=${MANAGED_IDENTITY}"
+  "REDIS_HOST=${REDIS_HOST}"
+  "REDIS_PORT=6380"
+)
+
+# Append any extra BFF env vars passed via --bff-env-vars
+if [[ -n "$BFF_ENV_VARS" ]]; then
+  read -ra EXTRA_ENV_VARS <<< "$BFF_ENV_VARS"
+  BFF_CORE_ENV_VARS+=("${EXTRA_ENV_VARS[@]}")
+fi
 
 echo "============================================================================"
 echo "Deploying Container Apps"
@@ -87,6 +113,7 @@ echo "ACR Server: $ACR_SERVER"
 echo "Frontend Image: ${ACR_SERVER}/frontend:${FRONTEND_IMAGE_TAG}"
 echo "BFF Image: ${ACR_SERVER}/bff:${BFF_IMAGE_TAG}"
 echo "Redis Host: $REDIS_HOST"
+echo "BFF Env Vars: ${BFF_CORE_ENV_VARS[*]}"
 echo "============================================================================"
 
 # Deploy Frontend Container App
@@ -141,10 +168,7 @@ if az containerapp show --name "$BFF_APP_NAME" --resource-group "$RESOURCE_GROUP
     --memory 1Gi \
     --min-replicas 1 \
     --max-replicas 10 \
-    --set-env-vars \
-      "AZURE_CLIENT_ID=${MANAGED_IDENTITY}" \
-      "REDIS_HOST=${REDIS_HOST}" \
-      "REDIS_PORT=6380" \
+    --set-env-vars "${BFF_CORE_ENV_VARS[@]}" \
     --revision-suffix "$(date +%s)"
 else
   echo "Creating new BFF Container App..."
@@ -162,10 +186,7 @@ else
     --registry-server "$ACR_SERVER" \
     --user-assigned "$MANAGED_IDENTITY" \
     --registry-identity "$MANAGED_IDENTITY" \
-    --env-vars \
-      "AZURE_CLIENT_ID=${MANAGED_IDENTITY}" \
-      "REDIS_HOST=${REDIS_HOST}" \
-      "REDIS_PORT=6380"
+    --env-vars "${BFF_CORE_ENV_VARS[@]}"
 fi
 
 # Get BFF URL

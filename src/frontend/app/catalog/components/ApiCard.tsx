@@ -59,7 +59,11 @@ export default function ApiCard({ api, listMode = false }: ApiCardProps) {
         <CardActionArea onClick={handleClick}>
           <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-              <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600, minWidth: 200 }}>
+              <Typography
+                variant="subtitle1"
+                component="span"
+                sx={{ fontWeight: 600, minWidth: 200 }}
+              >
                 {api.title}
               </Typography>
               <Chip label={kindLabel} size="small" variant="outlined" />
@@ -88,7 +92,10 @@ export default function ApiCard({ api, listMode = false }: ApiCardProps) {
       }}
       data-testid={`api-card-${api.id}`}
     >
-      <CardActionArea onClick={handleClick} sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+      <CardActionArea
+        onClick={handleClick}
+        sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
+      >
         <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
             <Chip label={kindLabel} size="small" variant="outlined" />
