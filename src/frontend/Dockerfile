@@ -22,6 +22,9 @@ COPY tsconfig.base.json ./
 COPY eslint.config.mjs ./
 COPY .prettierrc.json ./
 
+# Build the shared package first (frontend depends on it)
+RUN npm run build --workspace=@apic-vibe-portal/shared
+
 # Build the application
 RUN npm run build --workspace=@apic-vibe-portal/frontend
 
