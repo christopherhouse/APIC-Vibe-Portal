@@ -12,7 +12,10 @@ import { type Configuration, LogLevel } from '@azure/msal-browser';
  * Logs clear warnings in development so misconfiguration is obvious.
  */
 function validateMsalEnv(): void {
-  if (typeof window === 'undefined') return; // skip during SSR / build
+  // Skip during SSR / build — NEXT_PUBLIC_* vars are inlined at build time,
+  // so they may legitimately be unset in CI builds that don't target a real tenant.
+  // The browser is where the developer will actually hit the auth flow.
+  if (typeof window === 'undefined') return;
 
   const missing: string[] = [];
   if (!process.env.NEXT_PUBLIC_MSAL_CLIENT_ID) missing.push('NEXT_PUBLIC_MSAL_CLIENT_ID');
