@@ -52,11 +52,13 @@ The BFF uses **Azure Cache for Redis** (`Microsoft.Cache/redis`) as a response c
 **Context**: Azure Managed Redis (`Microsoft.Cache/redisEnterprise`) was the original cache service but consistently fails to deploy — both via CI/CD (Bicep/ARM) and manually in the Azure Portal. To unblock deployment, we switched to Azure Cache for Redis (`Microsoft.Cache/redis`), which is **deprecated** but still functional and deployable.
 
 **Known Risks**:
+
 - Azure Cache for Redis is officially deprecated and will eventually reach end-of-life
 - No new features or improvements will be made to the service
 - Microsoft recommends migrating to Azure Managed Redis (which we cannot currently deploy)
 
 **Remediation Plan**:
+
 1. **Monitor**: Track Azure Managed Redis deployment issues — check monthly for fixes or GA status improvements
 2. **Retry**: Periodically attempt Azure Managed Redis deployment to see if the issue is resolved
 3. **Migrate**: Once Azure Managed Redis deploys successfully, migrate back by restoring the `Microsoft.Cache/redisEnterprise` module

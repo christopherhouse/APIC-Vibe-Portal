@@ -117,10 +117,10 @@ Each API card displays:
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
-| 2026-04-16 | ✅ Complete | copilot | Full implementation: 6 catalog components (ApiCard, ApiCatalogGrid, CatalogFilters, CatalogSort, CatalogPagination, ViewToggle), catalog API client, useCatalog hook, /catalog page with URL-based filter state, loading skeleton, empty state, responsive layout, grid/list view toggle, homepage redirect. 38 new unit tests (109 total), 12 Playwright e2e tests, build and lint clean. |
+| Date       | Status         | Author  | Notes                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------- | -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| —          | 🔲 Not Started | —       | Task created                                                                                                                                                                                                                                                                                                                                                                               |
+| 2026-04-16 | ✅ Complete    | copilot | Full implementation: 6 catalog components (ApiCard, ApiCatalogGrid, CatalogFilters, CatalogSort, CatalogPagination, ViewToggle), catalog API client, useCatalog hook, /catalog page with URL-based filter state, loading skeleton, empty state, responsive layout, grid/list view toggle, homepage redirect. 38 new unit tests (109 total), 12 Playwright e2e tests, build and lint clean. |
 
 ### Technical Decisions
 
