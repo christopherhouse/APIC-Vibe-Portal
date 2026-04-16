@@ -297,8 +297,8 @@ BFF_ENTRA_CLIENT_ID=<bff-client-id>
 BFF_ENTRA_AUDIENCE=api://<bff-client-id>
 ```
 
-| Variable          | Source                                                                        |
-| ----------------- | ----------------------------------------------------------------------------- |
+| Variable              | Source                                                                        |
+| --------------------- | ----------------------------------------------------------------------------- |
 | `BFF_ENTRA_TENANT_ID` | Entra ID → Overview → Tenant ID                                               |
 | `BFF_ENTRA_CLIENT_ID` | BFF API app registration → Application (client) ID                            |
 | `BFF_ENTRA_AUDIENCE`  | BFF API app registration → Application ID URI (e.g., `api://<bff-client-id>`) |
