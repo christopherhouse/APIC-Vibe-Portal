@@ -72,9 +72,9 @@ def validate_token(token: str) -> AuthenticatedUser:
     Raises ``jwt.InvalidTokenError`` (or subclasses) on failure.
     """
     settings = get_settings()
-    tenant_id = settings.entra_tenant_id
-    client_id = settings.entra_client_id
-    audience = settings.entra_audience or client_id
+    tenant_id = settings.bff_entra_tenant_id
+    client_id = settings.bff_entra_client_id
+    audience = settings.bff_entra_audience or client_id
 
     if not tenant_id or not client_id:
         raise jwt.InvalidTokenError("Entra ID is not configured on the server")

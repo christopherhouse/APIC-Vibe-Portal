@@ -169,6 +169,7 @@ jobs:
             --acr-server ${{ steps.infra.outputs.acr-server }} \
             --managed-identity ${{ steps.infra.outputs.managed-identity }} \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.BFF_ENTRA_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
 
@@ -215,6 +216,7 @@ jobs:
             --acr-server ${{ steps.infra.outputs.acr-server }} \
             --managed-identity ${{ steps.infra.outputs.managed-identity }} \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.BFF_ENTRA_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
 
@@ -261,5 +263,6 @@ jobs:
             --acr-server ${{ steps.infra.outputs.acr-server }} \
             --managed-identity ${{ steps.infra.outputs.managed-identity }} \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.BFF_ENTRA_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}

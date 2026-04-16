@@ -189,9 +189,9 @@ class TestValidateToken:
     def test_missing_config_raises(self, mock_settings):
         """Should raise when Entra ID is not configured."""
         settings = MagicMock()
-        settings.entra_tenant_id = ""
-        settings.entra_client_id = ""
-        settings.entra_audience = ""
+        settings.bff_entra_tenant_id = ""
+        settings.bff_entra_client_id = ""
+        settings.bff_entra_audience = ""
         mock_settings.return_value = settings
 
         with pytest.raises(jwt.InvalidTokenError, match="not configured"):
@@ -204,9 +204,9 @@ class TestValidateToken:
         _, public_key = _get_rsa_keys()
 
         settings = MagicMock()
-        settings.entra_tenant_id = "test-tenant-id"
-        settings.entra_client_id = "test-client-id"
-        settings.entra_audience = "test-client-id"
+        settings.bff_entra_tenant_id = "test-tenant-id"
+        settings.bff_entra_client_id = "test-client-id"
+        settings.bff_entra_audience = "test-client-id"
         mock_settings.return_value = settings
 
         signing_key = MagicMock()
@@ -230,9 +230,9 @@ class TestValidateToken:
         _, public_key = _get_rsa_keys()
 
         settings = MagicMock()
-        settings.entra_tenant_id = "test-tenant-id"
-        settings.entra_client_id = "test-client-id"
-        settings.entra_audience = "test-client-id"
+        settings.bff_entra_tenant_id = "test-tenant-id"
+        settings.bff_entra_client_id = "test-client-id"
+        settings.bff_entra_audience = "test-client-id"
         mock_settings.return_value = settings
 
         signing_key = MagicMock()
@@ -252,9 +252,9 @@ class TestValidateToken:
         _, public_key = _get_rsa_keys()
 
         settings = MagicMock()
-        settings.entra_tenant_id = "test-tenant-id"
-        settings.entra_client_id = "test-client-id"
-        settings.entra_audience = "test-client-id"
+        settings.bff_entra_tenant_id = "test-tenant-id"
+        settings.bff_entra_client_id = "test-client-id"
+        settings.bff_entra_audience = "test-client-id"
         mock_settings.return_value = settings
 
         signing_key = MagicMock()

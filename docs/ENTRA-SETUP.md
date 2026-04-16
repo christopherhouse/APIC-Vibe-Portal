@@ -98,8 +98,8 @@ This app registration represents the backend API. It exposes a scope and defines
    - **Supported account types**: **Accounts in this organizational directory only** (single tenant)
    - **Redirect URI**: Leave blank (APIs don't need redirect URIs)
 3. Click **Register**.
-4. Note the **Application (client) ID** — this is the `ENTRA_CLIENT_ID` for the BFF.
-5. Note the **Directory (tenant) ID** — this is the `ENTRA_TENANT_ID`.
+4. Note the **Application (client) ID** — this is the `BFF_ENTRA_CLIENT_ID` for the BFF.
+5. Note the **Directory (tenant) ID** — this is the `BFF_ENTRA_TENANT_ID`.
 
 ### 1b. Expose an API (scopes)
 
@@ -288,22 +288,22 @@ Set in `src/bff/.env` or export in your shell:
 
 ```env
 # Your Entra ID tenant ID
-ENTRA_TENANT_ID=<tenant-id>
+BFF_ENTRA_TENANT_ID=<tenant-id>
 
 # The BFF API app registration's Application (client) ID
-ENTRA_CLIENT_ID=<bff-client-id>
+BFF_ENTRA_CLIENT_ID=<bff-client-id>
 
 # The audience the BFF expects in incoming tokens (usually same as client ID or Application ID URI)
-ENTRA_AUDIENCE=api://<bff-client-id>
+BFF_ENTRA_AUDIENCE=api://<bff-client-id>
 ```
 
 | Variable          | Source                                                                        |
 | ----------------- | ----------------------------------------------------------------------------- |
-| `ENTRA_TENANT_ID` | Entra ID → Overview → Tenant ID                                               |
-| `ENTRA_CLIENT_ID` | BFF API app registration → Application (client) ID                            |
-| `ENTRA_AUDIENCE`  | BFF API app registration → Application ID URI (e.g., `api://<bff-client-id>`) |
+| `BFF_ENTRA_TENANT_ID` | Entra ID → Overview → Tenant ID                                               |
+| `BFF_ENTRA_CLIENT_ID` | BFF API app registration → Application (client) ID                            |
+| `BFF_ENTRA_AUDIENCE`  | BFF API app registration → Application ID URI (e.g., `api://<bff-client-id>`) |
 
-> **Note on `ENTRA_AUDIENCE`**: This must match the `aud` claim in the access token. When the frontend requests a token with scope `api://<bff-client-id>/access_as_user`, the resulting token's `aud` will be `api://<bff-client-id>`. Set `ENTRA_AUDIENCE` to match.
+> **Note on `BFF_ENTRA_AUDIENCE`**: This must match the `aud` claim in the access token. When the frontend requests a token with scope `api://<bff-client-id>/access_as_user`, the resulting token's `aud` will be `api://<bff-client-id>`. Set `BFF_ENTRA_AUDIENCE` to match.
 
 ---
 
@@ -382,7 +382,7 @@ API Permissions:                        Exposed Scopes:
                     ──────────
 1. Frontend calls MSAL.acquireTokenSilent({ scopes: ["api://<bff-id>/access_as_user"] })
 2. Entra ID issues an access token with:
-   - aud: api://<bff-id>              ← matches ENTRA_AUDIENCE
+   - aud: api://<bff-id>              ← matches BFF_ENTRA_AUDIENCE
    - roles: ["Portal.User"]           ← from App Role assignment
    - scp: "access_as_user"            ← from API permission
 3. Frontend sends: Authorization: Bearer <access_token>
@@ -537,9 +537,9 @@ az containerapp update \
   --name apic-portal-bff \
   --resource-group <rg-name> \
   --set-env-vars \
-    ENTRA_TENANT_ID=<tenant-id> \
-    ENTRA_CLIENT_ID=<bff-client-id> \
-    ENTRA_AUDIENCE=api://<bff-client-id>
+    BFF_ENTRA_TENANT_ID=<tenant-id> \
+    BFF_ENTRA_CLIENT_ID=<bff-client-id> \
+    BFF_ENTRA_AUDIENCE=api://<bff-client-id>
 ```
 
 ---
@@ -550,9 +550,9 @@ az containerapp update \
 
 **Symptom**: BFF returns 401 with "Invalid token", token decodes with wrong `aud`.
 
-**Cause**: The frontend is requesting a token for the wrong scope, or `ENTRA_AUDIENCE` doesn't match.
+**Cause**: The frontend is requesting a token for the wrong scope, or `BFF_ENTRA_AUDIENCE` doesn't match.
 
-**Fix**: Ensure `NEXT_PUBLIC_BFF_API_SCOPE` is set to `api://<bff-client-id>/access_as_user` and `ENTRA_AUDIENCE` is set to `api://<bff-client-id>`.
+**Fix**: Ensure `NEXT_PUBLIC_BFF_API_SCOPE` is set to `api://<bff-client-id>/access_as_user` and `BFF_ENTRA_AUDIENCE` is set to `api://<bff-client-id>`.
 
 ### "AADSTS65001: The user or administrator has not consented"
 
@@ -588,7 +588,7 @@ az containerapp update \
 
 **Cause**: Multiple possible causes:
 
-1. Token audience mismatch (check `aud` claim vs `ENTRA_AUDIENCE`)
+1. Token audience mismatch (check `aud` claim vs `BFF_ENTRA_AUDIENCE`)
 2. Token issuer mismatch (check tenant ID)
 3. BFF env vars not set
 
