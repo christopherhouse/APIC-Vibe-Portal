@@ -1,0 +1,15 @@
+# Trivy ignore list — acknowledged vulnerabilities with no available fix
+# Review periodically and remove entries once upstream patches are available.
+#
+# Last reviewed: 2026-04-16
+
+# ncurses buffer overflow — no fix available in Debian 13 (Trixie).
+# Affects: libncursesw6, libtinfo6, ncurses-base, ncurses-bin
+# Risk: ncurses is not exposed to untrusted input in our BFF container.
+CVE-2025-69720
+
+# systemd arbitrary code execution / DoS via spurious IPC — no fix available.
+# Affects: libsystemd0, libudev1
+# Risk: systemd libraries are present in the base image but the BFF does not
+#        run systemd services or use systemd IPC directly.
+CVE-2026-29111

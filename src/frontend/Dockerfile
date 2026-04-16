@@ -33,6 +33,13 @@ FROM node:25-alpine AS production
 
 WORKDIR /app
 
+# Remove npm, yarn, and other package managers — not needed at runtime.
+# This also removes bundled npm dependencies (e.g. picomatch) that may
+# carry unpatched vulnerabilities.
+RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \
+           /opt/yarn* /usr/local/bin/yarn /usr/local/bin/yarnpkg \
+           /usr/local/bin/corepack
+
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
