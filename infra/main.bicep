@@ -59,12 +59,8 @@ param cosmosDbLocations array = []
 @description('Azure region for Cosmos DB (defaults to main location if not specified)')
 param cosmosDbLocation string = location
 
-@description('Redis Cache SKU (Basic for dev, Standard for staging/prod)')
-@allowed(['Basic', 'Standard', 'Premium'])
-param redisSku string = environmentName == 'prod' ? 'Standard' : 'Basic'
-
-@description('Redis Cache SKU capacity (0=250 MB, 1=1 GB, 2=2.5 GB …)')
-param redisSkuCapacity int = environmentName == 'prod' ? 1 : 0
+@description('Azure Managed Redis SKU name (Balanced_B0 for dev/test, Balanced_B1 for staging/prod)')
+param redisSku string = environmentName == 'prod' ? 'Balanced_B1' : 'Balanced_B0'
 
 @description('Enable private endpoints for resources (recommended for prod)')
 param enablePrivateEndpoints bool = environmentName == 'prod'
@@ -268,7 +264,7 @@ module foundryAgent 'modules/foundry-agent.bicep' = {
 }
 
 // ============================================================================
-// MODULE 11: Azure Cache for Redis
+// MODULE 11: Azure Managed Redis
 // ============================================================================
 
 module redisCache 'modules/redis-cache.bicep' = {
@@ -277,7 +273,6 @@ module redisCache 'modules/redis-cache.bicep' = {
     location: location
     redisCacheName: resourceNames.redisCache
     redisSku: redisSku
-    redisSkuCapacity: redisSkuCapacity
     keyVaultName: keyVault.outputs.keyVaultName
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
@@ -370,10 +365,10 @@ output foundryEndpoint string = foundryAgent.outputs.endpoint
 @description('Foundry Project Name')
 output foundryProjectName string = foundryAgent.outputs.projectName
 
-@description('Redis Cache hostname')
+@description('Azure Managed Redis hostname')
 output redisCacheHostName string = redisCache.outputs.hostName
 
-@description('Redis Cache name')
+@description('Azure Managed Redis name')
 output redisCacheName string = redisCache.outputs.name
 
 @description('Key Vault secret name for the Redis connection string')

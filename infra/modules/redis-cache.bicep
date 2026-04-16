@@ -1,22 +1,23 @@
 // ============================================================================
-// Azure Cache for Redis Module
+// Azure Managed Redis Module
 // ============================================================================
-// Deploys an Azure Cache for Redis instance and stores the SSL connection
-// string as a Key Vault secret so the BFF can retrieve it securely at runtime.
+// Deploys an Azure Managed Redis instance (Microsoft.Cache/redisEnterprise)
+// and stores the SSL connection string as a Key Vault secret so the BFF can
+// retrieve it securely at runtime.
+//
+// Azure Managed Redis replaces the deprecated Azure Cache for Redis tiers and
+// uses the Enterprise-grade Redis cluster architecture with a database
+// sub-resource on port 10000.
 // ============================================================================
 
 @description('Azure region')
 param location string
 
-@description('Redis cache name')
+@description('Azure Managed Redis instance name')
 param redisCacheName string
 
-@description('Redis cache SKU (Basic, Standard, Premium)')
-@allowed(['Basic', 'Standard', 'Premium'])
-param redisSku string = 'Standard'
-
-@description('Redis cache SKU capacity (0–6 for Basic/Standard, 1–4 for Premium)')
-param redisSkuCapacity int = 1
+@description('Azure Managed Redis SKU name (e.g. Balanced_B0, Balanced_B1, MemoryOptimized_M10)')
+param redisSku string = 'Balanced_B1'
 
 @description('Key Vault name where the Redis connection string secret will be stored')
 param keyVaultName string
@@ -34,32 +35,31 @@ param privateEndpointSubnetId string
 param tags object
 
 // ============================================================================
-// VARIABLES
-// ============================================================================
-
-var redisSkuFamily = redisSku == 'Premium' ? 'P' : 'C'
-
-// ============================================================================
 // RESOURCES
 // ============================================================================
 
-resource redisCache 'Microsoft.Cache/redis@2024-03-01' = {
+// Azure Managed Redis cluster (Redis Enterprise)
+resource redisEnterprise 'Microsoft.Cache/redisEnterprise@2024-09-01-preview' = {
   name: redisCacheName
   location: location
   tags: tags
+  sku: {
+    name: redisSku
+  }
   properties: {
-    sku: {
-      name: redisSku
-      family: redisSkuFamily
-      capacity: redisSkuCapacity
-    }
-    enableNonSslPort: false       // SSL only — port 6380
     minimumTlsVersion: '1.2'
-    publicNetworkAccess: enablePrivateEndpoint ? 'Disabled' : 'Enabled'
-    redisConfiguration: {
-      // Enable keyspace notifications for cache-miss observability (optional)
-      'notify-keyspace-events': ''
-    }
+  }
+}
+
+// Redis database within the cluster — port 10000 is the Enterprise default
+resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2024-09-01-preview' = {
+  parent: redisEnterprise
+  name: 'default'
+  properties: {
+    accessKeysAuthentication: 'Enabled'   // Access key stored in Key Vault
+    evictionPolicy: 'VolatileLRU'         // Evict TTL-keyed entries, LRU order
+    clusteringPolicy: 'EnterpriseCluster'
+    port: 10000
   }
 }
 
@@ -70,10 +70,10 @@ resource keyVaultRef 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
 }
 
 // Build the redis-py SSL URL from its components for readability.
-var redisHostName = redisCache.properties.hostName
-var redisSslPort = redisCache.properties.sslPort
-var redisPrimaryKey = listKeys(redisCache.id, redisCache.apiVersion).primaryKey
-var redisConnectionString = 'rediss://:${redisPrimaryKey}@${redisHostName}:${redisSslPort}'
+var redisHostName = redisEnterprise.properties.hostName
+var redisPrimaryKey = listKeys(redisDatabase.id, redisDatabase.apiVersion).primaryKey
+// Azure Managed Redis Enterprise databases use port 10000
+var redisConnectionString = 'rediss://:${redisPrimaryKey}@${redisHostName}:10000'
 
 resource redisConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVaultRef
@@ -84,10 +84,10 @@ resource redisConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-
   }
 }
 
-// Diagnostic settings — AllMetrics (Basic/Standard tiers do not expose log categories)
-resource diagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+// Diagnostic settings for the Redis Enterprise cluster
+resource clusterDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'diag-${redisCacheName}'
-  scope: redisCache
+  scope: redisEnterprise
   properties: {
     workspaceId: logAnalyticsWorkspaceId
     metrics: [
@@ -116,9 +116,9 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if (e
       {
         name: '${redisCacheName}-pe-connection'
         properties: {
-          privateLinkServiceId: redisCache.id
+          privateLinkServiceId: redisEnterprise.id
           groupIds: [
-            'redisCache'
+            'redisEnterprise'
           ]
         }
       }
@@ -130,17 +130,17 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if (e
 // OUTPUTS
 // ============================================================================
 
-@description('Redis cache resource ID')
-output id string = redisCache.id
+@description('Azure Managed Redis cluster resource ID')
+output id string = redisEnterprise.id
 
-@description('Redis cache name')
-output name string = redisCache.name
+@description('Azure Managed Redis cluster name')
+output name string = redisEnterprise.name
 
-@description('Redis cache hostname')
-output hostName string = redisCache.properties.hostName
+@description('Azure Managed Redis hostname')
+output hostName string = redisEnterprise.properties.hostName
 
-@description('Redis SSL port (6380)')
-output sslPort int = redisCache.properties.sslPort
+@description('Azure Managed Redis database port (10000)')
+output port int = 10000
 
 @description('Key Vault secret name holding the Redis connection string')
 output connectionStringSecretName string = redisConnectionStringSecret.name
