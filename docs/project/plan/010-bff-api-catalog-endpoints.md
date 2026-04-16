@@ -105,7 +105,7 @@ Create controller functions that:
 - [x] `GET /api/catalog/:apiId` returns full API details or `404`
 - [x] `GET /api/catalog/:apiId/versions` returns version list
 - [x] `GET /api/catalog/:apiId/versions/:versionId/definition` returns spec document
-- [x] Invalid query parameters return `400` with validation errors
+- [x] Invalid query parameters return `422` with validation errors
 - [x] All endpoints return consistent response envelopes
 - [x] All routes have pytest integration tests (using `httpx.AsyncClient`)
 - [x] API response times are logged
@@ -129,11 +129,13 @@ Create controller functions that:
 
 - **Router without prefix**: The router defines full paths (e.g., `/api/catalog`, `/api/environments`) rather than using FastAPI's `prefix` parameter. This keeps route registration in `app.py` simple and makes the URL structure explicit in the router module.
 - **Dependency injection for service**: `ApiCatalogService` is injected via `Depends(_get_service)`, allowing tests to override via `app.dependency_overrides` without touching real Azure credentials.
-- **In-process sorting**: Sorting is applied in the router after the service returns paginated results. The service layer already handles pagination in-process; sorting at the endpoint keeps the service layer simple.
+- **Sync handlers for sync service**: All route handlers are declared as regular ``def`` (not ``async def``) because the underlying ``ApiCatalogService`` and Azure SDK are synchronous. FastAPI automatically runs ``def`` handlers in a thread-pool, preventing the event loop from being blocked under load.
+- **Sort-then-paginate in service layer**: Sorting is applied inside ``ApiCatalogService.list_apis()`` *before* pagination so that ordering is consistent across pages. The router translates the API-facing ``SortField`` enum to a model attribute name and forwards it to the service.
 - **OData filter construction**: Lifecycle and kind filters are translated to OData `$filter` expressions and passed through to the service layer, which forwards them to the API Center SDK.
-- **PEP 695 generic syntax**: Used `class ApiResponse[T]` and `def _sort_items[T]` for generic type parameters per PEP 695 (Python 3.14).
+- **Distinct response pagination model**: The router defines ``PaginationMetaOut`` (camelCase JSON aliases) separate from the internal ``PaginationMeta`` in ``models.api_center`` (snake_case only) to keep the HTTP contract and service internals decoupled.
+- **Structured error responses via custom exception**: ``CatalogApiError`` + a registered exception handler produce a top-level ``{error: {code, message, details}}`` JSON body, matching the documented ``ApiErrorResponse`` contract without the ``{detail: …}`` wrapper that ``HTTPException`` would add.
+- **PEP 695 generic syntax**: Used `class ApiResponse[T]` for generic type parameters per PEP 695 (Python 3.14).
 - **`noqa: B008` for FastAPI parameters**: All `Query()` and `Depends()` defaults in endpoint signatures are suppressed for Ruff B008, which is standard practice for FastAPI.
-- **Structured error responses**: All error paths use `ApiErrorResponse` envelope with `code` and `message` fields, matching the plan's `ApiErrorResponse` contract.
 
 ### Deviations from Plan
 

@@ -170,7 +170,9 @@ class TestListApis:
 
         await client.get("/api/catalog", headers=_AUTH_HEADERS)
 
-        mock_service.list_apis.assert_called_once_with(page=1, page_size=20, filter_str=None)
+        mock_service.list_apis.assert_called_once_with(
+            page=1, page_size=20, filter_str=None, sort_field=None, sort_reverse=False
+        )
 
     @pytest.mark.asyncio
     async def test_custom_pagination(self, client: AsyncClient, mock_service: MagicMock) -> None:
@@ -178,7 +180,9 @@ class TestListApis:
 
         await client.get("/api/catalog?page=2&pageSize=50", headers=_AUTH_HEADERS)
 
-        mock_service.list_apis.assert_called_once_with(page=2, page_size=50, filter_str=None)
+        mock_service.list_apis.assert_called_once_with(
+            page=2, page_size=50, filter_str=None, sort_field=None, sort_reverse=False
+        )
 
     @pytest.mark.asyncio
     async def test_max_page_size_enforced(self, client: AsyncClient, mock_service: MagicMock) -> None:
@@ -226,25 +230,25 @@ class TestListApis:
 
     @pytest.mark.asyncio
     async def test_sort_by_name_asc(self, client: AsyncClient, mock_service: MagicMock) -> None:
-        apis = [_make_api("beta-api", "Beta"), _make_api("alpha-api", "Alpha")]
-        mock_service.list_apis.return_value = _paginated(apis)
+        mock_service.list_apis.return_value = _paginated([_make_api("alpha-api", "Alpha")])
 
         resp = await client.get("/api/catalog?sort=name&direction=asc", headers=_AUTH_HEADERS)
 
         assert resp.status_code == 200
-        names = [item["name"] for item in resp.json()["data"]]
-        assert names == ["alpha-api", "beta-api"]
+        call_kwargs = mock_service.list_apis.call_args.kwargs
+        assert call_kwargs["sort_field"] == "name"
+        assert call_kwargs["sort_reverse"] is False
 
     @pytest.mark.asyncio
     async def test_sort_by_name_desc(self, client: AsyncClient, mock_service: MagicMock) -> None:
-        apis = [_make_api("alpha-api", "Alpha"), _make_api("beta-api", "Beta")]
-        mock_service.list_apis.return_value = _paginated(apis)
+        mock_service.list_apis.return_value = _paginated([_make_api("alpha-api", "Alpha")])
 
         resp = await client.get("/api/catalog?sort=name&direction=desc", headers=_AUTH_HEADERS)
 
         assert resp.status_code == 200
-        names = [item["name"] for item in resp.json()["data"]]
-        assert names == ["beta-api", "alpha-api"]
+        call_kwargs = mock_service.list_apis.call_args.kwargs
+        assert call_kwargs["sort_field"] == "name"
+        assert call_kwargs["sort_reverse"] is True
 
     @pytest.mark.asyncio
     async def test_invalid_lifecycle_returns_422(self, client: AsyncClient, mock_service: MagicMock) -> None:
@@ -264,8 +268,8 @@ class TestListApis:
 
         assert resp.status_code == 503
         body = resp.json()
-        assert "detail" in body
-        assert body["detail"]["error"]["code"] == "CATALOG_ERROR"
+        assert "error" in body
+        assert body["error"]["code"] == "CATALOG_ERROR"
 
     @pytest.mark.asyncio
     async def test_response_envelope_structure(self, client: AsyncClient, mock_service: MagicMock) -> None:
@@ -317,7 +321,7 @@ class TestGetApi:
 
         assert resp.status_code == 404
         body = resp.json()
-        assert body["detail"]["error"]["code"] == "NOT_FOUND"
+        assert body["error"]["code"] == "NOT_FOUND"
 
     @pytest.mark.asyncio
     async def test_service_error_returns_error_envelope(self, client: AsyncClient, mock_service: MagicMock) -> None:
@@ -396,7 +400,7 @@ class TestGetApiDefinition:
 
         assert resp.status_code == 404
         body = resp.json()
-        assert body["detail"]["error"]["code"] == "NOT_FOUND"
+        assert body["error"]["code"] == "NOT_FOUND"
 
     @pytest.mark.asyncio
     async def test_service_error_returns_error_envelope(self, client: AsyncClient, mock_service: MagicMock) -> None:
@@ -486,7 +490,7 @@ class TestListEnvironments:
 
         assert resp.status_code == 503
         body = resp.json()
-        assert body["detail"]["error"]["code"] == "CATALOG_ERROR"
+        assert body["error"]["code"] == "CATALOG_ERROR"
 
 
 # ===================================================================

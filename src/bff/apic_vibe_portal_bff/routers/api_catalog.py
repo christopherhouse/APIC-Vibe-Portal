@@ -2,7 +2,8 @@
 
 Exposes Azure API Center data to the frontend via a consistent REST API.
 All responses use a standard envelope with ``data`` and optional ``meta``
-(pagination) keys.  Error responses follow the ``ApiErrorResponse`` shape.
+(pagination) keys.  Error responses use the ``ApiErrorResponse`` shape
+directly (top-level ``{error: {code, message, details}}``).
 
 Endpoints
 ---------
@@ -21,7 +22,8 @@ import time
 from enum import StrEnum
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from apic_vibe_portal_bff.clients.api_center_client import (
@@ -113,8 +115,14 @@ class SortDirection(StrEnum):
     DESC = "desc"
 
 
-class PaginationMeta(BaseModel):
-    """Pagination metadata included in list responses."""
+class PaginationMetaOut(BaseModel):
+    """Pagination metadata included in list responses.
+
+    Uses camelCase aliases for the JSON contract while keeping snake_case
+    field names in Python.  Not to be confused with
+    :class:`~apic_vibe_portal_bff.models.api_center.PaginationMeta` which
+    is the internal model used by the service layer.
+    """
 
     page: int
     page_size: int = Field(alias="pageSize")
@@ -128,7 +136,7 @@ class ApiResponse[T](BaseModel):
     """Standard response envelope for all successful responses."""
 
     data: T
-    meta: PaginationMeta | None = None
+    meta: PaginationMetaOut | None = None
 
 
 class ErrorDetail(BaseModel):
@@ -146,10 +154,43 @@ class ApiErrorResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Custom exception for structured error responses
+# ---------------------------------------------------------------------------
+
+
+class CatalogApiError(Exception):
+    """Raised by route handlers to produce a structured error response.
+
+    The companion exception handler (registered in ``app.py``) serialises
+    this into ``{"error": {"code": …, "message": …, "details": …}}``.
+    """
+
+    def __init__(self, status_code: int, code: str, message: str, details: Any | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.code = code
+        self.message = message
+        self.details = details
+
+
+def catalog_api_error_handler(_request: object, exc: CatalogApiError) -> JSONResponse:
+    """Serialize :class:`CatalogApiError` into an ``ApiErrorResponse`` envelope."""
+    body = ApiErrorResponse(error=ErrorDetail(code=exc.code, message=exc.message, details=exc.details))
+    return JSONResponse(status_code=exc.status_code, content=body.model_dump())
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 _ALLOWED_ROLES = ["Portal.User", "Portal.Admin", "Portal.Maintainer"]
+
+# Maps the API-facing sort field enum to the ApiDefinition model attribute.
+_SORT_FIELD_MAP: dict[SortField, str] = {
+    SortField.NAME: "name",
+    SortField.UPDATED_AT: "updated_at",
+    SortField.CREATED_AT: "created_at",
+}
 
 
 def _build_filter(
@@ -165,28 +206,9 @@ def _build_filter(
     return " and ".join(parts) if parts else None
 
 
-def _sort_items[T](
-    items: list[T],
-    sort: SortField | None,
-    direction: SortDirection,
-) -> list[T]:
-    """Sort a list of Pydantic model instances by the given field."""
-    if sort is None:
-        return items
-
-    field_map: dict[SortField, str] = {
-        SortField.NAME: "name",
-        SortField.UPDATED_AT: "updated_at",
-        SortField.CREATED_AT: "created_at",
-    }
-    attr = field_map[sort]
-    return sorted(items, key=lambda x: getattr(x, attr, ""), reverse=(direction == SortDirection.DESC))
-
-
 def _raise_error(status_code: int, code: str, message: str, details: Any | None = None) -> None:
-    """Raise an ``HTTPException`` with a structured error body."""
-    body = ApiErrorResponse(error=ErrorDetail(code=code, message=message, details=details))
-    raise HTTPException(status_code=status_code, detail=body.model_dump())
+    """Raise a :class:`CatalogApiError` with a structured error body."""
+    raise CatalogApiError(status_code=status_code, code=code, message=message, details=details)
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +222,7 @@ router = APIRouter(tags=["catalog"])
     "/api/catalog",
     dependencies=[Depends(require_any_role(_ALLOWED_ROLES))],
 )
-async def list_apis(
+def list_apis(
     page: int = Query(default=1, ge=1, description="Page number (1-based)"),  # noqa: B008
     page_size: int = Query(default=20, ge=1, le=100, alias="pageSize", description="Items per page (max 100)"),  # noqa: B008
     sort: SortField | None = Query(default=None, description="Sort field"),  # noqa: B008
@@ -213,15 +235,21 @@ async def list_apis(
     start = time.monotonic()
     try:
         filter_str = _build_filter(lifecycle, kind)
-        result = service.list_apis(page=page, page_size=page_size, filter_str=filter_str)
-        items = _sort_items(result.items, sort, direction)
-        meta = PaginationMeta(
+        sort_attr = _SORT_FIELD_MAP[sort] if sort is not None else None
+        result = service.list_apis(
+            page=page,
+            page_size=page_size,
+            filter_str=filter_str,
+            sort_field=sort_attr,
+            sort_reverse=(direction == SortDirection.DESC),
+        )
+        meta = PaginationMetaOut(
             page=result.pagination.page,
             pageSize=result.pagination.page_size,
             totalCount=result.pagination.total_count,
             totalPages=result.pagination.total_pages,
         )
-        return ApiResponse(data=items, meta=meta)
+        return ApiResponse(data=result.items, meta=meta)
     except ApiCenterClientError as exc:
         logger.error("list_apis failed", extra={"error": str(exc)})
         _raise_error(exc.status_code or 500, "CATALOG_ERROR", str(exc))
@@ -234,7 +262,7 @@ async def list_apis(
     "/api/catalog/{api_id}",
     dependencies=[Depends(require_any_role(_ALLOWED_ROLES))],
 )
-async def get_api(
+def get_api(
     api_id: str,
     service: ApiCatalogService = Depends(_get_service),  # noqa: B008
 ) -> ApiResponse[ApiDefinition]:
@@ -257,7 +285,7 @@ async def get_api(
     "/api/catalog/{api_id}/versions",
     dependencies=[Depends(require_any_role(_ALLOWED_ROLES))],
 )
-async def list_api_versions(
+def list_api_versions(
     api_id: str,
     service: ApiCatalogService = Depends(_get_service),  # noqa: B008
 ) -> ApiResponse[list[ApiVersion]]:
@@ -282,7 +310,7 @@ async def list_api_versions(
     "/api/catalog/{api_id}/versions/{version_id}/definition",
     dependencies=[Depends(require_any_role(_ALLOWED_ROLES))],
 )
-async def get_api_definition(
+def get_api_definition(
     api_id: str,
     version_id: str,
     service: ApiCatalogService = Depends(_get_service),  # noqa: B008
@@ -315,7 +343,7 @@ async def get_api_definition(
     "/api/catalog/{api_id}/deployments",
     dependencies=[Depends(require_any_role(_ALLOWED_ROLES))],
 )
-async def list_api_deployments(
+def list_api_deployments(
     api_id: str,
     service: ApiCatalogService = Depends(_get_service),  # noqa: B008
 ) -> ApiResponse[list[ApiDeployment]]:
@@ -340,7 +368,7 @@ async def list_api_deployments(
     "/api/environments",
     dependencies=[Depends(require_any_role(_ALLOWED_ROLES))],
 )
-async def list_environments(
+def list_environments(
     service: ApiCatalogService = Depends(_get_service),  # noqa: B008
 ) -> ApiResponse[list[ApiEnvironment]]:
     """List all deployment environments."""
