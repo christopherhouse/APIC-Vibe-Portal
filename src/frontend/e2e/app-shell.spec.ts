@@ -1,10 +1,21 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Application Shell', () => {
-  test('homepage renders with welcome message', async ({ page }) => {
+  test('homepage redirects to catalog page', async ({ page }) => {
+    // Mock the catalog API to avoid fetch errors
+    await page.route('**/api/catalog*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [],
+          meta: { page: 1, pageSize: 20, totalCount: 0, totalPages: 0 },
+        }),
+      });
+    });
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: /welcome to apic vibe portal/i })).toBeVisible();
-    await expect(page.getByText(/discover, understand, and use apis faster/i)).toBeVisible();
+    await expect(page).toHaveURL(/\/catalog/);
+    await expect(page.getByRole('heading', { name: /api catalog/i })).toBeVisible();
   });
 
   test('header displays app title and search bar', async ({ page }) => {

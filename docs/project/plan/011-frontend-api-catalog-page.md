@@ -1,6 +1,6 @@
 # 011 - Phase 1 MVP: API Catalog Listing Page (Frontend)
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -57,8 +57,8 @@ Each API card displays:
 
 ### 4. Filtering
 
-- **Lifecycle Stage**: Multi-select checkboxes (Design, Development, Production, Deprecated, Retired)
-- **API Kind**: Multi-select checkboxes (REST, GraphQL, gRPC, SOAP)
+- **Lifecycle Stage**: Single-select radio buttons (Design, Development, Production, Deprecated, Retired)
+- **API Kind**: Single-select radio buttons (REST, GraphQL, gRPC, SOAP)
 - Filters reflected in URL query parameters for shareability
 - Filter state managed via URL search params (Next.js `useSearchParams`)
 
@@ -120,18 +120,49 @@ Each API card displays:
 | Date | Status         | Author | Notes        |
 | ---- | -------------- | ------ | ------------ |
 | —    | 🔲 Not Started | —      | Task created |
+| 2026-04-16 | ✅ Complete | copilot | Full implementation: 6 catalog components (ApiCard, ApiCatalogGrid, CatalogFilters, CatalogSort, CatalogPagination, ViewToggle), catalog API client, useCatalog hook, /catalog page with URL-based filter state, loading skeleton, empty state, responsive layout, grid/list view toggle, homepage redirect. 38 new unit tests (109 total), 12 Playwright e2e tests, build and lint clean. |
 
 ### Technical Decisions
 
-_No technical decisions recorded yet._
+- **Client component page**: The `/catalog/page.tsx` is a `'use client'` component rather than a server component because all filtering, sorting, pagination, and view toggle state is managed client-side via URL search params and React hooks. The initial render shows a loading skeleton while data is fetched client-side from the BFF.
+- **URL-based filter state**: All filter, sort, and pagination state is stored in URL search params using Next.js `useSearchParams()` and `router.push()`, making filter states shareable via URL and supporting browser back/forward navigation.
+- **Stable hook dependencies**: All filter/sort/pagination params are scalar (string or number) primitives, so `useMemo` and `useCallback` dependency arrays use them directly without serialization. A `paramsKey` string concatenation (`page|pageSize|sort|direction|lifecycle|kind`) drives the refetch callback.
+- **MUI v9 API**: Uses `slotProps` instead of deprecated `PaperProps`/`inputProps` for MUI Drawer and Checkbox, and `aria-label` directly on Checkbox instead of `inputProps`.
+- **LocalStorage view mode**: Grid/list view preference is persisted in `localStorage` and read on mount, defaulting to grid view.
+- **Single-select filters**: The BFF accepts a single `lifecycle` and a single `kind` value; the filter UI uses radio buttons (not checkboxes) to match the API contract exactly.
+- **Shared API client**: `lib/catalog-api.ts` uses the shared `apiClient` from `lib/api-client.ts`, which automatically injects MSAL auth tokens and provides consistent error handling. The BFF returns full `ApiDefinition` objects which are mapped to `ApiCatalogItem` summaries via the shared `toApiCatalogItem` function.
+- **Playwright route mocking**: E2e tests use `page.route()` to intercept BFF API calls and return mock data, enabling full catalog page testing without a running BFF server.
 
 ### Deviations from Plan
 
-_No deviations from the original plan._
+- The plan specified the page as a server component for initial SSR with client-side refetching. The implementation uses a single `'use client'` component because the extensive interactive state (filters, sort, pagination, view toggle) makes server component composition impractical. Loading skeletons provide the same UX during initial data fetch.
+- The plan suggested `useSWR` or `@tanstack/react-query` for client-side data fetching. Instead, a lightweight custom `useCatalog` hook was implemented using React's built-in `useState`, `useCallback`, `useEffect`, and `useTransition`, avoiding an additional dependency.
+- The plan specified mobile filters as a collapsible drawer. The implementation uses MUI Drawer component for mobile (triggered by a filter icon button), and a fixed sidebar on desktop.
 
 ### Validation Results
 
-_No validation results yet._
+- **Unit Tests**: 109 total (38 new across 7 test suites), all passing — no regressions from 71 baseline
+  - `ApiCard.test.tsx` — 8 tests (grid/list rendering, navigation, badges, version count)
+  - `ApiCatalogGrid.test.tsx` — 3 tests (grid mode, list mode, empty state)
+  - `CatalogFilters.test.tsx` — 8 tests (lifecycle/kind toggles, clear all, checkbox state)
+  - `CatalogSort.test.tsx` — 3 tests (render, display value, sort change callback)
+  - `CatalogPagination.test.tsx` — 5 tests (item count display, pagination controls, empty state, page ranges)
+  - `ViewToggle.test.tsx` — 5 tests (render, active state, toggle, no double-click)
+  - `catalog-api.test.ts` — 6 tests (default fetch, params, filters, error handling)
+- **E2e Tests**: 12 Playwright tests in `catalog.spec.ts`, all passing
+  - Catalog page heading and API cards display
+  - Homepage redirect to /catalog
+  - Empty state when no APIs match
+  - Loading skeleton during data fetch
+  - Lifecycle filter narrows APIs and updates URL
+  - Kind filter narrows APIs and updates URL
+  - Filter state reflected in URL (shareability)
+  - Sort controls functional and update URL
+  - Pagination item count and page navigation
+  - Grid/list view toggle
+  - API card click navigates to detail page
+- **Build**: `npm run build` succeeds with no TypeScript errors
+- **Lint**: `eslint .` passes with no errors or warnings
 
 ## Coding Agent Prompt
 
