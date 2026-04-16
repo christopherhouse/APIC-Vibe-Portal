@@ -53,12 +53,16 @@ def _get_service() -> ApiCatalogService:
     """Return a shared :class:`ApiCatalogService` instance.
 
     In production the service is created once with real Azure credentials.
+    When ``REDIS_HOST`` is configured, the service uses
+    :class:`RedisCacheBackend` for shared caching across replicas;
+    otherwise it falls back to :class:`InMemoryCache`.
     Tests override this dependency via ``app.dependency_overrides``.
     """
     global _service_instance  # noqa: PLW0603
     if _service_instance is None:
         from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient
         from apic_vibe_portal_bff.config.settings import get_settings
+        from apic_vibe_portal_bff.utils.cache import CacheBackend
 
         settings = get_settings()
         client = ApiCenterClient(
@@ -66,8 +70,24 @@ def _get_service() -> ApiCatalogService:
             resource_group=settings.api_center_resource_group,
             service_name=settings.api_center_service_name,
         )
+
+        cache: CacheBackend | None = None
+        if settings.redis_host:
+            from apic_vibe_portal_bff.clients.redis_cache_client import RedisCacheBackend
+
+            cache = RedisCacheBackend(
+                host=settings.redis_host,
+                port=settings.redis_port,
+                default_ttl_seconds=settings.cache_ttl_seconds,
+            )
+            logger.info(
+                "Using Redis cache backend",
+                extra={"host": settings.redis_host, "port": settings.redis_port},
+            )
+
         _service_instance = ApiCatalogService(
             client=client,
+            cache=cache,
             cache_ttl_seconds=settings.cache_ttl_seconds,
         )
     return _service_instance
