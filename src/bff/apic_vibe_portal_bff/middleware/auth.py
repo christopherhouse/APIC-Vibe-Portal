@@ -76,7 +76,7 @@ def validate_token(token: str) -> AuthenticatedUser:
     client_id = settings.bff_entra_client_id
     audience = settings.bff_entra_audience or client_id
 
-    logger.info(
+    logger.debug(
         "auth.validate_token.config",
         tenant_id=tenant_id[:8] + "..." if tenant_id else "<empty>",
         client_id=client_id[:8] + "..." if client_id else "<empty>",
@@ -92,13 +92,13 @@ def validate_token(token: str) -> AuthenticatedUser:
     try:
         unverified_header = jwt.get_unverified_header(token)
         unverified_claims = jwt.decode(token, options={"verify_signature": False})
-        logger.info(
+        logger.debug(
             "auth.validate_token.token_header",
             alg=unverified_header.get("alg"),
             kid=unverified_header.get("kid"),
             typ=unverified_header.get("typ"),
         )
-        logger.info(
+        logger.debug(
             "auth.validate_token.token_claims",
             token_issuer=unverified_claims.get("iss"),
             token_audience=unverified_claims.get("aud"),
@@ -127,11 +127,12 @@ def validate_token(token: str) -> AuthenticatedUser:
             "auth.validate_token.jwks_failure",
             error=str(exc),
             jwks_uri=f"https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys",
+            exc_info=True,
         )
         raise
 
     issuer = f"https://login.microsoftonline.com/{tenant_id}/v2.0"
-    logger.info(
+    logger.debug(
         "auth.validate_token.expected_values",
         expected_issuer=issuer,
         expected_audience=audience,
@@ -176,7 +177,7 @@ def validate_token(token: str) -> AuthenticatedUser:
     logger.info(
         "auth.validate_token.success",
         user_oid=user.oid,
-        user_name=user.name,
+        user_has_name=bool(user.name),
         user_roles=user.roles,
     )
     return user
@@ -200,11 +201,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
+            auth_scheme = auth_header.split(None, 1)[0] if auth_header else None
             logger.warning(
                 "auth.dispatch.missing_bearer",
                 path=path,
                 auth_header_present=bool(auth_header),
-                auth_header_prefix=auth_header[:10] + "..." if auth_header else "<empty>",
+                auth_scheme=auth_scheme,
             )
             return JSONResponse(
                 status_code=401,
