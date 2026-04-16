@@ -234,7 +234,7 @@ jobs:
             --bff-identity-resource-id "${{ steps.infra.outputs.bff-identity-resource-id }}" \
             --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.BFF_ENTRA_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
@@ -329,7 +329,7 @@ jobs:
             --bff-identity-resource-id "${{ steps.infra.outputs.bff-identity-resource-id }}" \
             --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.BFF_ENTRA_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
@@ -424,7 +424,7 @@ jobs:
             --bff-identity-resource-id "${{ steps.infra.outputs.bff-identity-resource-id }}" \
             --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.BFF_ENTRA_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
