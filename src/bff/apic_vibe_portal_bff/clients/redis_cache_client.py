@@ -73,6 +73,8 @@ def _serialize(value: object) -> bytes:
 
     if isinstance(value, list) and value and isinstance(value[0], BaseModel):
         cls = type(value[0])
+        # The cache stores homogeneous lists (all items share the same Pydantic model
+        # type). Heterogeneous lists are not supported and will fail on deserialization.
         return json.dumps(
             {
                 "__type__": f"list[{cls.__module__}.{cls.__qualname__}]",
@@ -107,7 +109,7 @@ def _deserialize(raw: bytes) -> object:
     return cls.model_validate(data)
 
 
-def _safe_import_model(type_path: str):  # type: ignore[return]
+def _safe_import_model(type_path: str) -> type:  # type: ignore[type-arg]
     """Import a Pydantic BaseModel subclass from *type_path* if it is trusted.
 
     Raises ``ValueError`` when *type_path* is not within the application

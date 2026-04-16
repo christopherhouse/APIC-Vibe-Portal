@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import math
 
-from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient
+from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient, ApiCenterNotFoundError
 from apic_vibe_portal_bff.clients.api_center_mapper import (
     map_api_definition,
     map_api_specification,
@@ -203,8 +203,6 @@ class ApiCatalogService:
 
         raw_defs = self._client.list_api_definitions(api_name, version_name)
         if not raw_defs:
-            from apic_vibe_portal_bff.clients.api_center_client import ApiCenterNotFoundError
-
             raise ApiCenterNotFoundError(f"No definitions found for api/{api_name}/versions/{version_name}")
 
         def _get_name(obj: object) -> str:
@@ -219,8 +217,6 @@ class ApiCatalogService:
         else:
             target_raw = next((d for d in raw_defs if _get_name(d) == definition_name), None)
             if target_raw is None:
-                from apic_vibe_portal_bff.clients.api_center_client import ApiCenterNotFoundError
-
                 raise ApiCenterNotFoundError(
                     f"Definition '{definition_name}' not found for api/{api_name}/versions/{version_name}"
                 )
