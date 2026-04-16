@@ -182,9 +182,7 @@ class ApiCenterClient:
         except Exception as exc:
             self._handle_error(exc, f"api/{api_name}/versions/{version_name}/definitions")
 
-    def export_api_specification(
-        self, api_name: str, version_name: str, definition_name: str
-    ) -> str | None:
+    def export_api_specification(self, api_name: str, version_name: str, definition_name: str) -> str | None:
         """Export the raw specification content for a given definition.
 
         Returns the specification as a string (JSON or YAML) or ``None`` if

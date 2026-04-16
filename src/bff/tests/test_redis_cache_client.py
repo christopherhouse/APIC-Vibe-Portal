@@ -290,9 +290,7 @@ class TestLazyConnection:
                 backend.get("any")  # triggers lazy init
 
                 mock_dac.assert_called_once()
-                mock_cred.get_token.assert_called_once_with(
-                    "https://redis.azure.com/.default"
-                )
+                mock_cred.get_token.assert_called_once_with("https://redis.azure.com/.default")
 
 
 # ---------------------------------------------------------------------------
@@ -310,9 +308,7 @@ class TestTokenRefresh:
             first_client.get.return_value = None
             second_client.get.return_value = None
 
-            backend = RedisCacheBackend(
-                host="h", port=10000, credential=credential
-            )
+            backend = RedisCacheBackend(host="h", port=10000, credential=credential)
             backend.get("a")  # creates first client
             assert backend._client is first_client
 

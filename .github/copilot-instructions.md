@@ -128,16 +128,19 @@ Leverage these MCP servers when you need current documentation, security insight
 When you receive a task that involves code changes, follow these steps **in order**:
 
 ### 1. Understand the Task
+
 - Read the task requirements thoroughly
 - Identify which parts of the codebase are affected (frontend, shared, BFF, infra)
 - Review relevant existing code, tests, and documentation
 
 ### 2. Plan the Execution
+
 - Outline the minimal set of changes needed
 - Identify which tests need to be added or updated
 - Report your plan before writing any code
 
 ### 3. Implement Changes Iteratively
+
 - Make small, incremental changes
 - Add or update tests alongside the code changes — do not defer testing
 - Report progress after each meaningful unit of work
@@ -147,6 +150,7 @@ When you receive a task that involves code changes, follow these steps **in orde
 Run every applicable quality check below and **iterate until all pass**. Do not skip checks or commit with known failures.
 
 #### Frontend + Shared (TypeScript)
+
 ```bash
 # Lint (ESLint + Prettier)
 npm run lint
@@ -166,6 +170,7 @@ npm run test:e2e --workspace=@apic-vibe-portal/frontend
 ```
 
 #### BFF (Python)
+
 ```bash
 cd src/bff
 
@@ -181,23 +186,25 @@ uv run python -m compileall .
 ```
 
 #### Docker (when Dockerfiles or dependencies change)
+
 ```bash
 docker build -t frontend-check src/frontend
 docker build -t bff-check src/bff
 ```
 
 ### 5. Commit Only After All Checks Pass
+
 - Only commit and push once **all applicable quality checks pass**
 - If a check fails, fix the issue and re-run the checks
 - Never commit with the intent to "fix it later"
 
 ### Quality Check Quick Reference
 
-| Area | Lint | Format | Types | Tests | Build |
-|------|------|--------|-------|-------|-------|
-| Frontend + Shared | `npm run lint` | `npm run format:check` | `npx tsc --noEmit` | `npm run test` | `npm run build` |
-| BFF | `uv run ruff check .` | `uv run ruff format --check .` | N/A | `uv run pytest` | `uv run python -m compileall .` |
-| Docker | N/A | N/A | N/A | N/A | `docker build` |
+| Area              | Lint                  | Format                         | Types              | Tests           | Build                           |
+| ----------------- | --------------------- | ------------------------------ | ------------------ | --------------- | ------------------------------- |
+| Frontend + Shared | `npm run lint`        | `npm run format:check`         | `npx tsc --noEmit` | `npm run test`  | `npm run build`                 |
+| BFF               | `uv run ruff check .` | `uv run ruff format --check .` | N/A                | `uv run pytest` | `uv run python -m compileall .` |
+| Docker            | N/A                   | N/A                            | N/A                | N/A             | `docker build`                  |
 
 ## Project References
 
