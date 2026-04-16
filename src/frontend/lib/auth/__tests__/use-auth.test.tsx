@@ -1,6 +1,22 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import type { RuntimeConfig } from '@/app/api/config/route';
+
+// Mock runtime config before other imports
+const mockRuntimeConfig: RuntimeConfig = {
+  msal: {
+    clientId: 'test-client-id',
+    authority: 'https://login.microsoftonline.com/test-tenant',
+    redirectUri: 'http://localhost:3000',
+  },
+  bffApiScope: 'api://test-bff/.default',
+};
+
+jest.mock('@/lib/config/runtime-config', () => ({
+  getRuntimeConfig: jest.fn().mockResolvedValue(mockRuntimeConfig),
+  clearConfigCache: jest.fn(),
+}));
 
 // Setup MSAL mocks
 const mockLoginRedirect = jest.fn();
@@ -110,3 +126,4 @@ describe('useAuth', () => {
     expect(screen.getByTestId('loading')).toHaveTextContent('false');
   });
 });
+

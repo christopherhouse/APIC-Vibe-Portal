@@ -1,6 +1,22 @@
 import React from 'react';
 import { render, screen, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import type { RuntimeConfig } from '@/app/api/config/route';
+
+// Mock runtime config before importing AuthProvider
+const mockRuntimeConfig: RuntimeConfig = {
+  msal: {
+    clientId: 'test-client-id',
+    authority: 'https://login.microsoftonline.com/test-tenant',
+    redirectUri: 'http://localhost:3000',
+  },
+  bffApiScope: 'api://test-bff/.default',
+};
+
+jest.mock('@/lib/config/runtime-config', () => ({
+  getRuntimeConfig: jest.fn().mockResolvedValue(mockRuntimeConfig),
+  clearConfigCache: jest.fn(),
+}));
 
 // Mock MSAL before importing AuthProvider
 const mockInitialize = jest.fn().mockResolvedValue(undefined);
@@ -113,3 +129,4 @@ describe('AuthProvider', () => {
     expect(mockAddEventCallback).toHaveBeenCalled();
   });
 });
+

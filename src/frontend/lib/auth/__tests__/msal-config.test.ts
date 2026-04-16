@@ -1,67 +1,54 @@
-import { msalConfig, loginRequest, bffApiScope } from '../msal-config';
+import { buildMsalConfig, buildLoginRequest } from '../msal-config';
+import type { RuntimeConfig } from '@/app/api/config/route';
 
 describe('msal-config', () => {
-  it('exports a valid MSAL configuration object', () => {
-    expect(msalConfig).toBeDefined();
-    expect(msalConfig.auth).toBeDefined();
-    expect(msalConfig.auth.clientId).toBeDefined();
-    expect(msalConfig.auth.authority).toBeDefined();
-    expect(msalConfig.auth.redirectUri).toBeDefined();
+  const mockConfig: RuntimeConfig = {
+    msal: {
+      clientId: 'test-client-id',
+      authority: 'https://login.microsoftonline.com/test-tenant',
+      redirectUri: 'http://localhost:3000',
+    },
+    bffApiScope: 'api://test-bff/.default',
+  };
+
+  describe('buildMsalConfig', () => {
+    it('builds a valid MSAL configuration object from runtime config', () => {
+      const msalConfig = buildMsalConfig(mockConfig);
+      expect(msalConfig).toBeDefined();
+      expect(msalConfig.auth).toBeDefined();
+      expect(msalConfig.auth.clientId).toBe('test-client-id');
+      expect(msalConfig.auth.authority).toBe('https://login.microsoftonline.com/test-tenant');
+      expect(msalConfig.auth.redirectUri).toBe('http://localhost:3000');
+      expect(msalConfig.auth.postLogoutRedirectUri).toBe('http://localhost:3000');
+    });
+
+    it('uses sessionStorage for cache', () => {
+      const msalConfig = buildMsalConfig(mockConfig);
+      expect(msalConfig.cache?.cacheLocation).toBe('sessionStorage');
+    });
+
+    it('configures logger', () => {
+      const msalConfig = buildMsalConfig(mockConfig);
+      expect(msalConfig.system?.loggerOptions).toBeDefined();
+      expect(msalConfig.system?.loggerOptions?.loggerCallback).toBeInstanceOf(Function);
+    });
   });
 
-  it('uses sessionStorage for cache', () => {
-    expect(msalConfig.cache?.cacheLocation).toBe('sessionStorage');
-  });
+  describe('buildLoginRequest', () => {
+    it('builds login request with BFF API scope when provided', () => {
+      const loginRequest = buildLoginRequest(mockConfig);
+      expect(loginRequest).toBeDefined();
+      expect(loginRequest.scopes).toEqual(['api://test-bff/.default']);
+    });
 
-  it('does not configure cookie-based cache (sessionStorage only)', () => {
-    // MSAL v5 removed storeAuthStateInCookie; sessionStorage-only is the default
-    expect(msalConfig.cache?.cacheLocation).toBe('sessionStorage');
-  });
-
-  it('exports loginRequest with scopes', () => {
-    expect(loginRequest).toBeDefined();
-    expect(loginRequest.scopes).toBeInstanceOf(Array);
-    expect(loginRequest.scopes.length).toBeGreaterThan(0);
-  });
-
-  it('exports bffApiScope', () => {
-    expect(typeof bffApiScope).toBe('string');
-  });
-});
-
-describe('msal-config validation', () => {
-  const originalEnv = process.env;
-
-  beforeEach(() => {
-    jest.resetModules();
-    process.env = { ...originalEnv };
-  });
-
-  afterEach(() => {
-    process.env = originalEnv;
-  });
-
-  it('logs error when NEXT_PUBLIC_MSAL_CLIENT_ID is missing', async () => {
-    delete process.env.NEXT_PUBLIC_MSAL_CLIENT_ID;
-    delete process.env.NEXT_PUBLIC_MSAL_AUTHORITY;
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation();
-
-    // Re-import to re-trigger validation
-    await import('../msal-config');
-
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('NEXT_PUBLIC_MSAL_CLIENT_ID'));
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('NEXT_PUBLIC_MSAL_AUTHORITY'));
-    errorSpy.mockRestore();
-  });
-
-  it('does not log error when required env vars are set', async () => {
-    process.env.NEXT_PUBLIC_MSAL_CLIENT_ID = 'test-client-id';
-    process.env.NEXT_PUBLIC_MSAL_AUTHORITY = 'https://login.microsoftonline.com/test-tenant';
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation();
-
-    await import('../msal-config');
-
-    expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining('[MSAL Config]'));
-    errorSpy.mockRestore();
+    it('falls back to default scopes when BFF API scope is empty', () => {
+      const configWithoutScope: RuntimeConfig = {
+        ...mockConfig,
+        bffApiScope: '',
+      };
+      const loginRequest = buildLoginRequest(configWithoutScope);
+      expect(loginRequest.scopes).toEqual(['openid', 'profile', 'email']);
+    });
   });
 });
+
