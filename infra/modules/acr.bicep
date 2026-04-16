@@ -8,8 +8,11 @@ param location string
 @description('ACR name')
 param acrName string
 
-@description('Managed Identity Principal ID for RBAC (AcrPull)')
-param managedIdentityPrincipalId string
+@description('Frontend Managed Identity Principal ID for AcrPull RBAC')
+param frontendManagedIdentityPrincipalId string
+
+@description('BFF Managed Identity Principal ID for AcrPull RBAC')
+param bffManagedIdentityPrincipalId string
 
 @description('Log Analytics Workspace ID for diagnostics')
 param logAnalyticsWorkspaceId string
@@ -41,13 +44,24 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-11-01-pr
   }
 }
 
-// RBAC: Grant managed identity "AcrPull" role
-resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(containerRegistry.id, managedIdentityPrincipalId, 'AcrPull')
+// RBAC: Grant frontend managed identity "AcrPull" role
+resource acrPullRoleFrontend 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(containerRegistry.id, frontendManagedIdentityPrincipalId, 'AcrPull')
   scope: containerRegistry
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d') // AcrPull
-    principalId: managedIdentityPrincipalId
+    principalId: frontendManagedIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// RBAC: Grant BFF managed identity "AcrPull" role
+resource acrPullRoleBff 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(containerRegistry.id, bffManagedIdentityPrincipalId, 'AcrPull')
+  scope: containerRegistry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d') // AcrPull
+    principalId: bffManagedIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
 }
