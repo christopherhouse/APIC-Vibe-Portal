@@ -31,11 +31,11 @@ This guide explains how to configure Role-Based Access Control (RBAC) for the AP
 
 The portal defines three roles. Each role controls what a user can see and do.
 
-| Role Value | Display Name | Description | Typical Assignees |
-|---|---|---|---|
-| `Portal.Admin` | Admin | Full access — manage portal configuration, view organization-wide analytics, bypass security trimming | Platform team leads, DevOps managers |
-| `Portal.Maintainer` | Maintainer | Manage APIs — publish, edit, and curate catalog entries; view scoped analytics | API product owners, tech leads |
-| `Portal.User` | User (Reader) | Read-only — browse the API catalog, use AI chat assistant | All developers |
+| Role Value          | Display Name  | Description                                                                                           | Typical Assignees                    |
+| ------------------- | ------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `Portal.Admin`      | Admin         | Full access — manage portal configuration, view organization-wide analytics, bypass security trimming | Platform team leads, DevOps managers |
+| `Portal.Maintainer` | Maintainer    | Manage APIs — publish, edit, and curate catalog entries; view scoped analytics                        | API product owners, tech leads       |
+| `Portal.User`       | User (Reader) | Read-only — browse the API catalog, use AI chat assistant                                             | All developers                       |
 
 > **Roles are additive.** A user can have more than one role. An admin who also maintains APIs would typically have both `Portal.Admin` and `Portal.Maintainer`.
 
@@ -79,11 +79,11 @@ There is **no application-level user/role database**. Entra ID is the single sou
 3. Navigate to **App roles** in the left menu.
 4. Click **Create app role** for each of the three roles:
 
-   | Display Name | Value | Allowed Member Types | Description |
-   |---|---|---|---|
-   | Admin | `Portal.Admin` | Users/Groups | Full portal administration |
-   | Maintainer | `Portal.Maintainer` | Users/Groups | API catalog management |
-   | User | `Portal.User` | Users/Groups | Read-only portal access |
+   | Display Name | Value               | Allowed Member Types | Description                |
+   | ------------ | ------------------- | -------------------- | -------------------------- |
+   | Admin        | `Portal.Admin`      | Users/Groups         | Full portal administration |
+   | Maintainer   | `Portal.Maintainer` | Users/Groups         | API catalog management     |
+   | User         | `Portal.User`       | Users/Groups         | Read-only portal access    |
 
 5. Ensure each role has **Enabled** toggled on.
 
@@ -147,11 +147,11 @@ For organizations with many users, assign roles to **Entra ID security groups** 
 
 ### Create Security Groups
 
-| Group Name | Role Assignment | Members |
-|---|---|---|
-| `sg-apic-portal-admins` | Portal.Admin | Platform team leads |
+| Group Name                   | Role Assignment   | Members                        |
+| ---------------------------- | ----------------- | ------------------------------ |
+| `sg-apic-portal-admins`      | Portal.Admin      | Platform team leads            |
 | `sg-apic-portal-maintainers` | Portal.Maintainer | API product owners, tech leads |
-| `sg-apic-portal-users` | Portal.User | All developers |
+| `sg-apic-portal-users`       | Portal.User       | All developers                 |
 
 ### Steps
 
@@ -231,6 +231,7 @@ ENTRA_AUDIENCE=api://<your-client-id>
 3. Open `http://localhost:3000` — you should be redirected to Microsoft login.
 4. After login, check the browser dev tools console — the token should contain your assigned roles.
 5. Test BFF authorization:
+
    ```bash
    # Get a token from the browser Network tab (copy the Authorization header value)
    TOKEN="eyJ..."
@@ -353,13 +354,13 @@ from apic_vibe_portal_bff.middleware.rbac import require_role, require_any_role
 
 ### Current Route → Role Matrix
 
-| Route | Required Role(s) | Description |
-|---|---|---|
-| `/api/catalog/` | Portal.User, Portal.Admin, or Portal.Maintainer | Browse API catalog |
-| `/admin/*` (future) | Portal.Admin | Portal administration |
-| `/catalog/edit/*` (future) | Portal.Admin or Portal.Maintainer | Catalog management |
-| `/analytics` (future) | Portal.Admin or Portal.Maintainer | Analytics dashboard |
-| `/health`, `/docs` | Public (no auth) | Health checks and API docs |
+| Route                      | Required Role(s)                                | Description                |
+| -------------------------- | ----------------------------------------------- | -------------------------- |
+| `/api/catalog/`            | Portal.User, Portal.Admin, or Portal.Maintainer | Browse API catalog         |
+| `/admin/*` (future)        | Portal.Admin                                    | Portal administration      |
+| `/catalog/edit/*` (future) | Portal.Admin or Portal.Maintainer               | Catalog management         |
+| `/analytics` (future)      | Portal.Admin or Portal.Maintainer               | Analytics dashboard        |
+| `/health`, `/docs`         | Public (no auth)                                | Health checks and API docs |
 
 ---
 

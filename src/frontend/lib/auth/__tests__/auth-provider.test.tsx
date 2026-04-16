@@ -30,7 +30,9 @@ jest.mock('@azure/msal-browser', () => {
 });
 
 jest.mock('@azure/msal-react', () => ({
-  MsalProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="msal-provider">{children}</div>,
+  MsalProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="msal-provider">{children}</div>
+  ),
 }));
 
 import AuthProvider from '../auth-provider';

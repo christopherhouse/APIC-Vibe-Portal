@@ -60,25 +60,25 @@ Complete usage analytics, metadata scoring, performance optimization, and launch
 
 ### Phase 1 — MVP
 
-| #                                                  | Task                                            | Status | Key Dependencies              |
-| -------------------------------------------------- | ----------------------------------------------- | ------ | ----------------------------- |
-| [005](005-frontend-nextjs-setup.md)                | Next.js Frontend Project Setup                  | ✅     | 001, 004                      |
-| [006](006-bff-api-setup.md)                        | BFF API Project Setup                           | ✅     | 001, 004                      |
-| [007](007-shared-types-package.md)                 | Shared Types & Utilities Package                | ✅     | 001, 005, 006                 |
-| [008](008-entra-id-authentication.md)              | Entra ID Authentication Integration             | ✅     | 002, 005, 006                 |
-| [009](009-api-center-data-layer.md)                | Azure API Center Data Layer Integration         | 🔲     | 002, 006, 007                 |
-| [010](010-bff-api-catalog-endpoints.md)            | BFF API Catalog Endpoints                       | 🔲     | 006, 007, 009                 |
-| [011](011-frontend-api-catalog-page.md)            | API Catalog Listing Page (Frontend)             | 🔲     | 005, 007, 010                 |
-| [012](012-frontend-api-detail-page.md)             | API Detail View Page (Frontend)                 | 🔲     | 005, 007, 010, 011            |
-| [013](013-ai-search-index-setup.md)                | Azure AI Search Index Setup & Indexing Pipeline | 🔲     | 002, 006, 009                 |
-| [014](014-search-api-implementation.md)            | Search API Implementation (BFF)                 | 🔲     | 006, 007, 013                 |
-| [015](015-frontend-search-ui.md)                   | Search UI (Frontend)                            | 🔲     | 005, 007, 014                 |
-| [016](016-persistence-data-governance-baseline.md) | Persistence & Data Governance Baseline          | 🔲     | 002, 006, 007, 008, 013, 014  |
-| [017](017-openai-integration.md)                   | Azure OpenAI Service Integration (BFF)          | 🔲     | 002, 006, 007, 013, 014       |
-| [018](018-frontend-chat-ui.md)                     | AI Chat Interface (Frontend)                    | 🔲     | 005, 007, 017                 |
-| [019](019-observability-app-insights.md)           | Application Insights Observability              | 🔲     | 002, 005, 006                 |
-| [020](020-security-trimming.md)                    | Security Trimming Implementation                | 🔲     | 009, 014, 017, 008            |
-| [021](021-e2e-testing-mvp-polish.md)               | End-to-End Integration Testing & MVP Polish     | 🔲     | 001–020                       |
+| #                                                  | Task                                            | Status | Key Dependencies             |
+| -------------------------------------------------- | ----------------------------------------------- | ------ | ---------------------------- |
+| [005](005-frontend-nextjs-setup.md)                | Next.js Frontend Project Setup                  | ✅     | 001, 004                     |
+| [006](006-bff-api-setup.md)                        | BFF API Project Setup                           | ✅     | 001, 004                     |
+| [007](007-shared-types-package.md)                 | Shared Types & Utilities Package                | ✅     | 001, 005, 006                |
+| [008](008-entra-id-authentication.md)              | Entra ID Authentication Integration             | ✅     | 002, 005, 006                |
+| [009](009-api-center-data-layer.md)                | Azure API Center Data Layer Integration         | 🔲     | 002, 006, 007                |
+| [010](010-bff-api-catalog-endpoints.md)            | BFF API Catalog Endpoints                       | 🔲     | 006, 007, 009                |
+| [011](011-frontend-api-catalog-page.md)            | API Catalog Listing Page (Frontend)             | 🔲     | 005, 007, 010                |
+| [012](012-frontend-api-detail-page.md)             | API Detail View Page (Frontend)                 | 🔲     | 005, 007, 010, 011           |
+| [013](013-ai-search-index-setup.md)                | Azure AI Search Index Setup & Indexing Pipeline | 🔲     | 002, 006, 009                |
+| [014](014-search-api-implementation.md)            | Search API Implementation (BFF)                 | 🔲     | 006, 007, 013                |
+| [015](015-frontend-search-ui.md)                   | Search UI (Frontend)                            | 🔲     | 005, 007, 014                |
+| [016](016-persistence-data-governance-baseline.md) | Persistence & Data Governance Baseline          | 🔲     | 002, 006, 007, 008, 013, 014 |
+| [017](017-openai-integration.md)                   | Azure OpenAI Service Integration (BFF)          | 🔲     | 002, 006, 007, 013, 014      |
+| [018](018-frontend-chat-ui.md)                     | AI Chat Interface (Frontend)                    | 🔲     | 005, 007, 017                |
+| [019](019-observability-app-insights.md)           | Application Insights Observability              | 🔲     | 002, 005, 006                |
+| [020](020-security-trimming.md)                    | Security Trimming Implementation                | 🔲     | 009, 014, 017, 008           |
+| [021](021-e2e-testing-mvp-polish.md)               | End-to-End Integration Testing & MVP Polish     | 🔲     | 001–020                      |
 
 ### Phase 2 — Governance + Compare
 

@@ -15,16 +15,12 @@ import { type Configuration, LogLevel } from '@azure/msal-browser';
 export const msalConfig: Configuration = {
   auth: {
     clientId: process.env.NEXT_PUBLIC_MSAL_CLIENT_ID ?? '',
-    authority:
-      process.env.NEXT_PUBLIC_MSAL_AUTHORITY ?? 'https://login.microsoftonline.com/common',
+    authority: process.env.NEXT_PUBLIC_MSAL_AUTHORITY ?? 'https://login.microsoftonline.com/common',
     redirectUri: process.env.NEXT_PUBLIC_MSAL_REDIRECT_URI ?? 'http://localhost:3000',
-    postLogoutRedirectUri:
-      process.env.NEXT_PUBLIC_MSAL_REDIRECT_URI ?? 'http://localhost:3000',
-    navigateToLoginRequestUrl: true,
+    postLogoutRedirectUri: process.env.NEXT_PUBLIC_MSAL_REDIRECT_URI ?? 'http://localhost:3000',
   },
   cache: {
     cacheLocation: 'sessionStorage',
-    storeAuthStateInCookie: false,
   },
   system: {
     loggerOptions: {

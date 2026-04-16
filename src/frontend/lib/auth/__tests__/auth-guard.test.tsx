@@ -94,7 +94,12 @@ describe('AuthGuard', () => {
       isAuthenticated: true,
       isLoading: false,
       login: mockLogin,
-      user: { name: 'Admin', email: 'admin@test.com', id: '2', roles: ['Portal.Admin', 'Portal.User'] },
+      user: {
+        name: 'Admin',
+        email: 'admin@test.com',
+        id: '2',
+        roles: ['Portal.Admin', 'Portal.User'],
+      },
     });
 
     render(

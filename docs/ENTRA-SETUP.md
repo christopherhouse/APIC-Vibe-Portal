@@ -69,12 +69,12 @@ The portal uses a **two-app-registration pattern**, which is the Microsoft-recom
 
 **Key concepts:**
 
-| Concept | Description |
-|---|---|
-| **Frontend SPA app reg** | A *public client* (no secret). Uses Authorization Code flow with PKCE. Only has redirect URIs. |
-| **BFF API app reg** | Exposes an API scope. Defines App Roles (`Portal.Admin`, `Portal.Maintainer`, `Portal.User`). The BFF validates tokens issued for its audience. |
-| **Scope** | The frontend requests a token with the BFF's scope (e.g., `api://<bff-client-id>/access_as_user`). This ensures the access token's `aud` claim matches the BFF. |
-| **App Roles** | Defined on the BFF API app reg. Assigned to users/groups via the Enterprise Application. Appear in the token's `roles` claim. |
+| Concept                  | Description                                                                                                                                                     |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Frontend SPA app reg** | A _public client_ (no secret). Uses Authorization Code flow with PKCE. Only has redirect URIs.                                                                  |
+| **BFF API app reg**      | Exposes an API scope. Defines App Roles (`Portal.Admin`, `Portal.Maintainer`, `Portal.User`). The BFF validates tokens issued for its audience.                 |
+| **Scope**                | The frontend requests a token with the BFF's scope (e.g., `api://<bff-client-id>/access_as_user`). This ensures the access token's `aud` claim matches the BFF. |
+| **App Roles**            | Defined on the BFF API app reg. Assigned to users/groups via the Enterprise Application. Appear in the token's `roles` claim.                                   |
 
 ---
 
@@ -109,15 +109,15 @@ This defines the scope that the frontend will request when acquiring an access t
 2. Click **Set** next to "Application ID URI". Accept the default (`api://<client-id>`) or set a custom URI.
 3. Click **Add a scope**:
 
-   | Field | Value |
-   |---|---|
-   | **Scope name** | `access_as_user` |
-   | **Who can consent** | Admins and users |
-   | **Admin consent display name** | Access APIC Vibe Portal API |
-   | **Admin consent description** | Allows the APIC Vibe Portal frontend to call the BFF API on behalf of the signed-in user. |
-   | **User consent display name** | Access APIC Vibe Portal |
-   | **User consent description** | Allow the portal to access the API on your behalf. |
-   | **State** | Enabled |
+   | Field                          | Value                                                                                     |
+   | ------------------------------ | ----------------------------------------------------------------------------------------- |
+   | **Scope name**                 | `access_as_user`                                                                          |
+   | **Who can consent**            | Admins and users                                                                          |
+   | **Admin consent display name** | Access APIC Vibe Portal API                                                               |
+   | **Admin consent description**  | Allows the APIC Vibe Portal frontend to call the BFF API on behalf of the signed-in user. |
+   | **User consent display name**  | Access APIC Vibe Portal                                                                   |
+   | **User consent description**   | Allow the portal to access the API on your behalf.                                        |
+   | **State**                      | Enabled                                                                                   |
 
 4. Click **Add scope**. The full scope URI will be: `api://<bff-client-id>/access_as_user`
 
@@ -130,11 +130,11 @@ App Roles control what users can do in the portal. These are returned in the `ro
 1. In the BFF API app registration, go to **App roles**.
 2. Click **Create app role** for each role:
 
-   | Display Name | Value | Allowed Member Types | Description |
-   |---|---|---|---|
-   | Admin | `Portal.Admin` | Users/Groups | Full portal administration |
-   | Maintainer | `Portal.Maintainer` | Users/Groups | API catalog management |
-   | User | `Portal.User` | Users/Groups | Read-only portal access |
+   | Display Name | Value               | Allowed Member Types | Description                |
+   | ------------ | ------------------- | -------------------- | -------------------------- |
+   | Admin        | `Portal.Admin`      | Users/Groups         | Full portal administration |
+   | Maintainer   | `Portal.Maintainer` | Users/Groups         | API catalog management     |
+   | User         | `Portal.User`       | Users/Groups         | Read-only portal access    |
 
 3. Ensure each role is **Enabled**.
 
@@ -275,12 +275,12 @@ NEXT_PUBLIC_MSAL_REDIRECT_URI=http://localhost:3000
 NEXT_PUBLIC_BFF_API_SCOPE=api://<bff-client-id>/access_as_user
 ```
 
-| Variable | Source |
-|---|---|
-| `NEXT_PUBLIC_MSAL_CLIENT_ID` | SPA app registration → Application (client) ID |
-| `NEXT_PUBLIC_MSAL_AUTHORITY` | `https://login.microsoftonline.com/<tenant-id>` |
+| Variable                        | Source                                                |
+| ------------------------------- | ----------------------------------------------------- |
+| `NEXT_PUBLIC_MSAL_CLIENT_ID`    | SPA app registration → Application (client) ID        |
+| `NEXT_PUBLIC_MSAL_AUTHORITY`    | `https://login.microsoftonline.com/<tenant-id>`       |
 | `NEXT_PUBLIC_MSAL_REDIRECT_URI` | Must match a redirect URI in the SPA app registration |
-| `NEXT_PUBLIC_BFF_API_SCOPE` | BFF API app registration → Expose an API → scope URI |
+| `NEXT_PUBLIC_BFF_API_SCOPE`     | BFF API app registration → Expose an API → scope URI  |
 
 ### BFF environment variables
 
@@ -297,11 +297,11 @@ ENTRA_CLIENT_ID=<bff-client-id>
 ENTRA_AUDIENCE=api://<bff-client-id>
 ```
 
-| Variable | Source |
-|---|---|
-| `ENTRA_TENANT_ID` | Entra ID → Overview → Tenant ID |
-| `ENTRA_CLIENT_ID` | BFF API app registration → Application (client) ID |
-| `ENTRA_AUDIENCE` | BFF API app registration → Application ID URI (e.g., `api://<bff-client-id>`) |
+| Variable          | Source                                                                        |
+| ----------------- | ----------------------------------------------------------------------------- |
+| `ENTRA_TENANT_ID` | Entra ID → Overview → Tenant ID                                               |
+| `ENTRA_CLIENT_ID` | BFF API app registration → Application (client) ID                            |
+| `ENTRA_AUDIENCE`  | BFF API app registration → Application ID URI (e.g., `api://<bff-client-id>`) |
 
 > **Note on `ENTRA_AUDIENCE`**: This must match the `aud` claim in the access token. When the frontend requests a token with scope `api://<bff-client-id>/access_as_user`, the resulting token's `aud` will be `api://<bff-client-id>`. Set `ENTRA_AUDIENCE` to match.
 
@@ -369,10 +369,10 @@ Frontend SPA App Reg                    BFF API App Reg
 Client ID: <spa-id>                     Client ID: <bff-id>
 Type: SPA (public)                      Type: API
 Redirect: http://localhost:3000         Application ID URI: api://<bff-id>
-                                        
+
 API Permissions:                        Exposed Scopes:
   └─ APIC Portal API /                   └─ access_as_user
-     access_as_user (Delegated)         
+     access_as_user (Delegated)
                                         App Roles:
                                           ├─ Portal.Admin
                                           ├─ Portal.Maintainer
@@ -504,11 +504,11 @@ For each environment (dev, staging, production), you can either:
 
 **Option A — Separate app registrations per environment** (recommended for isolation):
 
-| Environment | BFF API App Reg | SPA App Reg | Redirect URIs |
-|---|---|---|---|
-| Dev (local) | `apic-portal-api-dev` | `apic-portal-spa-dev` | `http://localhost:3000` |
-| Staging | `apic-portal-api-stg` | `apic-portal-spa-stg` | `https://stg.yourportal.com` |
-| Production | `apic-portal-api-prd` | `apic-portal-spa-prd` | `https://yourportal.com` |
+| Environment | BFF API App Reg       | SPA App Reg           | Redirect URIs                |
+| ----------- | --------------------- | --------------------- | ---------------------------- |
+| Dev (local) | `apic-portal-api-dev` | `apic-portal-spa-dev` | `http://localhost:3000`      |
+| Staging     | `apic-portal-api-stg` | `apic-portal-spa-stg` | `https://stg.yourportal.com` |
+| Production  | `apic-portal-api-prd` | `apic-portal-spa-prd` | `https://yourportal.com`     |
 
 **Option B — Single app registration with multiple redirect URIs** (simpler for small teams):
 
@@ -572,7 +572,8 @@ az containerapp update \
 
 **Cause**: The user hasn't been assigned a role, or roles are defined on the wrong app registration.
 
-**Fix**: 
+**Fix**:
+
 1. Verify App Roles are defined on the **BFF API** app registration (not the SPA).
 2. Assign the user to a role via the BFF API's **Enterprise Application** → Users and groups.
 3. Log out and log back in to get a fresh token.
@@ -586,6 +587,7 @@ az containerapp update \
 ### Frontend login works but BFF returns 401
 
 **Cause**: Multiple possible causes:
+
 1. Token audience mismatch (check `aud` claim vs `ENTRA_AUDIENCE`)
 2. Token issuer mismatch (check tenant ID)
 3. BFF env vars not set

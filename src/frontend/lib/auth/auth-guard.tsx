@@ -30,9 +30,7 @@ export default function AuthGuard({ children, requiredRoles }: AuthGuardProps) {
 
   if (isLoading) {
     return (
-      <Box
-        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}
-      >
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
         <CircularProgress />
       </Box>
     );
@@ -40,9 +38,7 @@ export default function AuthGuard({ children, requiredRoles }: AuthGuardProps) {
 
   if (!isAuthenticated) {
     return (
-      <Box
-        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}
-      >
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
         <Typography variant="body1">Redirecting to login…</Typography>
       </Box>
     );

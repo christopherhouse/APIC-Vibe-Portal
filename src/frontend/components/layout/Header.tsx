@@ -130,10 +130,7 @@ export default function Header() {
                 <ListItemIcon>
                   <PersonIcon fontSize="small" />
                 </ListItemIcon>
-                <ListItemText
-                  primary={user.name || 'User'}
-                  secondary={user.email}
-                />
+                <ListItemText primary={user.name || 'User'} secondary={user.email} />
               </MenuItem>
               <Divider />
               <MenuItem onClick={handleLogout}>
