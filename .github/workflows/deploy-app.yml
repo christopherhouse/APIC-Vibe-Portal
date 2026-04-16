@@ -156,6 +156,7 @@ jobs:
           echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
           echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
           echo "managed-identity=$(echo $DEPLOYMENT | jq -r '.managedIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
         run: |
@@ -167,6 +168,7 @@ jobs:
             --bff-app ${{ steps.infra.outputs.bff-app }} \
             --acr-server ${{ steps.infra.outputs.acr-server }} \
             --managed-identity ${{ steps.infra.outputs.managed-identity }} \
+            --redis-host ${{ steps.infra.outputs.redis-host }} \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
 
@@ -200,6 +202,7 @@ jobs:
           echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
           echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
           echo "managed-identity=$(echo $DEPLOYMENT | jq -r '.managedIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
         run: |
@@ -211,6 +214,7 @@ jobs:
             --bff-app ${{ steps.infra.outputs.bff-app }} \
             --acr-server ${{ steps.infra.outputs.acr-server }} \
             --managed-identity ${{ steps.infra.outputs.managed-identity }} \
+            --redis-host ${{ steps.infra.outputs.redis-host }} \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
 
@@ -244,6 +248,7 @@ jobs:
           echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
           echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
           echo "managed-identity=$(echo $DEPLOYMENT | jq -r '.managedIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
         run: |
@@ -255,5 +260,6 @@ jobs:
             --bff-app ${{ steps.infra.outputs.bff-app }} \
             --acr-server ${{ steps.infra.outputs.acr-server }} \
             --managed-identity ${{ steps.infra.outputs.managed-identity }} \
+            --redis-host ${{ steps.infra.outputs.redis-host }} \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}

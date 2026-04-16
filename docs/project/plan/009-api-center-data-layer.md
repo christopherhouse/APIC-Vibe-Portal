@@ -106,6 +106,7 @@ Add to BFF settings:
 | 2026-04-16 | ✅ Complete    | copilot | Full implementation: ApiCenterClient, ApiCatalogService, data mapper, in-memory cache, Pydantic models. 189 tests passing (94 new). |
 | 2026-04-16 | ✅ Complete    | copilot | Replaced in-memory cache with Azure Cache for Redis (PR review feedback). Redis Bicep module added; BFF now uses RedisCacheBackend (in-memory remains as local dev fallback). 210 tests passing. |
 | 2026-04-16 | ✅ Complete    | copilot | Switched from deprecated Azure Cache for Redis to Azure Managed Redis (PR review feedback). Updated Bicep module to `Microsoft.Cache/redisEnterprise@2024-09-01-preview` with database sub-resource on port 10000 and `Balanced_B0` SKU for dev. |
+| 2026-04-16 | ✅ Complete    | copilot | Switched Redis auth from access keys to Entra user-assigned MI (PR review feedback). BFF now authenticates with `DefaultAzureCredential` token, no embedded secrets. Added Redis env vars (`REDIS_HOST`, `REDIS_PORT`, `AZURE_CLIENT_ID`) to BFF container app at deploy time. 213 tests passing. |
 
 ### Technical Decisions
 
@@ -116,9 +117,10 @@ Add to BFF settings:
 - **Python 3.14 generic syntax** (`class CacheEntry[V]`): Used PEP 695 syntax for generics as enforced by Ruff `UP046` for the target Python version.
 - **StrEnum for domain enums**: Used `StrEnum` (available since Python 3.11) so enum values serialize directly to their string representation in JSON responses without custom serializers.
 - **Differentiated cache TTLs**: API lists (2 min), API details/versions (5 min), specifications (10 min), environments/deployments (15 min) — balancing freshness vs. call reduction.
-- **Azure Managed Redis as primary cache backend**: `RedisCacheBackend` (`clients/redis_cache_client.py`) uses `redis-py>=5.2` with pickle serialization and `rediss://` SSL URLs on port 10000 (Azure Managed Redis Enterprise default). `InMemoryCache` remains available as a local dev fallback when `REDIS_URL` is not set. `ApiCatalogService` accepts a `CacheBackend` protocol so the backend is injected (no hard coupling).
+- **Azure Managed Redis as primary cache backend**: `RedisCacheBackend` (`clients/redis_cache_client.py`) uses `redis-py>=5.2` with pickle serialization and SSL on port 10000 (Azure Managed Redis Enterprise default). `InMemoryCache` remains available as a local dev fallback when `REDIS_HOST` is not set. `ApiCatalogService` accepts a `CacheBackend` protocol so the backend is injected (no hard coupling).
 - **Azure Managed Redis over Azure Cache for Redis**: Azure Cache for Redis is deprecated; Azure Managed Redis (`Microsoft.Cache/redisEnterprise@2024-09-01-preview`) is the current offering. It uses a cluster + database resource model, port 10000, and SKU names like `Balanced_B0` (smallest, for dev).
-- **Connection string stored in Key Vault**: The Bicep module calls `listKeys` on the Redis database resource and writes a `rediss://:key@host:10000` URL to a Key Vault secret (`redis-connection-string`). The BFF reads `REDIS_URL` from its environment (populated from the secret by the deployment script).
+- **Entra MI auth for Redis (no access keys)**: `accessKeysAuthentication: 'Disabled'` on the Redis database. The user-assigned MI is granted the built-in `default` access policy via `accessPolicyAssignments`. The BFF acquires a short-lived Entra token (scope `https://redis.azure.com/.default`) via `DefaultAzureCredential` and uses it as the Redis password, refreshing 5 minutes before expiry. No connection strings or secrets are stored.
+- **Redis hostname as env var**: The Redis hostname is output from Bicep (`redisCacheHostName`), extracted by the deploy workflow, and set as `REDIS_HOST` on the BFF container app at deploy time alongside `REDIS_PORT=10000` and `AZURE_CLIENT_ID` (for `DefaultAzureCredential` MI selection).
 - **Redis SKU per environment**: `Balanced_B0` (0.5 GB) for dev, `Balanced_B1` (1 GB) for staging/prod (configurable via `redisSku` Bicep parameter). The `dev.bicepparam` sets `Balanced_B0`.
 
 ### Deviations from Plan
@@ -128,13 +130,14 @@ Add to BFF settings:
 - Settings added `api_center_subscription_id`, `api_center_resource_group`, `api_center_service_name`, and `cache_ttl_seconds` as new fields alongside the pre-existing `api_center_endpoint` field (retained for potential direct REST usage).
 - In-memory cache was replaced with Azure Managed Redis after PR review feedback. The original plan did not specify Redis explicitly but the in-memory design was identified as unsuitable for multi-replica deployments.
 - Azure Cache for Redis was replaced with Azure Managed Redis after a second round of PR review feedback — the former product line is deprecated.
+- Redis authentication was switched from access keys to Entra user-assigned MI after PR review feedback — eliminates embedded secrets entirely.
 
 ### Validation Results
 
-- **Tests**: 210 tests (21 new Redis tests in `test_redis_cache_client.py`), all passing — no regressions
+- **Tests**: 213 tests (24 Redis tests in `test_redis_cache_client.py` including token refresh coverage), all passing — no regressions
 - **Lint**: `uv run ruff check .` passes with no errors or warnings
 - **New dependencies added**: `azure-identity>=1.21.0`, `azure-mgmt-apicenter>=1.0.0`, `redis>=5.2.0`
-- **Infrastructure**: `infra/modules/redis-cache.bicep` — Azure Managed Redis (`Microsoft.Cache/redisEnterprise`) with TLS, database sub-resource, Key Vault secret, diagnostics to Log Analytics, private endpoint support
+- **Infrastructure**: `infra/modules/redis-cache.bicep` — Azure Managed Redis (`Microsoft.Cache/redisEnterprise`) with TLS, Entra-only auth, MI access policy assignment, database sub-resource, diagnostics to Log Analytics, private endpoint support
 
 ## Coding Agent Prompt
 

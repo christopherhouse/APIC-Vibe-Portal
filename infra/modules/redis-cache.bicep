@@ -2,12 +2,12 @@
 // Azure Managed Redis Module
 // ============================================================================
 // Deploys an Azure Managed Redis instance (Microsoft.Cache/redisEnterprise)
-// and stores the SSL connection string as a Key Vault secret so the BFF can
-// retrieve it securely at runtime.
+// and grants the specified user-assigned managed identity data-plane access
+// via an Entra ID access policy assignment (no access keys required).
 //
-// Azure Managed Redis replaces the deprecated Azure Cache for Redis tiers and
-// uses the Enterprise-grade Redis cluster architecture with a database
-// sub-resource on port 10000.
+// Authentication: Entra ID / Managed Identity only.
+// Access keys are disabled; the BFF acquires short-lived tokens from
+// DefaultAzureCredential and authenticates without embedded secrets.
 // ============================================================================
 
 @description('Azure region')
@@ -19,8 +19,8 @@ param redisCacheName string
 @description('Azure Managed Redis SKU name (e.g. Balanced_B0, Balanced_B1, MemoryOptimized_M10)')
 param redisSku string = 'Balanced_B1'
 
-@description('Key Vault name where the Redis connection string secret will be stored')
-param keyVaultName string
+@description('Principal ID of the user-assigned managed identity that will access Redis')
+param managedIdentityPrincipalId string
 
 @description('Log Analytics Workspace ID for diagnostics')
 param logAnalyticsWorkspaceId string
@@ -64,30 +64,23 @@ resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2024-09-01-pre
   parent: redisEnterprise
   name: 'default'
   properties: {
-    accessKeysAuthentication: 'Enabled'   // Access key stored in Key Vault
+    accessKeysAuthentication: 'Disabled'  // Entra ID only — no embedded secrets
     evictionPolicy: 'VolatileLRU'         // Evict TTL-keyed entries, LRU order
     clusteringPolicy: 'EnterpriseCluster'
     port: redisPort
   }
 }
 
-// Store the SSL connection URL as a Key Vault secret so the BFF reads it
-// without the key ever appearing in environment variables or source code.
-resource keyVaultRef 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
-  name: keyVaultName
-}
-
-// Build the redis-py SSL URL from its components for readability.
-var redisHostName = redisEnterprise.properties.hostName
-var redisPrimaryKey = listKeys(redisDatabase.id, redisDatabase.apiVersion).primaryKey
-var redisConnectionString = 'rediss://:${redisPrimaryKey}@${redisHostName}:${redisPort}'
-
-resource redisConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
-  parent: keyVaultRef
-  name: 'redis-connection-string'
+// Grant the user-assigned managed identity data-plane access to the Redis database.
+// The built-in "default" access policy provides read/write access to all keys.
+resource redisAccessPolicyAssignment 'Microsoft.Cache/redisEnterprise/databases/accessPolicyAssignments@2024-09-01-preview' = {
+  parent: redisDatabase
+  name: take('bff-mi-${uniqueString(managedIdentityPrincipalId)}', 24)
   properties: {
-    value: redisConnectionString
-    contentType: 'text/plain'
+    accessPolicyName: 'default'
+    user: {
+      objectId: managedIdentityPrincipalId
+    }
   }
 }
 
@@ -143,11 +136,8 @@ output id string = redisEnterprise.id
 @description('Azure Managed Redis cluster name')
 output name string = redisEnterprise.name
 
-@description('Azure Managed Redis hostname')
+@description('Azure Managed Redis hostname (set as REDIS_HOST env var on the BFF)')
 output hostName string = redisEnterprise.properties.hostName
 
 @description('Azure Managed Redis database port (10000)')
 output port int = redisPort
-
-@description('Key Vault secret name holding the Redis connection string')
-output connectionStringSecretName string = redisConnectionStringSecret.name

@@ -53,12 +53,16 @@ class Settings(BaseSettings):
     )
 
     # --- Redis cache ----------------------------------------------------
-    redis_url: str = Field(
+    redis_host: str = Field(
         default="",
         description=(
-            "Redis connection URL (e.g. rediss://:password@hostname:6380 for Azure Cache for Redis). "
+            "Azure Managed Redis hostname (e.g. my-redis.eastus.redis.azure.net). "
             "When empty the BFF falls back to a single-process in-memory cache."
         ),
+    )
+    redis_port: int = Field(
+        default=10000,
+        description="Azure Managed Redis port (default 10000 for Enterprise cluster databases).",
     )
 
     # --- Entra ID (authentication) ---------------------------------------

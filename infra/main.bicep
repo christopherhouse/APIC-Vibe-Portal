@@ -273,15 +273,12 @@ module redisCache 'modules/redis-cache.bicep' = {
     location: location
     redisCacheName: resourceNames.redisCache
     redisSku: redisSku
-    keyVaultName: keyVault.outputs.keyVaultName
+    managedIdentityPrincipalId: managedIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
     tags: tags
   }
-  dependsOn: [
-    keyVault
-  ]
 }
 
 // ============================================================================
@@ -370,9 +367,6 @@ output redisCacheHostName string = redisCache.outputs.hostName
 
 @description('Azure Managed Redis name')
 output redisCacheName string = redisCache.outputs.name
-
-@description('Key Vault secret name for the Redis connection string')
-output redisConnectionStringSecretName string = redisCache.outputs.connectionStringSecretName
 
 // Note: Container App URLs will be available after deployment via bash script
 @description('Frontend Container App Name (deploy separately)')
