@@ -66,9 +66,9 @@ class Settings(BaseSettings):
     )
 
     # --- Entra ID (authentication) ---------------------------------------
-    entra_tenant_id: str = Field(default="", description="Entra ID (Azure AD) tenant ID")
-    entra_client_id: str = Field(default="", description="Entra ID client (audience) ID for the BFF API")
-    entra_audience: str = Field(default="", description="Expected token audience (defaults to client ID if empty)")
+    bff_entra_tenant_id: str = Field(default="", description="Entra ID (Azure AD) tenant ID")
+    bff_entra_client_id: str = Field(default="", description="Entra ID client (audience) ID for the BFF API")
+    bff_entra_audience: str = Field(default="", description="Expected token audience (defaults to client ID if empty)")
 
 
 @functools.lru_cache(maxsize=1)

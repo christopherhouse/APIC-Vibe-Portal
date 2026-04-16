@@ -219,9 +219,9 @@ NEXT_PUBLIC_BFF_API_SCOPE=api://<your-client-id>/access_as_user
 Set environment variables for the BFF (`src/bff/.env` or export in shell):
 
 ```env
-ENTRA_TENANT_ID=<your-tenant-id>
-ENTRA_CLIENT_ID=<your-dev-client-id>
-ENTRA_AUDIENCE=api://<your-client-id>
+BFF_ENTRA_TENANT_ID=<your-tenant-id>
+BFF_ENTRA_CLIENT_ID=<your-dev-client-id>
+BFF_ENTRA_AUDIENCE=api://<your-client-id>
 ```
 
 ### Step 5 — Verify Locally
@@ -254,7 +254,7 @@ For staging and production environments:
 3. **Assign groups** to roles in the Enterprise application (see [Group-Based Role Assignment](#group-based-role-assignment-recommended)).
 4. **Set environment variables** on the Azure Container Apps:
    - Frontend: `NEXT_PUBLIC_MSAL_CLIENT_ID`, `NEXT_PUBLIC_MSAL_AUTHORITY`, `NEXT_PUBLIC_MSAL_REDIRECT_URI`, `NEXT_PUBLIC_BFF_API_SCOPE`
-   - BFF: `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_AUDIENCE`
+   - BFF: `BFF_ENTRA_TENANT_ID`, `BFF_ENTRA_CLIENT_ID`, `BFF_ENTRA_AUDIENCE`
 5. **Enable "Assignment required"** on the Enterprise application to prevent unassigned users from accessing the portal.
 
 ---
@@ -384,7 +384,7 @@ from apic_vibe_portal_bff.middleware.rbac import require_role, require_any_role
 ### Token doesn't include the `roles` claim
 
 - **Cause**: The roles are defined on the wrong app registration, or the frontend is requesting a token for a different audience.
-- **Fix**: Ensure App Roles are defined on the BFF API app registration (the one whose audience matches `ENTRA_AUDIENCE`). Verify `NEXT_PUBLIC_BFF_API_SCOPE` points to the correct app.
+- **Fix**: Ensure App Roles are defined on the BFF API app registration (the one whose audience matches `BFF_ENTRA_AUDIENCE`). Verify `NEXT_PUBLIC_BFF_API_SCOPE` points to the correct app.
 
 ### Changes to role assignments aren't reflected
 
