@@ -106,7 +106,7 @@ def validate_token(token: str) -> AuthenticatedUser:
             token_nbf=unverified_claims.get("nbf"),
             token_iat=unverified_claims.get("iat"),
             token_oid=unverified_claims.get("oid"),
-            token_name=unverified_claims.get("name"),
+            token_has_name=bool(unverified_claims.get("name")),
             token_roles=unverified_claims.get("roles"),
             token_scp=unverified_claims.get("scp"),
             token_azp=unverified_claims.get("azp"),
@@ -216,7 +216,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "auth.dispatch.token_received",
             path=path,
             token_length=len(token),
-            token_prefix=token[:20] + "..." if len(token) > 20 else token,
         )
         try:
             user = validate_token(token)
