@@ -2,6 +2,8 @@
 
 This guide explains how to configure Role-Based Access Control (RBAC) for the APIC Vibe Portal using Microsoft Entra ID (Azure AD) App Roles.
 
+> **First time setting up?** Start with the [Entra ID Setup Guide](ENTRA-SETUP.md) which walks through creating both app registrations (frontend SPA + BFF API), configuring scopes, permissions, and consent. Then return here for detailed role assignment and group management.
+
 ## Table of Contents
 
 - [Role Definitions](#role-definitions)
