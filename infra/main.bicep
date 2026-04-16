@@ -59,8 +59,16 @@ param cosmosDbLocations array = []
 @description('Azure region for Cosmos DB (defaults to main location if not specified)')
 param cosmosDbLocation string = location
 
-@description('Azure Managed Redis SKU name (Balanced_B0 for dev/staging, Balanced_B1 for prod)')
-param redisSku string = environmentName == 'prod' ? 'Balanced_B1' : 'Balanced_B0'
+@description('Azure Cache for Redis SKU name (Basic for dev/staging, Standard for prod)')
+@allowed(['Basic', 'Standard', 'Premium'])
+param redisSku string = environmentName == 'prod' ? 'Standard' : 'Basic'
+
+@description('Azure Cache for Redis SKU family (C = Basic/Standard, P = Premium)')
+@allowed(['C', 'P'])
+param redisFamily string = 'C'
+
+@description('Azure Cache for Redis capacity (0 = smallest for dev, 1 for prod)')
+param redisCapacity int = environmentName == 'prod' ? 1 : 0
 
 @description('Enable private endpoints for resources (recommended for prod)')
 param enablePrivateEndpoints bool = environmentName == 'prod'
@@ -264,7 +272,11 @@ module foundryAgent 'modules/foundry-agent.bicep' = {
 }
 
 // ============================================================================
-// MODULE 11: Azure Managed Redis
+// MODULE 11: Azure Cache for Redis
+// ============================================================================
+// ⚠️  DEPRECATION NOTE: Azure Cache for Redis is deprecated but used here
+// because Azure Managed Redis (redisEnterprise) fails to deploy.
+// See docs/project/apic_architecture.md for risk acknowledgment.
 // ============================================================================
 
 module redisCache 'modules/redis-cache.bicep' = {
@@ -273,6 +285,8 @@ module redisCache 'modules/redis-cache.bicep' = {
     location: location
     redisCacheName: resourceNames.redisCache
     redisSku: redisSku
+    redisFamily: redisFamily
+    redisCapacity: redisCapacity
     managedIdentityPrincipalId: managedIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
@@ -362,10 +376,10 @@ output foundryEndpoint string = foundryAgent.outputs.endpoint
 @description('Foundry Project Name')
 output foundryProjectName string = foundryAgent.outputs.projectName
 
-@description('Azure Managed Redis hostname')
+@description('Azure Cache for Redis hostname')
 output redisCacheHostName string = redisCache.outputs.hostName
 
-@description('Azure Managed Redis name')
+@description('Azure Cache for Redis name')
 output redisCacheName string = redisCache.outputs.name
 
 // Note: Container App URLs will be available after deployment via bash script

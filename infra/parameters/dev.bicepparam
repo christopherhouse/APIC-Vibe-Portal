@@ -12,4 +12,6 @@ param keyVaultSku = 'standard'
 param enablePrivateEndpoints = false
 param privateEndpointSubnetId = ''
 param cosmosDbLocation = 'eastus2'
-param redisSku = 'Balanced_B0'
+param redisSku = 'Basic'
+param redisFamily = 'C'
+param redisCapacity = 0

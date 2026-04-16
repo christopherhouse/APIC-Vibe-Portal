@@ -144,7 +144,7 @@ if az containerapp show --name "$BFF_APP_NAME" --resource-group "$RESOURCE_GROUP
     --set-env-vars \
       "AZURE_CLIENT_ID=${MANAGED_IDENTITY}" \
       "REDIS_HOST=${REDIS_HOST}" \
-      "REDIS_PORT=10000" \
+      "REDIS_PORT=6380" \
     --revision-suffix "$(date +%s)"
 else
   echo "Creating new BFF Container App..."
@@ -165,7 +165,7 @@ else
     --env-vars \
       "AZURE_CLIENT_ID=${MANAGED_IDENTITY}" \
       "REDIS_HOST=${REDIS_HOST}" \
-      "REDIS_PORT=10000"
+      "REDIS_PORT=6380"
 fi
 
 # Get BFF URL
