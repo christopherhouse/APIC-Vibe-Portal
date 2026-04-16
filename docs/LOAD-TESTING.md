@@ -191,8 +191,8 @@ The JMeter test plan includes:
 | ------------------ | ------ | -------------------------- | ------------- | ------------------------------- |
 | Health Check       | GET    | `/health`                  | No            | Basic health endpoint           |
 | Health Ready       | GET    | `/health/ready`            | No            | Readiness probe                 |
-| List APIs          | GET    | `/api/catalog/apis`        | Yes           | API catalog browsing            |
-| List Environments  | GET    | `/api/catalog/environments`| Yes           | Environment listing             |
+| List APIs          | GET    | `/api/catalog`             | Yes           | API catalog browsing            |
+| List Environments  | GET    | `/api/environments`        | Yes           | Environment listing             |
 
 ## Failure Criteria
 

@@ -214,7 +214,7 @@
         <hashTree/>
 
         <!-- ============================================================
-             Scenario 1: Health Check (unauthenticated baseline)
+             Scenario 1: Health Check
              ============================================================ -->
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Health Check" enabled="true">
           <stringProp name="HTTPSampler.path">/health</stringProp>
@@ -257,7 +257,7 @@
              Scenario 3: List APIs (catalog browsing)
              ============================================================ -->
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="List APIs" enabled="true">
-          <stringProp name="HTTPSampler.path">/api/catalog/apis</stringProp>
+          <stringProp name="HTTPSampler.path">/api/catalog</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
@@ -277,7 +277,7 @@
              Scenario 4: List API Environments
              ============================================================ -->
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="List Environments" enabled="true">
-          <stringProp name="HTTPSampler.path">/api/catalog/environments</stringProp>
+          <stringProp name="HTTPSampler.path">/api/environments</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>

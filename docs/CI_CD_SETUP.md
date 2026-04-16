@@ -4,7 +4,7 @@ This document describes the CI/CD pipeline configuration for the APIC Vibe Porta
 
 ## Overview
 
-The CI/CD pipeline consists of four GitHub Actions workflows:
+The CI/CD pipeline consists of five GitHub Actions workflows:
 
 1. **CI** (`ci.yml`) — Runs lint, test, and build checks on PRs and pushes to main
 2. **Deploy Infrastructure** (`deploy-infra.yml`) — Deploys Bicep templates to Azure

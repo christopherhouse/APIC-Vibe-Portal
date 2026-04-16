@@ -28,10 +28,12 @@ jobs:
   load-test:
     name: Run BFF Load Test
     runs-on: ubuntu-latest
-    # Only run if the triggering workflow succeeded (or if manually dispatched)
+    # Only run if manually dispatched, or if the triggering workflow was a
+    # push-based deploy (not a manual staging/prod dispatch) that succeeded.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     environment: ${{ github.event.inputs.environment || 'dev' }}
     steps:
       - name: Checkout code
@@ -110,7 +112,7 @@ jobs:
 
       - name: Upload load test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: load-test-results
           path: ${{ github.workspace }}/loadTest
