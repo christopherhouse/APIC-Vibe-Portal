@@ -194,19 +194,21 @@ class ApiCatalogService:
 
             raise ApiCenterNotFoundError(f"No definitions found for api/{api_name}/versions/{version_name}")
 
+        def _get_name(obj: object) -> str:
+            """Extract the ``name`` attribute from an SDK object or dict."""
+            if isinstance(obj, dict):
+                return obj.get("name") or ""
+            return getattr(obj, "name", None) or ""
+
         # Resolve target definition
         target_raw = raw_defs[0]
         if definition_name:
             for d in raw_defs:
-                name_attr = getattr(d, "name", None) or (d.get("name") if isinstance(d, dict) else None)
-                if name_attr == definition_name:
+                if _get_name(d) == definition_name:
                     target_raw = d
                     break
 
-        resolved_name = getattr(target_raw, "name", None) or (
-            target_raw.get("name") if isinstance(target_raw, dict) else None
-        ) or ""
-
+        resolved_name = _get_name(target_raw)
         content = self._client.export_api_specification(api_name, version_name, resolved_name)
         spec = map_api_specification(target_raw, content=content)
         self._cache.set(cache_key, spec, ttl_seconds=_TTL_SPEC)

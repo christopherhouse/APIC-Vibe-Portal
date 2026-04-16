@@ -43,7 +43,7 @@ class ApiCenterNotFoundError(ApiCenterClientError):
 
 
 class ApiCenterAuthError(ApiCenterClientError):
-    """Raised when authentication / authorisation fails."""
+    """Raised when authentication / authorization fails."""
 
     def __init__(self, detail: str = "Unauthorized") -> None:
         super().__init__(detail, status_code=401)
