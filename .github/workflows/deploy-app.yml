@@ -182,10 +182,40 @@ jobs:
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
           echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
           echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
-          echo "frontend-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "bff-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "bff-identity-client-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')" >> $GITHUB_OUTPUT
           echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
+
+          # Extract identity outputs from deployment
+          FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
+          BFF_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')
+          BFF_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')
+
+          # Fallback: resolve identities directly from Azure if deployment outputs are missing
+          # This handles the case where infra was deployed before identity outputs were added
+          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
+          if [ "$FRONTEND_ID" = "null" ] || [ -z "$FRONTEND_ID" ]; then
+            echo "::warning::Frontend identity not found in deployment outputs, resolving from resource group..."
+            FRONTEND_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-frontend-')].id | [0]" -o tsv)
+          fi
+          if [ "$BFF_ID" = "null" ] || [ -z "$BFF_ID" ]; then
+            echo "::warning::BFF identity not found in deployment outputs, resolving from resource group..."
+            BFF_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-bff-')].id | [0]" -o tsv)
+          fi
+          if [ "$BFF_CLIENT_ID" = "null" ] || [ -z "$BFF_CLIENT_ID" ]; then
+            echo "::warning::BFF identity client ID not found in deployment outputs, resolving from resource group..."
+            BFF_CLIENT_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-bff-')].clientId | [0]" -o tsv)
+          fi
+
+          if [ -z "$FRONTEND_ID" ] || [ -z "$BFF_ID" ] || [ -z "$BFF_CLIENT_ID" ]; then
+            echo "::error::Could not resolve managed identities. Ensure infrastructure is deployed with per-container UAMIs."
+            exit 1
+          fi
+
+          echo "frontend-identity-resource-id=$FRONTEND_ID" >> $GITHUB_OUTPUT
+          echo "bff-identity-resource-id=$BFF_ID" >> $GITHUB_OUTPUT
+          echo "bff-identity-client-id=$BFF_CLIENT_ID" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
         run: |
@@ -242,10 +272,40 @@ jobs:
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
           echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
           echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
-          echo "frontend-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "bff-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "bff-identity-client-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')" >> $GITHUB_OUTPUT
           echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
+
+          # Extract identity outputs from deployment
+          FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
+          BFF_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')
+          BFF_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')
+
+          # Fallback: resolve identities directly from Azure if deployment outputs are missing
+          # This handles the case where infra was deployed before identity outputs were added
+          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
+          if [ "$FRONTEND_ID" = "null" ] || [ -z "$FRONTEND_ID" ]; then
+            echo "::warning::Frontend identity not found in deployment outputs, resolving from resource group..."
+            FRONTEND_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-frontend-')].id | [0]" -o tsv)
+          fi
+          if [ "$BFF_ID" = "null" ] || [ -z "$BFF_ID" ]; then
+            echo "::warning::BFF identity not found in deployment outputs, resolving from resource group..."
+            BFF_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-bff-')].id | [0]" -o tsv)
+          fi
+          if [ "$BFF_CLIENT_ID" = "null" ] || [ -z "$BFF_CLIENT_ID" ]; then
+            echo "::warning::BFF identity client ID not found in deployment outputs, resolving from resource group..."
+            BFF_CLIENT_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-bff-')].clientId | [0]" -o tsv)
+          fi
+
+          if [ -z "$FRONTEND_ID" ] || [ -z "$BFF_ID" ] || [ -z "$BFF_CLIENT_ID" ]; then
+            echo "::error::Could not resolve managed identities. Ensure infrastructure is deployed with per-container UAMIs."
+            exit 1
+          fi
+
+          echo "frontend-identity-resource-id=$FRONTEND_ID" >> $GITHUB_OUTPUT
+          echo "bff-identity-resource-id=$BFF_ID" >> $GITHUB_OUTPUT
+          echo "bff-identity-client-id=$BFF_CLIENT_ID" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
         run: |
@@ -302,10 +362,40 @@ jobs:
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
           echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
           echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
-          echo "frontend-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "bff-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "bff-identity-client-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')" >> $GITHUB_OUTPUT
           echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
+
+          # Extract identity outputs from deployment
+          FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
+          BFF_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')
+          BFF_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')
+
+          # Fallback: resolve identities directly from Azure if deployment outputs are missing
+          # This handles the case where infra was deployed before identity outputs were added
+          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
+          if [ "$FRONTEND_ID" = "null" ] || [ -z "$FRONTEND_ID" ]; then
+            echo "::warning::Frontend identity not found in deployment outputs, resolving from resource group..."
+            FRONTEND_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-frontend-')].id | [0]" -o tsv)
+          fi
+          if [ "$BFF_ID" = "null" ] || [ -z "$BFF_ID" ]; then
+            echo "::warning::BFF identity not found in deployment outputs, resolving from resource group..."
+            BFF_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-bff-')].id | [0]" -o tsv)
+          fi
+          if [ "$BFF_CLIENT_ID" = "null" ] || [ -z "$BFF_CLIENT_ID" ]; then
+            echo "::warning::BFF identity client ID not found in deployment outputs, resolving from resource group..."
+            BFF_CLIENT_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-bff-')].clientId | [0]" -o tsv)
+          fi
+
+          if [ -z "$FRONTEND_ID" ] || [ -z "$BFF_ID" ] || [ -z "$BFF_CLIENT_ID" ]; then
+            echo "::error::Could not resolve managed identities. Ensure infrastructure is deployed with per-container UAMIs."
+            exit 1
+          fi
+
+          echo "frontend-identity-resource-id=$FRONTEND_ID" >> $GITHUB_OUTPUT
+          echo "bff-identity-resource-id=$BFF_ID" >> $GITHUB_OUTPUT
+          echo "bff-identity-client-id=$BFF_CLIENT_ID" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
         run: |
