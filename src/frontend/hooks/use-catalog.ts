@@ -22,6 +22,13 @@ const DEFAULT_PAGINATION: PaginationMeta = {
   totalPages: 0,
 };
 
+const DISABLED_STATE: CatalogState = {
+  items: [],
+  pagination: DEFAULT_PAGINATION,
+  isLoading: false,
+  error: null,
+};
+
 export interface UseCatalogOptions extends CatalogListParams {
   /** When false the hook returns empty results without calling the API. */
   enabled?: boolean;
@@ -38,7 +45,7 @@ export function useCatalog({ enabled = true, ...params }: UseCatalogOptions) {
   const [state, setState] = useState<CatalogState>({
     items: [],
     pagination: DEFAULT_PAGINATION,
-    isLoading: enabled,
+    isLoading: true,
     error: null,
   });
 
@@ -75,12 +82,7 @@ export function useCatalog({ enabled = true, ...params }: UseCatalogOptions) {
 
   useEffect(() => {
     if (!enabled) {
-      setState({
-        items: [],
-        pagination: DEFAULT_PAGINATION,
-        isLoading: false,
-        error: null,
-      });
+      setState(DISABLED_STATE);
       return;
     }
     void load();

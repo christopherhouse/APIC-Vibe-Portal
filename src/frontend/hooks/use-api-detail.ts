@@ -33,6 +33,11 @@ const INITIAL_STATE: ApiDetailState = {
   specError: null,
 };
 
+const DISABLED_STATE: ApiDetailState = {
+  ...INITIAL_STATE,
+  isLoading: false,
+};
+
 export interface UseApiDetailOptions {
   /** When false the hook returns initial state without calling the API. */
   enabled?: boolean;
@@ -47,10 +52,7 @@ export interface UseApiDetailOptions {
  * API calls and returns the initial empty state.
  */
 export function useApiDetail(apiId: string, { enabled = true }: UseApiDetailOptions = {}) {
-  const [state, setState] = useState<ApiDetailState>({
-    ...INITIAL_STATE,
-    isLoading: enabled,
-  });
+  const [state, setState] = useState<ApiDetailState>(INITIAL_STATE);
   const mountedRef = useRef(true);
   const latestSpecRequestRef = useRef<string | null>(null);
 
@@ -137,7 +139,7 @@ export function useApiDetail(apiId: string, { enabled = true }: UseApiDetailOpti
 
   useEffect(() => {
     if (!enabled) {
-      setState({ ...INITIAL_STATE, isLoading: false });
+      setState(DISABLED_STATE);
       return;
     }
     void loadAll();
