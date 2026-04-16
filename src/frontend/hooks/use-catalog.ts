@@ -22,12 +22,26 @@ const DEFAULT_PAGINATION: PaginationMeta = {
   totalPages: 0,
 };
 
+const DISABLED_STATE: CatalogState = {
+  items: [],
+  pagination: DEFAULT_PAGINATION,
+  isLoading: false,
+  error: null,
+};
+
+export interface UseCatalogOptions extends CatalogListParams {
+  /** When false the hook returns empty results without calling the API. */
+  enabled?: boolean;
+}
+
 /**
  * React hook for client-side catalog data fetching.
  *
  * Accepts filter / sort / pagination params and refetches whenever they change.
+ * When `enabled` is `false` (e.g. user is not authenticated) the hook skips
+ * the API call and returns an empty result set so the UI never shows a 401 error.
  */
-export function useCatalog(params: CatalogListParams) {
+export function useCatalog({ enabled = true, ...params }: UseCatalogOptions) {
   const [state, setState] = useState<CatalogState>({
     items: [],
     pagination: DEFAULT_PAGINATION,
@@ -67,8 +81,12 @@ export function useCatalog(params: CatalogListParams) {
   }, [paramsKey]);
 
   useEffect(() => {
+    if (!enabled) {
+      setState(DISABLED_STATE);
+      return;
+    }
     void load();
-  }, [load]);
+  }, [load, enabled]);
 
   return { ...state, isLoading: state.isLoading || isPending, refetch: load };
 }

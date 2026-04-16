@@ -9,6 +9,7 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 
 import { useApiDetail } from '@/hooks/use-api-detail';
+import { useAuth } from '@/lib/auth/use-auth';
 import ApiHeader from './components/ApiHeader';
 import ApiTabs, { type ApiTabValue } from './components/ApiTabs';
 import ApiMetadata from './components/ApiMetadata';
@@ -20,6 +21,7 @@ import SpecDownloadButton from './components/SpecDownloadButton';
 export default function ApiDetailPage() {
   const params = useParams<{ apiId: string }>();
   const apiId = params.apiId;
+  const { isAuthenticated } = useAuth();
 
   const {
     api,
@@ -33,7 +35,7 @@ export default function ApiDetailPage() {
     specError,
     selectVersion,
     refetch,
-  } = useApiDetail(apiId);
+  } = useApiDetail(apiId, { enabled: isAuthenticated });
 
   const [activeTab, setActiveTab] = useState<ApiTabValue>('overview');
 
