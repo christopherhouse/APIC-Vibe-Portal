@@ -44,9 +44,18 @@ jobs:
       - name: Get ACR name
         id: acr
         run: |
+          DEPLOYMENT_NAME=$(az deployment group list \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
+            -o tsv)
+          if [ -z "$DEPLOYMENT_NAME" ]; then
+            echo "::error::No successful infrastructure deployment found in resource group ${{ vars.AZURE_RESOURCE_GROUP }}"
+            exit 1
+          fi
+          echo "Using infrastructure deployment: $DEPLOYMENT_NAME"
           ACR_NAME=$(az deployment group show \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name main \
+            --name "$DEPLOYMENT_NAME" \
             --query properties.outputs.acrName.value -o tsv)
           echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
           echo "login-server=${ACR_NAME}.azurecr.io" >> $GITHUB_OUTPUT
@@ -95,9 +104,18 @@ jobs:
       - name: Get ACR name
         id: acr
         run: |
+          DEPLOYMENT_NAME=$(az deployment group list \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
+            -o tsv)
+          if [ -z "$DEPLOYMENT_NAME" ]; then
+            echo "::error::No successful infrastructure deployment found in resource group ${{ vars.AZURE_RESOURCE_GROUP }}"
+            exit 1
+          fi
+          echo "Using infrastructure deployment: $DEPLOYMENT_NAME"
           ACR_NAME=$(az deployment group show \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name main \
+            --name "$DEPLOYMENT_NAME" \
             --query properties.outputs.acrName.value -o tsv)
           echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
           echo "login-server=${ACR_NAME}.azurecr.io" >> $GITHUB_OUTPUT
@@ -147,9 +165,18 @@ jobs:
       - name: Get deployment outputs
         id: infra
         run: |
+          DEPLOYMENT_NAME=$(az deployment group list \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
+            -o tsv)
+          if [ -z "$DEPLOYMENT_NAME" ]; then
+            echo "::error::No successful infrastructure deployment found in resource group ${{ vars.AZURE_RESOURCE_GROUP }}"
+            exit 1
+          fi
+          echo "Using infrastructure deployment: $DEPLOYMENT_NAME"
           DEPLOYMENT=$(az deployment group show \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name main \
+            --name "$DEPLOYMENT_NAME" \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
@@ -194,9 +221,18 @@ jobs:
       - name: Get deployment outputs
         id: infra
         run: |
+          DEPLOYMENT_NAME=$(az deployment group list \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
+            -o tsv)
+          if [ -z "$DEPLOYMENT_NAME" ]; then
+            echo "::error::No successful infrastructure deployment found in resource group ${{ vars.AZURE_RESOURCE_GROUP }}"
+            exit 1
+          fi
+          echo "Using infrastructure deployment: $DEPLOYMENT_NAME"
           DEPLOYMENT=$(az deployment group show \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name main \
+            --name "$DEPLOYMENT_NAME" \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
@@ -241,9 +277,18 @@ jobs:
       - name: Get deployment outputs
         id: infra
         run: |
+          DEPLOYMENT_NAME=$(az deployment group list \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
+            -o tsv)
+          if [ -z "$DEPLOYMENT_NAME" ]; then
+            echo "::error::No successful infrastructure deployment found in resource group ${{ vars.AZURE_RESOURCE_GROUP }}"
+            exit 1
+          fi
+          echo "Using infrastructure deployment: $DEPLOYMENT_NAME"
           DEPLOYMENT=$(az deployment group show \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name main \
+            --name "$DEPLOYMENT_NAME" \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
