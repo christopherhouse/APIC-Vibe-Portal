@@ -1,6 +1,6 @@
 # 012 - Phase 1 MVP: API Detail View Page (Frontend)
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -113,18 +113,48 @@ app/catalog/[apiId]/
 | Date | Status         | Author | Notes        |
 | ---- | -------------- | ------ | ------------ |
 | —    | 🔲 Not Started | —      | Task created |
+| 2026-04-16 | ✅ Complete | copilot | Full implementation: 7 detail components (ApiHeader, ApiTabs, ApiMetadata, ApiVersionList, ApiSpecViewer, ApiDeployments, SpecDownloadButton), catalog-detail-api client, useApiDetail hook, /catalog/[apiId] page with loading/error states, breadcrumb navigation. 49 new unit tests (159 total), 10 new Playwright e2e tests (33 total), build and lint clean. Mock BFF server created for e2e testing. |
 
 ### Technical Decisions
 
-_No technical decisions recorded yet._
+- **Client component page**: The `/catalog/[apiId]/page.tsx` is a `'use client'` component because it manages interactive tab state, version selection, and client-side data fetching via the `useApiDetail` hook.
+- **Parallel data loading**: The `useApiDetail` hook loads API detail, versions, and deployments in parallel via `Promise.all()`, with auto-loading of the spec for the first version.
+- **Lightweight spec viewer**: Instead of adding `swagger-ui-react` (large bundle), the spec is rendered as formatted JSON/YAML in a code block. This avoids a heavy dependency for the MVP and can be upgraded to a full Swagger UI later.
+- **MUI v9 API compatibility**: Used `sx` prop for alignment properties (e.g., `sx={{ alignItems: 'center' }}`) and `sx={{ mb: 2 }}` instead of deprecated `paragraph` prop on Typography, per MUI v9 conventions.
+- **Scoped e2e selectors**: E2e tests use `data-testid` attributes and scoped selectors (e.g., `page.getByTestId('api-header').getByRole('link')`) to avoid ambiguity with sidebar navigation links.
+- **Reusable mock server**: Created `e2e/mock-server/` with mock data generators and a standalone HTTP server for e2e testing. Tests primarily use Playwright's `page.route()` for request interception, but the mock server data generators are shared.
+- **Screenshot practice**: Established standard practice of using Playwright to capture screenshots of UI changes during development for PR documentation.
 
 ### Deviations from Plan
 
-_No deviations from the original plan._
+- The plan suggested `swagger-ui-react` or `@scalar/api-reference-react` for the OpenAPI spec viewer. A lightweight formatted code block renderer was used instead to avoid adding large dependencies for the MVP. The component can be upgraded to a full Swagger UI later.
+- The plan specified SSR for initial data fetch. The implementation uses a `'use client'` component with client-side fetching via a custom `useApiDetail` hook, similar to the catalog page pattern, because the page requires extensive interactive state (tab switching, version selection, spec loading).
+- The plan suggested `useSWR` or `react-query` for caching. The implementation uses a custom hook with React's built-in `useState`, `useCallback`, and `useEffect` to avoid adding a dependency, consistent with the catalog page approach.
 
 ### Validation Results
 
-_No validation results yet._
+- **Unit Tests**: 159 total (49 new across 8 test suites), all passing — no regressions from 110 baseline
+  - `ApiHeader.test.tsx` — 8 tests (loading skeleton, title, breadcrumb, kind/lifecycle badges, description, date)
+  - `ApiTabs.test.tsx` — 5 tests (render all tabs, testid, onChange callback, selected tab, each tab value)
+  - `ApiMetadata.test.tsx` — 8 tests (description, empty description, license, terms, contacts, external docs, custom properties, testid)
+  - `ApiVersionList.test.tsx` — 6 tests (loading skeleton, empty state, version rows, lifecycle badges, click handler, testids)
+  - `ApiSpecViewer.test.tsx` — 6 tests (loading skeleton, error state, retry button, empty state, JSON spec, YAML spec)
+  - `ApiDeployments.test.tsx` — 7 tests (loading skeleton, empty state, table, rows, server URL links, multiple URIs, testids)
+  - `SpecDownloadButton.test.tsx` — 4 tests (render, disabled states, download trigger)
+  - `catalog-detail-api.test.ts` — 5 tests (fetchApiDetail, fetchApiVersions, fetchApiDeployments, fetchApiDefinition, error handling)
+- **E2e Tests**: 33 total Playwright tests (10 new in `api-detail.spec.ts`, 23 existing), all passing
+  - API detail page renders with header and breadcrumb
+  - Overview tab displays metadata by default (description, license, contacts)
+  - Tab navigation switches between Overview, Versions, Specification, Deployments
+  - Versions tab shows version list and selector
+  - Deployments tab shows deployment table with environment info
+  - Specification tab shows spec content with download button
+  - Breadcrumb navigates back to catalog
+  - Version switching loads new spec
+  - Error state for non-existent API IDs
+  - Navigation from catalog card lands on detail page
+- **Build**: `npm run build` succeeds with no TypeScript errors, `/catalog/[apiId]` route is dynamic
+- **Lint**: `eslint .` passes with no errors or warnings
 
 ## Coding Agent Prompt
 
