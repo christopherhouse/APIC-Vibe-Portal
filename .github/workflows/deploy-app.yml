@@ -83,6 +83,11 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_MSAL_CLIENT_ID=${{ vars.NEXT_PUBLIC_MSAL_CLIENT_ID }}
+            NEXT_PUBLIC_MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }}
+            NEXT_PUBLIC_MSAL_REDIRECT_URI=${{ vars.NEXT_PUBLIC_MSAL_REDIRECT_URI }}
+            NEXT_PUBLIC_BFF_API_SCOPE=${{ vars.NEXT_PUBLIC_BFF_API_SCOPE }}
 
   build-and-push-bff:
     name: Build and Push BFF Image

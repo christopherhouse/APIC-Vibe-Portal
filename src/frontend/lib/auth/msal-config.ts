@@ -8,6 +8,31 @@
 import { type Configuration, LogLevel } from '@azure/msal-browser';
 
 /**
+ * Validates that required MSAL environment variables are set.
+ * Logs clear warnings in development so misconfiguration is obvious.
+ */
+function validateMsalEnv(): void {
+  // Skip during SSR / build — NEXT_PUBLIC_* vars are inlined at build time,
+  // so they may legitimately be unset in CI builds that don't target a real tenant.
+  // The browser is where the developer will actually hit the auth flow.
+  if (typeof window === 'undefined') return;
+
+  const missing: string[] = [];
+  if (!process.env.NEXT_PUBLIC_MSAL_CLIENT_ID) missing.push('NEXT_PUBLIC_MSAL_CLIENT_ID');
+  if (!process.env.NEXT_PUBLIC_MSAL_AUTHORITY) missing.push('NEXT_PUBLIC_MSAL_AUTHORITY');
+
+  if (missing.length > 0) {
+    console.error(
+      `[MSAL Config] Missing required environment variable(s): ${missing.join(', ')}. ` +
+        'Entra ID authentication will not work. ' +
+        'Copy .env.example to .env.local and fill in the values for your Entra ID app registration.'
+    );
+  }
+}
+
+validateMsalEnv();
+
+/**
  * MSAL configuration object.
  *
  * @see https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/configuration.md
