@@ -92,6 +92,8 @@ var resourceNames = {
   logAnalytics: '${namePrefix}-law-${environmentName}-${uniqueSuffix}'
   appInsights: '${namePrefix}-ai-${environmentName}-${uniqueSuffix}'
   managedIdentity: '${namePrefix}-id-${environmentName}-${uniqueSuffix}'
+  frontendIdentity: '${namePrefix}-id-frontend-${environmentName}-${uniqueSuffix}'
+  bffIdentity: '${namePrefix}-id-bff-${environmentName}-${uniqueSuffix}'
   keyVault: '${kvPrefix}${kvSuffix}' // Max 24 chars: 10 (prefix) + 13 (suffix) = 23
   containerRegistry: '${namePrefix}acr${environmentName}${uniqueSuffix}'
   containerAppsEnv: '${namePrefix}-cae-${environmentName}-${uniqueSuffix}'
@@ -121,14 +123,35 @@ module monitoring 'modules/monitoring.bicep' = {
 }
 
 // ============================================================================
-// MODULE 2: User-Assigned Managed Identity
+// MODULE 2: User-Assigned Managed Identities (per-container)
 // ============================================================================
 
+// General-purpose managed identity (backend services RBAC)
 module managedIdentity 'modules/managed-identity.bicep' = {
   name: 'managed-identity-${deployment().name}'
   params: {
     location: location
     managedIdentityName: resourceNames.managedIdentity
+    tags: tags
+  }
+}
+
+// Frontend Container App identity (AcrPull only)
+module frontendIdentity 'modules/managed-identity.bicep' = {
+  name: 'frontend-identity-${deployment().name}'
+  params: {
+    location: location
+    managedIdentityName: resourceNames.frontendIdentity
+    tags: tags
+  }
+}
+
+// BFF Container App identity (AcrPull + backend service access)
+module bffIdentity 'modules/managed-identity.bicep' = {
+  name: 'bff-identity-${deployment().name}'
+  params: {
+    location: location
+    managedIdentityName: resourceNames.bffIdentity
     tags: tags
   }
 }
@@ -144,7 +167,7 @@ module keyVault 'modules/key-vault.bicep' = {
     keyVaultName: resourceNames.keyVault
     sku: keyVaultSku
     tenantId: entraIdTenantId
-    managedIdentityPrincipalId: managedIdentity.outputs.principalId
+    managedIdentityPrincipalId: bffIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
@@ -161,7 +184,8 @@ module containerRegistry 'modules/acr.bicep' = {
   params: {
     location: location
     acrName: resourceNames.containerRegistry
-    managedIdentityPrincipalId: managedIdentity.outputs.principalId
+    frontendManagedIdentityPrincipalId: frontendIdentity.outputs.principalId
+    bffManagedIdentityPrincipalId: bffIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
@@ -193,7 +217,7 @@ module apiCenter 'modules/api-center.bicep' = {
   params: {
     location: location
     apiCenterName: resourceNames.apiCenter
-    managedIdentityPrincipalId: managedIdentity.outputs.principalId
+    managedIdentityPrincipalId: bffIdentity.outputs.principalId
     tags: tags
   }
 }
@@ -208,7 +232,7 @@ module aiSearch 'modules/ai-search.bicep' = {
     location: location
     searchServiceName: resourceNames.aiSearch
     sku: aiSearchSku
-    managedIdentityPrincipalId: managedIdentity.outputs.principalId
+    managedIdentityPrincipalId: bffIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
@@ -226,7 +250,7 @@ module openAi 'modules/openai.bicep' = {
     location: location
     openAiName: resourceNames.openAi
     sku: openAiSku
-    managedIdentityPrincipalId: managedIdentity.outputs.principalId
+    managedIdentityPrincipalId: bffIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
@@ -243,7 +267,7 @@ module cosmosDb 'modules/cosmosdb.bicep' = {
   params: {
     location: cosmosDbLocation
     cosmosDbAccountName: resourceNames.cosmosDb
-    managedIdentityPrincipalId: managedIdentity.outputs.principalId
+    managedIdentityPrincipalId: bffIdentity.outputs.principalId
     additionalLocations: cosmosDbLocations
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
@@ -263,7 +287,7 @@ module foundryAgent 'modules/foundry-agent.bicep' = {
     location: location
     foundryAccountName: resourceNames.foundryAccount
     foundryProjectName: resourceNames.foundryProject
-    managedIdentityPrincipalId: managedIdentity.outputs.principalId
+    managedIdentityPrincipalId: bffIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
@@ -287,7 +311,7 @@ module redisCache 'modules/redis-cache.bicep' = {
     redisSku: redisSku
     redisFamily: redisFamily
     redisCapacity: redisCapacity
-    managedIdentityPrincipalId: managedIdentity.outputs.principalId
+    managedIdentityPrincipalId: bffIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
@@ -305,11 +329,23 @@ output resourceGroupName string = resourceGroup().name
 @description('Environment name')
 output environmentName string = environmentName
 
-@description('Managed Identity Client ID')
+@description('Managed Identity Client ID (general-purpose, backward compatibility)')
 output managedIdentityClientId string = managedIdentity.outputs.clientId
 
-@description('Managed Identity Principal ID')
+@description('Managed Identity Principal ID (general-purpose, backward compatibility)')
 output managedIdentityPrincipalId string = managedIdentity.outputs.principalId
+
+@description('Frontend Container App Managed Identity resource ID')
+output frontendIdentityResourceId string = frontendIdentity.outputs.id
+
+@description('Frontend Container App Managed Identity Client ID')
+output frontendIdentityClientId string = frontendIdentity.outputs.clientId
+
+@description('BFF Container App Managed Identity resource ID')
+output bffIdentityResourceId string = bffIdentity.outputs.id
+
+@description('BFF Container App Managed Identity Client ID')
+output bffIdentityClientId string = bffIdentity.outputs.clientId
 
 @description('Log Analytics Workspace ID')
 output logAnalyticsWorkspaceId string = monitoring.outputs.logAnalyticsWorkspaceId

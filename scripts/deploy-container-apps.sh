@@ -12,11 +12,17 @@
 #     --frontend-app <frontend-app-name> \
 #     --bff-app <bff-app-name> \
 #     --acr-server <acr-login-server> \
-#     --managed-identity <managed-identity-client-id> \
+#     --frontend-identity-resource-id <frontend-uami-resource-id> \
+#     --bff-identity-resource-id <bff-uami-resource-id> \
+#     --bff-identity-client-id <bff-uami-client-id> \
 #     --frontend-image-tag <frontend-tag> \
 #     --bff-image-tag <bff-tag> \
 #     --redis-host <redis-hostname> \
 #     --bff-env-vars "KEY1=val1 KEY2=val2 ..."
+#
+# Each Container App uses its own User-Assigned Managed Identity (UAMI) for
+# ACR image pull and Azure service access.  The --*-identity-resource-id flags
+# accept full ARM resource IDs required by `az containerapp create`.
 #
 # The --bff-env-vars flag accepts a space-separated list of KEY=VALUE pairs
 # that are passed as environment variables to the BFF Container App. This
@@ -51,8 +57,16 @@ while [[ $# -gt 0 ]]; do
       ACR_SERVER="$2"
       shift 2
       ;;
-    --managed-identity)
-      MANAGED_IDENTITY="$2"
+    --frontend-identity-resource-id)
+      FRONTEND_IDENTITY_RESOURCE_ID="$2"
+      shift 2
+      ;;
+    --bff-identity-resource-id)
+      BFF_IDENTITY_RESOURCE_ID="$2"
+      shift 2
+      ;;
+    --bff-identity-client-id)
+      BFF_IDENTITY_CLIENT_ID="$2"
       shift 2
       ;;
     --frontend-image-tag)
@@ -80,18 +94,24 @@ done
 
 # Validate required arguments
 required_args=(RESOURCE_GROUP ENVIRONMENT_ID FRONTEND_APP_NAME BFF_APP_NAME \
-               ACR_SERVER MANAGED_IDENTITY FRONTEND_IMAGE_TAG BFF_IMAGE_TAG REDIS_HOST)
+               ACR_SERVER FRONTEND_IDENTITY_RESOURCE_ID BFF_IDENTITY_RESOURCE_ID \
+               BFF_IDENTITY_CLIENT_ID FRONTEND_IMAGE_TAG BFF_IMAGE_TAG REDIS_HOST)
 for arg in "${required_args[@]}"; do
   if [[ -z "${!arg:-}" ]]; then
     echo "Error: Missing required argument: --$(echo "$arg" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
-    echo "Usage: $0 --resource-group <rg> --environment-id <env-id> --frontend-app <name> --bff-app <name> --acr-server <server> --managed-identity <id> --frontend-image-tag <tag> --bff-image-tag <tag> --redis-host <hostname> [--bff-env-vars \"KEY=val ...\"]"
+    echo "Usage: $0 --resource-group <rg> --environment-id <env-id>" \
+         "--frontend-app <name> --bff-app <name> --acr-server <server>" \
+         "--frontend-identity-resource-id <id> --bff-identity-resource-id <id>" \
+         "--bff-identity-client-id <id> --frontend-image-tag <tag>" \
+         "--bff-image-tag <tag> --redis-host <hostname>" \
+         "[--bff-env-vars \"KEY=val ...\"]"
     exit 1
   fi
 done
 
 # Build the array of BFF env vars (always includes core infra vars)
 BFF_CORE_ENV_VARS=(
-  "AZURE_CLIENT_ID=${MANAGED_IDENTITY}"
+  "AZURE_CLIENT_ID=${BFF_IDENTITY_CLIENT_ID}"
   "REDIS_HOST=${REDIS_HOST}"
   "REDIS_PORT=6380"
 )
@@ -110,6 +130,8 @@ echo "Environment ID: $ENVIRONMENT_ID"
 echo "Frontend App: $FRONTEND_APP_NAME"
 echo "BFF App: $BFF_APP_NAME"
 echo "ACR Server: $ACR_SERVER"
+echo "Frontend Identity: $FRONTEND_IDENTITY_RESOURCE_ID"
+echo "BFF Identity: $BFF_IDENTITY_RESOURCE_ID"
 echo "Frontend Image: ${ACR_SERVER}/frontend:${FRONTEND_IMAGE_TAG}"
 echo "BFF Image: ${ACR_SERVER}/bff:${BFF_IMAGE_TAG}"
 echo "Redis Host: $REDIS_HOST"
@@ -144,8 +166,8 @@ else
     --min-replicas 1 \
     --max-replicas 10 \
     --registry-server "$ACR_SERVER" \
-    --user-assigned "$MANAGED_IDENTITY" \
-    --registry-identity "$MANAGED_IDENTITY"
+    --user-assigned "$FRONTEND_IDENTITY_RESOURCE_ID" \
+    --registry-identity "$FRONTEND_IDENTITY_RESOURCE_ID"
 fi
 
 # Get Frontend URL
@@ -184,8 +206,8 @@ else
     --min-replicas 1 \
     --max-replicas 10 \
     --registry-server "$ACR_SERVER" \
-    --user-assigned "$MANAGED_IDENTITY" \
-    --registry-identity "$MANAGED_IDENTITY" \
+    --user-assigned "$BFF_IDENTITY_RESOURCE_ID" \
+    --registry-identity "$BFF_IDENTITY_RESOURCE_ID" \
     --env-vars "${BFF_CORE_ENV_VARS[@]}"
 fi
 

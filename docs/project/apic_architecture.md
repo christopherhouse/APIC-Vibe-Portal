@@ -76,10 +76,13 @@ The BFF uses **Azure Cache for Redis** (`Microsoft.Cache/redis`) as a response c
 
 - Entra ID
 - RBAC + security trimming
+- Per-container User-Assigned Managed Identities (UAMI) — each Container App has its own UAMI for least-privilege access:
+  - **Frontend UAMI** (`{prefix}-id-frontend-{env}-{suffix}`): AcrPull on ACR only
+  - **BFF UAMI** (`{prefix}-id-bff-{env}-{suffix}`): AcrPull on ACR plus RBAC roles on Key Vault, API Center, AI Search, OpenAI, Cosmos DB, Foundry, and Redis
 - Redis authenticated via Entra MI only (no embedded connection strings or access keys)
 
 ## Deployment
 
-- Azure Container Apps
-- ACR
+- Azure Container Apps (each with a dedicated UAMI)
+- ACR (image pull via per-container UAMI `--registry-identity` using ARM resource IDs)
 - Key Vault

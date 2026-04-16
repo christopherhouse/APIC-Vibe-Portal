@@ -182,7 +182,9 @@ jobs:
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
           echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
           echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
-          echo "managed-identity=$(echo $DEPLOYMENT | jq -r '.managedIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "frontend-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-client-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')" >> $GITHUB_OUTPUT
           echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
@@ -194,7 +196,9 @@ jobs:
             --frontend-app ${{ steps.infra.outputs.frontend-app }} \
             --bff-app ${{ steps.infra.outputs.bff-app }} \
             --acr-server ${{ steps.infra.outputs.acr-server }} \
-            --managed-identity ${{ steps.infra.outputs.managed-identity }} \
+            --frontend-identity-resource-id "${{ steps.infra.outputs.frontend-identity-resource-id }}" \
+            --bff-identity-resource-id "${{ steps.infra.outputs.bff-identity-resource-id }}" \
+            --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
             --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.BFF_ENTRA_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
@@ -238,7 +242,9 @@ jobs:
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
           echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
           echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
-          echo "managed-identity=$(echo $DEPLOYMENT | jq -r '.managedIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "frontend-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-client-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')" >> $GITHUB_OUTPUT
           echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
@@ -250,7 +256,9 @@ jobs:
             --frontend-app ${{ steps.infra.outputs.frontend-app }} \
             --bff-app ${{ steps.infra.outputs.bff-app }} \
             --acr-server ${{ steps.infra.outputs.acr-server }} \
-            --managed-identity ${{ steps.infra.outputs.managed-identity }} \
+            --frontend-identity-resource-id "${{ steps.infra.outputs.frontend-identity-resource-id }}" \
+            --bff-identity-resource-id "${{ steps.infra.outputs.bff-identity-resource-id }}" \
+            --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
             --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.BFF_ENTRA_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
@@ -294,7 +302,9 @@ jobs:
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
           echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
           echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
-          echo "managed-identity=$(echo $DEPLOYMENT | jq -r '.managedIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "frontend-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-client-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')" >> $GITHUB_OUTPUT
           echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
@@ -306,7 +316,9 @@ jobs:
             --frontend-app ${{ steps.infra.outputs.frontend-app }} \
             --bff-app ${{ steps.infra.outputs.bff-app }} \
             --acr-server ${{ steps.infra.outputs.acr-server }} \
-            --managed-identity ${{ steps.infra.outputs.managed-identity }} \
+            --frontend-identity-resource-id "${{ steps.infra.outputs.frontend-identity-resource-id }}" \
+            --bff-identity-resource-id "${{ steps.infra.outputs.bff-identity-resource-id }}" \
+            --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
             --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.BFF_ENTRA_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
