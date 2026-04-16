@@ -44,6 +44,27 @@ class Settings(BaseSettings):
     key_vault_url: str = Field(default="", description="Azure Key Vault URL")
     appinsights_connection_string: str = Field(default="", description="Application Insights connection string")
 
+    # --- Azure API Center -----------------------------------------------
+    api_center_subscription_id: str = Field(default="", description="Azure subscription ID containing API Center")
+    api_center_resource_group: str = Field(default="", description="Resource group containing API Center")
+    api_center_service_name: str = Field(default="", description="API Center service name")
+    cache_ttl_seconds: int = Field(
+        default=300, description="Default cache TTL in seconds (Redis and in-memory fallback)"
+    )
+
+    # --- Redis cache ----------------------------------------------------
+    redis_host: str = Field(
+        default="",
+        description=(
+            "Azure Managed Redis hostname (e.g. my-redis.eastus.redis.azure.net). "
+            "When empty the BFF falls back to a single-process in-memory cache."
+        ),
+    )
+    redis_port: int = Field(
+        default=10000,
+        description="Azure Managed Redis port (default 10000 for Enterprise cluster databases).",
+    )
+
     # --- Entra ID (authentication) ---------------------------------------
     entra_tenant_id: str = Field(default="", description="Entra ID (Azure AD) tenant ID")
     entra_client_id: str = Field(default="", description="Entra ID client (audience) ID for the BFF API")

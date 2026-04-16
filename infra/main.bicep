@@ -59,6 +59,9 @@ param cosmosDbLocations array = []
 @description('Azure region for Cosmos DB (defaults to main location if not specified)')
 param cosmosDbLocation string = location
 
+@description('Azure Managed Redis SKU name (Balanced_B0 for dev/staging, Balanced_B1 for prod)')
+param redisSku string = environmentName == 'prod' ? 'Balanced_B1' : 'Balanced_B0'
+
 @description('Enable private endpoints for resources (recommended for prod)')
 param enablePrivateEndpoints bool = environmentName == 'prod'
 
@@ -92,6 +95,7 @@ var resourceNames = {
   cosmosDb: '${namePrefix}-cosmos-${environmentName}-${uniqueSuffix}'
   foundryAccount: '${namePrefix}-foundry-${environmentName}-${uniqueSuffix}'
   foundryProject: '${namePrefix}-project-${environmentName}'
+  redisCache: '${namePrefix}-redis-${environmentName}-${uniqueSuffix}'
 }
 
 // ============================================================================
@@ -260,6 +264,24 @@ module foundryAgent 'modules/foundry-agent.bicep' = {
 }
 
 // ============================================================================
+// MODULE 11: Azure Managed Redis
+// ============================================================================
+
+module redisCache 'modules/redis-cache.bicep' = {
+  name: 'redis-${deployment().name}'
+  params: {
+    location: location
+    redisCacheName: resourceNames.redisCache
+    redisSku: redisSku
+    managedIdentityPrincipalId: managedIdentity.outputs.principalId
+    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
+    enablePrivateEndpoint: enablePrivateEndpoints
+    privateEndpointSubnetId: privateEndpointSubnetId
+    tags: tags
+  }
+}
+
+// ============================================================================
 // OUTPUTS
 // ============================================================================
 
@@ -339,6 +361,12 @@ output foundryEndpoint string = foundryAgent.outputs.endpoint
 
 @description('Foundry Project Name')
 output foundryProjectName string = foundryAgent.outputs.projectName
+
+@description('Azure Managed Redis hostname')
+output redisCacheHostName string = redisCache.outputs.hostName
+
+@description('Azure Managed Redis name')
+output redisCacheName string = redisCache.outputs.name
 
 // Note: Container App URLs will be available after deployment via bash script
 @description('Frontend Container App Name (deploy separately)')

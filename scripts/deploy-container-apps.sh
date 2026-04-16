@@ -54,6 +54,10 @@ while [[ $# -gt 0 ]]; do
       BFF_IMAGE_TAG="$2"
       shift 2
       ;;
+    --redis-host)
+      REDIS_HOST="$2"
+      shift 2
+      ;;
     *)
       echo "Unknown argument: $1"
       exit 1
@@ -62,14 +66,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate required arguments
-if [[ -z "${RESOURCE_GROUP:-}" ]] || [[ -z "${ENVIRONMENT_ID:-}" ]] || \
-   [[ -z "${FRONTEND_APP_NAME:-}" ]] || [[ -z "${BFF_APP_NAME:-}" ]] || \
-   [[ -z "${ACR_SERVER:-}" ]] || [[ -z "${MANAGED_IDENTITY:-}" ]] || \
-   [[ -z "${FRONTEND_IMAGE_TAG:-}" ]] || [[ -z "${BFF_IMAGE_TAG:-}"]]; then
-  echo "Error: Missing required arguments"
-  echo "Usage: $0 --resource-group <rg> --environment-id <env-id> --frontend-app <name> --bff-app <name> --acr-server <server> --managed-identity <id> --frontend-image-tag <tag> --bff-image-tag <tag>"
-  exit 1
-fi
+required_args=(RESOURCE_GROUP ENVIRONMENT_ID FRONTEND_APP_NAME BFF_APP_NAME \
+               ACR_SERVER MANAGED_IDENTITY FRONTEND_IMAGE_TAG BFF_IMAGE_TAG REDIS_HOST)
+for arg in "${required_args[@]}"; do
+  if [[ -z "${!arg:-}" ]]; then
+    echo "Error: Missing required argument: --$(echo "$arg" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
+    echo "Usage: $0 --resource-group <rg> --environment-id <env-id> --frontend-app <name> --bff-app <name> --acr-server <server> --managed-identity <id> --frontend-image-tag <tag> --bff-image-tag <tag> --redis-host <hostname>"
+    exit 1
+  fi
+done
 
 echo "============================================================================"
 echo "Deploying Container Apps"
@@ -81,6 +86,7 @@ echo "BFF App: $BFF_APP_NAME"
 echo "ACR Server: $ACR_SERVER"
 echo "Frontend Image: ${ACR_SERVER}/frontend:${FRONTEND_IMAGE_TAG}"
 echo "BFF Image: ${ACR_SERVER}/bff:${BFF_IMAGE_TAG}"
+echo "Redis Host: $REDIS_HOST"
 echo "============================================================================"
 
 # Deploy Frontend Container App
@@ -135,6 +141,10 @@ if az containerapp show --name "$BFF_APP_NAME" --resource-group "$RESOURCE_GROUP
     --memory 1Gi \
     --min-replicas 1 \
     --max-replicas 10 \
+    --set-env-vars \
+      "AZURE_CLIENT_ID=${MANAGED_IDENTITY}" \
+      "REDIS_HOST=${REDIS_HOST}" \
+      "REDIS_PORT=10000" \
     --revision-suffix "$(date +%s)"
 else
   echo "Creating new BFF Container App..."
@@ -151,7 +161,11 @@ else
     --max-replicas 10 \
     --registry-server "$ACR_SERVER" \
     --user-assigned "$MANAGED_IDENTITY" \
-    --registry-identity "$MANAGED_IDENTITY"
+    --registry-identity "$MANAGED_IDENTITY" \
+    --env-vars \
+      "AZURE_CLIENT_ID=${MANAGED_IDENTITY}" \
+      "REDIS_HOST=${REDIS_HOST}" \
+      "REDIS_PORT=10000"
 fi
 
 # Get BFF URL

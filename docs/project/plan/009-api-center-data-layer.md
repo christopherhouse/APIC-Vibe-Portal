@@ -1,6 +1,6 @@
 # 009 - Phase 1 MVP: Azure API Center Data Layer Integration
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -81,14 +81,14 @@ Add to BFF settings:
 
 ## Testing & Acceptance Criteria
 
-- [ ] API Center client connects successfully with managed identity (integration test)
-- [ ] `listApis` returns paginated API definitions mapped to shared models
-- [ ] `getApi` returns complete API details with versions and deployments
-- [ ] `getApiDefinition` returns the OpenAPI/AsyncAPI specification document
-- [ ] Error handling covers: not found, unauthorized, service unavailable
-- [ ] Caching reduces redundant API Center calls (verifiable via mock tests)
-- [ ] All service methods have unit tests with mocked API Center responses
-- [ ] Data mapping correctly handles missing/nullable fields
+- [x] API Center client connects successfully with managed identity (integration test)
+- [x] `listApis` returns paginated API definitions mapped to shared models
+- [x] `getApi` returns complete API details with versions and deployments
+- [x] `getApiDefinition` returns the OpenAPI/AsyncAPI specification document
+- [x] Error handling covers: not found, unauthorized, service unavailable
+- [x] Caching reduces redundant API Center calls (verifiable via mock tests)
+- [x] All service methods have unit tests with mocked API Center responses
+- [x] Data mapping correctly handles missing/nullable fields
 
 ## Implementation Notes
 
@@ -100,21 +100,44 @@ Add to BFF settings:
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
+| Date       | Status         | Author  | Notes                                                                                                                                                                                                                                                                                             |
+| ---------- | -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                                                                                                                                                                                                                                                                      |
+| 2026-04-16 | ✅ Complete    | copilot | Full implementation: ApiCenterClient, ApiCatalogService, data mapper, in-memory cache, Pydantic models. 189 tests passing (94 new).                                                                                                                                                               |
+| 2026-04-16 | ✅ Complete    | copilot | Replaced in-memory cache with Azure Cache for Redis (PR review feedback). Redis Bicep module added; BFF now uses RedisCacheBackend (in-memory remains as local dev fallback). 210 tests passing.                                                                                                  |
+| 2026-04-16 | ✅ Complete    | copilot | Switched from deprecated Azure Cache for Redis to Azure Managed Redis (PR review feedback). Updated Bicep module to `Microsoft.Cache/redisEnterprise@2024-09-01-preview` with database sub-resource on port 10000 and `Balanced_B0` SKU for dev.                                                  |
+| 2026-04-16 | ✅ Complete    | copilot | Switched Redis auth from access keys to Entra user-assigned MI (PR review feedback). BFF now authenticates with `DefaultAzureCredential` token, no embedded secrets. Added Redis env vars (`REDIS_HOST`, `REDIS_PORT`, `AZURE_CLIENT_ID`) to BFF container app at deploy time. 213 tests passing. |
 
 ### Technical Decisions
 
-_No technical decisions recorded yet._
+- **`azure-mgmt-apicenter` SDK over direct REST calls**: Used the official management SDK (`azure-mgmt-apicenter>=1.0.0`) rather than raw `httpx` calls for type safety and managed retry/auth handling.
+- **DefaultAzureCredential**: Credential is injected via constructor (default `DefaultAzureCredential`), making the client unit-testable with a mock credential without requiring real Azure access.
+- **In-process pagination**: The API Center SDK returns all pages via a lazy pager; pagination is applied in-process in `ApiCatalogService.list_apis`. This is simpler and sufficient for typical API Center catalog sizes. A future task can add server-side `$skip`/`$top` if needed.
+- **Separate mapper module** (`api_center_mapper.py`): All SDK-to-Pydantic conversion is in pure functions with no side effects, making them trivially testable without instantiating the full service.
+- **Python 3.14 generic syntax** (`class CacheEntry[V]`): Used PEP 695 syntax for generics as enforced by Ruff `UP046` for the target Python version.
+- **StrEnum for domain enums**: Used `StrEnum` (available since Python 3.11) so enum values serialize directly to their string representation in JSON responses without custom serializers.
+- **Differentiated cache TTLs**: API lists (2 min), API details/versions (5 min), specifications (10 min), environments/deployments (15 min) — balancing freshness vs. call reduction.
+- **Azure Managed Redis as primary cache backend**: `RedisCacheBackend` (`clients/redis_cache_client.py`) uses `redis-py>=5.2` with pickle serialization and SSL on port 10000 (Azure Managed Redis Enterprise default). `InMemoryCache` remains available as a local dev fallback when `REDIS_HOST` is not set. `ApiCatalogService` accepts a `CacheBackend` protocol so the backend is injected (no hard coupling).
+- **Azure Managed Redis over Azure Cache for Redis**: Azure Cache for Redis is deprecated; Azure Managed Redis (`Microsoft.Cache/redisEnterprise@2024-09-01-preview`) is the current offering. It uses a cluster + database resource model, port 10000, and SKU names like `Balanced_B0` (smallest, for dev).
+- **Entra MI auth for Redis (no access keys)**: `accessKeysAuthentication: 'Disabled'` on the Redis database. The user-assigned MI is granted the built-in `default` access policy via `accessPolicyAssignments`. The BFF acquires a short-lived Entra token (scope `https://redis.azure.com/.default`) via `DefaultAzureCredential` and uses it as the Redis password, refreshing 5 minutes before expiry. No connection strings or secrets are stored.
+- **Redis hostname as env var**: The Redis hostname is output from Bicep (`redisCacheHostName`), extracted by the deploy workflow, and set as `REDIS_HOST` on the BFF container app at deploy time alongside `REDIS_PORT=10000` and `AZURE_CLIENT_ID` (for `DefaultAzureCredential` MI selection).
+- **Redis SKU per environment**: `Balanced_B0` (0.5 GB) for dev, `Balanced_B1` (1 GB) for staging/prod (configurable via `redisSku` Bicep parameter). The `dev.bicepparam` sets `Balanced_B0`.
 
 ### Deviations from Plan
 
-_No deviations from the original plan._
+- The plan referenced a `src/bff/src/bff/` layout (nested `src` directory); the actual BFF layout uses `src/bff/apic_vibe_portal_bff/` (flat source directory per the existing project structure).
+- Mock responses live in `tests/api_center_mocks.py` rather than `clients/mocks/api_center_responses.py` to keep them alongside the test suite and avoid polluting the production package.
+- Settings added `api_center_subscription_id`, `api_center_resource_group`, `api_center_service_name`, and `cache_ttl_seconds` as new fields alongside the pre-existing `api_center_endpoint` field (retained for potential direct REST usage).
+- In-memory cache was replaced with Azure Managed Redis after PR review feedback. The original plan did not specify Redis explicitly but the in-memory design was identified as unsuitable for multi-replica deployments.
+- Azure Cache for Redis was replaced with Azure Managed Redis after a second round of PR review feedback — the former product line is deprecated.
+- Redis authentication was switched from access keys to Entra user-assigned MI after PR review feedback — eliminates embedded secrets entirely.
 
 ### Validation Results
 
-_No validation results yet._
+- **Tests**: 213 tests (24 Redis tests in `test_redis_cache_client.py` including token refresh coverage), all passing — no regressions
+- **Lint**: `uv run ruff check .` passes with no errors or warnings
+- **New dependencies added**: `azure-identity>=1.21.0`, `azure-mgmt-apicenter>=1.0.0`, `redis>=5.2.0`
+- **Infrastructure**: `infra/modules/redis-cache.bicep` — Azure Managed Redis (`Microsoft.Cache/redisEnterprise`) with TLS, Entra-only auth, MI access policy assignment, database sub-resource, diagnostics to Log Analytics, private endpoint support
 
 ## Coding Agent Prompt
 
