@@ -35,6 +35,13 @@ param privateEndpointSubnetId string
 param tags object
 
 // ============================================================================
+// VARIABLES
+// ============================================================================
+
+// Azure Managed Redis Enterprise databases use port 10000 by default
+var redisPort = 10000
+
+// ============================================================================
 // RESOURCES
 // ============================================================================
 
@@ -48,10 +55,11 @@ resource redisEnterprise 'Microsoft.Cache/redisEnterprise@2024-09-01-preview' = 
   }
   properties: {
     minimumTlsVersion: '1.2'
+    publicNetworkAccess: enablePrivateEndpoint ? 'Disabled' : 'Enabled'
   }
 }
 
-// Redis database within the cluster — port 10000 is the Enterprise default
+// Redis database within the cluster
 resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2024-09-01-preview' = {
   parent: redisEnterprise
   name: 'default'
@@ -59,7 +67,7 @@ resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2024-09-01-pre
     accessKeysAuthentication: 'Enabled'   // Access key stored in Key Vault
     evictionPolicy: 'VolatileLRU'         // Evict TTL-keyed entries, LRU order
     clusteringPolicy: 'EnterpriseCluster'
-    port: 10000
+    port: redisPort
   }
 }
 
@@ -72,8 +80,7 @@ resource keyVaultRef 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
 // Build the redis-py SSL URL from its components for readability.
 var redisHostName = redisEnterprise.properties.hostName
 var redisPrimaryKey = listKeys(redisDatabase.id, redisDatabase.apiVersion).primaryKey
-// Azure Managed Redis Enterprise databases use port 10000
-var redisConnectionString = 'rediss://:${redisPrimaryKey}@${redisHostName}:10000'
+var redisConnectionString = 'rediss://:${redisPrimaryKey}@${redisHostName}:${redisPort}'
 
 resource redisConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVaultRef
@@ -140,7 +147,7 @@ output name string = redisEnterprise.name
 output hostName string = redisEnterprise.properties.hostName
 
 @description('Azure Managed Redis database port (10000)')
-output port int = 10000
+output port int = redisPort
 
 @description('Key Vault secret name holding the Redis connection string')
 output connectionStringSecretName string = redisConnectionStringSecret.name
