@@ -11,7 +11,7 @@ import {
 
 // Mock the api-client module
 const mockGet = jest.fn();
-jest.mock('../api-client', () => ({
+jest.mock('@/lib/api-client', () => ({
   apiClient: {
     get: (...args: unknown[]) => mockGet(...args),
   },

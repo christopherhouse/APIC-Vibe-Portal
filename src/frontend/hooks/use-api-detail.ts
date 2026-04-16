@@ -41,6 +41,7 @@ const INITIAL_STATE: ApiDetailState = {
 export function useApiDetail(apiId: string) {
   const [state, setState] = useState<ApiDetailState>(INITIAL_STATE);
   const mountedRef = useRef(true);
+  const latestSpecRequestRef = useRef<string | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -90,10 +91,13 @@ export function useApiDetail(apiId: string) {
   // Load spec for a specific version
   const loadSpec = useCallback(
     async (id: string, versionId: string) => {
+      latestSpecRequestRef.current = versionId;
       setState((prev) => ({ ...prev, isSpecLoading: true, specError: null }));
       try {
         const specContent = await fetchApiDefinition(id, versionId);
         if (!mountedRef.current) return;
+        // Ignore stale responses from earlier version requests
+        if (latestSpecRequestRef.current !== versionId) return;
         setState((prev) => ({
           ...prev,
           specContent,
@@ -102,6 +106,7 @@ export function useApiDetail(apiId: string) {
         }));
       } catch (err) {
         if (!mountedRef.current) return;
+        if (latestSpecRequestRef.current !== versionId) return;
         setState((prev) => ({
           ...prev,
           specContent: null,

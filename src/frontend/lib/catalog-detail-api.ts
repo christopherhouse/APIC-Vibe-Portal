@@ -27,7 +27,9 @@ export interface ApiDeploymentsEnvelope {
  * Fetch full API details by ID.
  */
 export async function fetchApiDetail(apiId: string): Promise<ApiDefinition> {
-  const response = await apiClient.get<ApiDetailEnvelope>(`/api/catalog/${apiId}`);
+  const response = await apiClient.get<ApiDetailEnvelope>(
+    `/api/catalog/${encodeURIComponent(apiId)}`,
+  );
   return response.data;
 }
 
@@ -36,7 +38,7 @@ export async function fetchApiDetail(apiId: string): Promise<ApiDefinition> {
  */
 export async function fetchApiVersions(apiId: string): Promise<ApiVersion[]> {
   const response = await apiClient.get<ApiVersionsEnvelope>(
-    `/api/catalog/${apiId}/versions`,
+    `/api/catalog/${encodeURIComponent(apiId)}/versions`,
   );
   return response.data;
 }
@@ -50,7 +52,7 @@ export async function fetchApiDefinition(
   versionId: string,
 ): Promise<string> {
   const response = await apiClient.get<{ data: string }>(
-    `/api/catalog/${apiId}/versions/${versionId}/definition`,
+    `/api/catalog/${encodeURIComponent(apiId)}/versions/${encodeURIComponent(versionId)}/definition`,
   );
   return response.data;
 }
@@ -60,7 +62,7 @@ export async function fetchApiDefinition(
  */
 export async function fetchApiDeployments(apiId: string): Promise<ApiDeployment[]> {
   const response = await apiClient.get<ApiDeploymentsEnvelope>(
-    `/api/catalog/${apiId}/deployments`,
+    `/api/catalog/${encodeURIComponent(apiId)}/deployments`,
   );
   return response.data;
 }

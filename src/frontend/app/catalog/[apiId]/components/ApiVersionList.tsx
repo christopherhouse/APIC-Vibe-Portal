@@ -116,7 +116,15 @@ export default function ApiVersionList({
                   selected={isSelected}
                   data-testid={`version-row-${version.id}`}
                   sx={{ cursor: 'pointer' }}
+                  tabIndex={0}
+                  role="button"
                   onClick={() => onVersionChange(version.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onVersionChange(version.id);
+                    }
+                  }}
                 >
                   <TableCell>
                     <Typography
