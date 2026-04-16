@@ -163,7 +163,7 @@ def _sort_items[T](
     return sorted(items, key=lambda x: getattr(x, attr, ""), reverse=(direction == SortDirection.DESC))
 
 
-def _error_response(status_code: int, code: str, message: str, details: Any | None = None) -> None:
+def _raise_error(status_code: int, code: str, message: str, details: Any | None = None) -> None:
     """Raise an ``HTTPException`` with a structured error body."""
     body = ApiErrorResponse(error=ErrorDetail(code=code, message=message, details=details))
     raise HTTPException(status_code=status_code, detail=body.model_dump())
@@ -204,7 +204,7 @@ async def list_apis(
         return ApiResponse(data=items, meta=meta)
     except ApiCenterClientError as exc:
         logger.error("list_apis failed", extra={"error": str(exc)})
-        _error_response(exc.status_code or 500, "CATALOG_ERROR", str(exc))
+        _raise_error(exc.status_code or 500, "CATALOG_ERROR", str(exc))
     finally:
         elapsed = time.monotonic() - start
         logger.info("api_response_time", extra={"endpoint": "list_apis", "duration_ms": round(elapsed * 1000, 2)})
@@ -224,10 +224,10 @@ async def get_api(
         definition = service.get_api(api_id)
         return ApiResponse(data=definition)
     except ApiCenterNotFoundError:
-        _error_response(404, "NOT_FOUND", f"API '{api_id}' not found")
+        _raise_error(404, "NOT_FOUND", f"API '{api_id}' not found")
     except ApiCenterClientError as exc:
         logger.error("get_api failed", extra={"api_id": api_id, "error": str(exc)})
-        _error_response(exc.status_code or 500, "CATALOG_ERROR", str(exc))
+        _raise_error(exc.status_code or 500, "CATALOG_ERROR", str(exc))
     finally:
         elapsed = time.monotonic() - start
         logger.info("api_response_time", extra={"endpoint": "get_api", "duration_ms": round(elapsed * 1000, 2)})
@@ -247,10 +247,10 @@ async def list_api_versions(
         versions = service.list_api_versions(api_id)
         return ApiResponse(data=versions)
     except ApiCenterNotFoundError:
-        _error_response(404, "NOT_FOUND", f"API '{api_id}' not found")
+        _raise_error(404, "NOT_FOUND", f"API '{api_id}' not found")
     except ApiCenterClientError as exc:
         logger.error("list_api_versions failed", extra={"api_id": api_id, "error": str(exc)})
-        _error_response(exc.status_code or 500, "CATALOG_ERROR", str(exc))
+        _raise_error(exc.status_code or 500, "CATALOG_ERROR", str(exc))
     finally:
         elapsed = time.monotonic() - start
         logger.info(
@@ -273,7 +273,7 @@ async def get_api_definition(
         spec = service.get_api_definition(api_id, version_id)
         return ApiResponse(data=spec)
     except ApiCenterNotFoundError:
-        _error_response(
+        _raise_error(
             404,
             "NOT_FOUND",
             f"Definition not found for API '{api_id}' version '{version_id}'",
@@ -283,7 +283,7 @@ async def get_api_definition(
             "get_api_definition failed",
             extra={"api_id": api_id, "version_id": version_id, "error": str(exc)},
         )
-        _error_response(exc.status_code or 500, "CATALOG_ERROR", str(exc))
+        _raise_error(exc.status_code or 500, "CATALOG_ERROR", str(exc))
     finally:
         elapsed = time.monotonic() - start
         logger.info(
@@ -305,10 +305,10 @@ async def list_api_deployments(
         deployments = service.list_deployments(api_id)
         return ApiResponse(data=deployments)
     except ApiCenterNotFoundError:
-        _error_response(404, "NOT_FOUND", f"API '{api_id}' not found")
+        _raise_error(404, "NOT_FOUND", f"API '{api_id}' not found")
     except ApiCenterClientError as exc:
         logger.error("list_api_deployments failed", extra={"api_id": api_id, "error": str(exc)})
-        _error_response(exc.status_code or 500, "CATALOG_ERROR", str(exc))
+        _raise_error(exc.status_code or 500, "CATALOG_ERROR", str(exc))
     finally:
         elapsed = time.monotonic() - start
         logger.info(
@@ -330,7 +330,7 @@ async def list_environments(
         return ApiResponse(data=environments)
     except ApiCenterClientError as exc:
         logger.error("list_environments failed", extra={"error": str(exc)})
-        _error_response(exc.status_code or 500, "CATALOG_ERROR", str(exc))
+        _raise_error(exc.status_code or 500, "CATALOG_ERROR", str(exc))
     finally:
         elapsed = time.monotonic() - start
         logger.info(
