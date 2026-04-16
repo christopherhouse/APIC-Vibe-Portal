@@ -167,15 +167,17 @@ npm run test:e2e --workspace=@apic-vibe-portal/frontend
 
 #### BFF (Python)
 ```bash
+cd src/bff
+
 # Lint + format check (Ruff)
-cd src/bff && uv run ruff check .
-cd src/bff && uv run ruff format --check .
+uv run ruff check .
+uv run ruff format --check .
 
 # Unit tests
-cd src/bff && uv run pytest
+uv run pytest
 
 # Compile check
-cd src/bff && uv run python -m compileall .
+uv run python -m compileall .
 ```
 
 #### Docker (when Dockerfiles or dependencies change)
