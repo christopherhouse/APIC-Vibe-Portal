@@ -30,6 +30,17 @@ FROM python:3.14-slim AS production
 
 WORKDIR /app
 
+# Upgrade OS packages to pick up any available security patches, then
+# remove pip (not needed at runtime) to reduce attack surface.
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    pip uninstall -y pip setuptools 2>/dev/null; \
+    rm -rf /usr/local/lib/python*/site-packages/pip* \
+           /usr/local/lib/python*/site-packages/setuptools* \
+           /usr/local/bin/pip* && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Create non-root user
 RUN useradd -m -u 1001 -s /bin/bash appuser && \
     chown -R appuser:appuser /app

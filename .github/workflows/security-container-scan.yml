@@ -5,16 +5,24 @@ on:
     branches:
       - main
     paths:
-      - 'src/frontend/Dockerfile'
-      - 'src/bff/Dockerfile'
+      - 'src/frontend/**'
+      - 'src/shared/**'
+      - 'src/bff/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/security-container-scan.yml'
+      - '.trivyignore'
   pull_request:
     branches:
       - main
     paths:
-      - 'src/frontend/Dockerfile'
-      - 'src/bff/Dockerfile'
+      - 'src/frontend/**'
+      - 'src/shared/**'
+      - 'src/bff/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/security-container-scan.yml'
+      - '.trivyignore'
 
 permissions:
   contents: read
@@ -31,14 +39,25 @@ jobs:
       - name: Build Frontend Docker image
         run: docker build -t frontend:scan -f src/frontend/Dockerfile .
 
-      - name: Run Trivy vulnerability scanner
+      - name: "Trivy: show CRITICAL/HIGH vulnerabilities (table)"
         uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: frontend:scan
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          trivyignores: .trivyignore
+
+      - name: "Trivy: generate SARIF report"
+        uses: aquasecurity/trivy-action@0.35.0
+        if: always()
         with:
           image-ref: frontend:scan
           format: sarif
           output: trivy-frontend-results.sarif
           severity: CRITICAL,HIGH
           exit-code: '0'
+          trivyignores: .trivyignore
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
@@ -57,14 +76,25 @@ jobs:
       - name: Build BFF Docker image
         run: docker build -t bff:scan -f src/bff/Dockerfile src/bff
 
-      - name: Run Trivy vulnerability scanner
+      - name: "Trivy: show CRITICAL/HIGH vulnerabilities (table)"
         uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: bff:scan
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          trivyignores: .trivyignore
+
+      - name: "Trivy: generate SARIF report"
+        uses: aquasecurity/trivy-action@0.35.0
+        if: always()
         with:
           image-ref: bff:scan
           format: sarif
           output: trivy-bff-results.sarif
           severity: CRITICAL,HIGH
           exit-code: '0'
+          trivyignores: .trivyignore
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
