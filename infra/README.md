@@ -15,6 +15,7 @@ The infrastructure includes:
 - **AI Services**: Azure OpenAI (AIServices kind)
 - **Persistence**: Azure Cosmos DB (serverless NoSQL)
 - **Agent Platform**: Azure AI Foundry Agent Service
+- **Load Testing**: Azure Load Testing (Azure App Testing)
 
 ## Directory Structure
 
@@ -31,7 +32,8 @@ The infrastructure includes:
 │   ├── ai-search.bicep
 │   ├── openai.bicep
 │   ├── cosmosdb.bicep
-│   └── foundry-agent.bicep
+│   ├── foundry-agent.bicep
+│   └── load-testing.bicep
 └── env/                    # Environment-specific parameters
     ├── dev.bicepparam
     ├── staging.bicepparam

@@ -1,0 +1,117 @@
+name: Load Test (Azure App Testing)
+
+on:
+  # Run after successful app deployment to dev
+  workflow_run:
+    workflows: ["Deploy Application"]
+    types:
+      - completed
+    branches:
+      - main
+  # Allow manual trigger for any environment
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  load-test:
+    name: Run BFF Load Test
+    runs-on: ubuntu-latest
+    # Only run if the triggering workflow succeeded (or if manually dispatched)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve infrastructure outputs
+        id: infra
+        run: |
+          DEPLOYMENT_NAME=$(az deployment group list \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
+            -o tsv)
+          if [ -z "$DEPLOYMENT_NAME" ]; then
+            echo "::error::No successful infrastructure deployment found"
+            exit 1
+          fi
+          echo "Using infrastructure deployment: $DEPLOYMENT_NAME"
+          DEPLOYMENT=$(az deployment group show \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --name "$DEPLOYMENT_NAME" \
+            --query properties.outputs)
+
+          LOAD_TEST_NAME=$(echo "$DEPLOYMENT" | jq -r '.loadTestName.value')
+          BFF_APP_NAME=$(echo "$DEPLOYMENT" | jq -r '.bffAppName.value')
+
+          if [ "$LOAD_TEST_NAME" = "null" ] || [ -z "$LOAD_TEST_NAME" ]; then
+            echo "::error::Load test resource name not found in deployment outputs. Deploy infrastructure first."
+            exit 1
+          fi
+
+          echo "load-test-resource=$LOAD_TEST_NAME" >> $GITHUB_OUTPUT
+
+          # Resolve BFF URL from Container App
+          BFF_FQDN=$(az containerapp show \
+            --name "$BFF_APP_NAME" \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn -o tsv 2>/dev/null || echo "")
+
+          if [ -z "$BFF_FQDN" ]; then
+            echo "::error::Could not resolve BFF Container App URL. Ensure the app is deployed."
+            exit 1
+          fi
+
+          echo "bff-host=$BFF_FQDN" >> $GITHUB_OUTPUT
+          echo "BFF Host: $BFF_FQDN"
+
+      - name: Run Azure Load Test
+        uses: azure/load-testing@v1
+        with:
+          loadTestConfigFile: tests/load/load-test-config.yaml
+          loadTestResource: ${{ steps.infra.outputs.load-test-resource }}
+          resourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+          env: |
+            [
+              { "name": "TARGET_HOST", "value": "${{ steps.infra.outputs.bff-host }}" },
+              { "name": "TARGET_PORT", "value": "443" },
+              { "name": "PROTOCOL", "value": "https" },
+              { "name": "TENANT_ID", "value": "${{ vars.AZURE_TENANT_ID }}" },
+              { "name": "TOKEN_CLIENT_ID", "value": "${{ vars.LOADTEST_CLIENT_ID }}" },
+              { "name": "TOKEN_SCOPE", "value": "${{ vars.LOADTEST_TOKEN_SCOPE }}" },
+              { "name": "THREAD_COUNT", "value": "10" },
+              { "name": "RAMP_UP_SECONDS", "value": "30" },
+              { "name": "LOOP_COUNT", "value": "50" }
+            ]
+          secrets: |
+            [
+              { "name": "TOKEN_CLIENT_SECRET", "value": "${{ secrets.LOADTEST_CLIENT_SECRET }}" }
+            ]
+
+      - name: Upload load test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results
+          path: ${{ github.workspace }}/loadTest
+          retention-days: 30
