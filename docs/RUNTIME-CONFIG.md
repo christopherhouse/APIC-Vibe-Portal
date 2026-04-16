@@ -107,12 +107,12 @@ useEffect(() => {
 
 Set these as GitHub environment variables (one set per environment):
 
-| Variable Name        | Example Value (dev)                                    |
-| -------------------- | ------------------------------------------------------ |
-| `MSAL_CLIENT_ID`     | `12345678-1234-1234-1234-123456789abc`                 |
-| `MSAL_AUTHORITY`     | `https://login.microsoftonline.com/<tenant-id>`        |
-| `MSAL_REDIRECT_URI`  | `https://apic-portal-dev.azurecontainerapps.io`        |
-| `BFF_API_SCOPE`      | `api://12345678-1234-1234-1234-123456789def/.default` |
+| Variable Name       | Example Value (dev)                                   |
+| ------------------- | ----------------------------------------------------- |
+| `MSAL_CLIENT_ID`    | `12345678-1234-1234-1234-123456789abc`                |
+| `MSAL_AUTHORITY`    | `https://login.microsoftonline.com/<tenant-id>`       |
+| `MSAL_REDIRECT_URI` | `https://apic-portal-dev.azurecontainerapps.io`       |
+| `BFF_API_SCOPE`     | `api://12345678-1234-1234-1234-123456789def/.default` |
 
 ### Deployment Script
 
@@ -153,7 +153,7 @@ Next.js automatically loads these during local dev, and the `/api/config/msal` e
 ✅ **Secure** — No secrets baked into images
 ✅ **Fast deployments** — No need to rebuild for config changes
 
-## Migration from NEXT_PUBLIC_*
+## Migration from NEXT*PUBLIC*\*
 
 If you're upgrading from the previous approach:
 

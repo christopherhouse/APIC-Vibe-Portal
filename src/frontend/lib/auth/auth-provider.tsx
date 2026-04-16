@@ -21,6 +21,16 @@ import { MsalConfigProvider } from './msal-config-context';
 let msalInstance: PublicClientApplication | null = null;
 
 /**
+ * Get the MSAL instance. Throws if called before AuthProvider initialization.
+ */
+export function getMsalInstance(): PublicClientApplication {
+  if (!msalInstance) {
+    throw new Error('MSAL instance not initialized. Ensure AuthProvider is mounted.');
+  }
+  return msalInstance;
+}
+
+/**
  * AuthProvider fetches runtime MSAL config, initialises MSAL, and wraps
  * the React tree in `MsalProvider` and `MsalConfigProvider`.
  *
