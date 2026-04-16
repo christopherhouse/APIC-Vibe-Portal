@@ -15,8 +15,8 @@ Multi-agent API portal built on:
 ## Architecture Diagram
 
 Browser -> Next.js -> BFF (Python/FastAPI) -> APIC + AI Search + Foundry Agents + Cosmos DB
-                                             ↕
-                                   Azure Managed Redis (cache)
+↕
+Azure Managed Redis (cache)
 
 ## Components
 
@@ -32,12 +32,12 @@ Browser -> Next.js -> BFF (Python/FastAPI) -> APIC + AI Search + Foundry Agents 
 
 The BFF uses **Azure Managed Redis** (`Microsoft.Cache/redisEnterprise`) as a response cache for all Azure API Center read operations.
 
-| Entity | Cache TTL |
-|--------|-----------|
-| API list | 2 min |
-| API detail / versions | 5 min |
-| Specifications | 10 min |
-| Environments / Deployments | 15 min |
+| Entity                     | Cache TTL |
+| -------------------------- | --------- |
+| API list                   | 2 min     |
+| API detail / versions      | 5 min     |
+| Specifications             | 10 min    |
+| Environments / Deployments | 15 min    |
 
 **Authentication**: Entra ID only. The user-assigned managed identity is granted the built-in `default` data-plane access policy on the Redis database. Access keys are disabled (`accessKeysAuthentication: Disabled`). The BFF acquires short-lived Entra tokens via `DefaultAzureCredential` and refreshes them automatically.
 

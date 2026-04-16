@@ -59,7 +59,7 @@ param cosmosDbLocations array = []
 @description('Azure region for Cosmos DB (defaults to main location if not specified)')
 param cosmosDbLocation string = location
 
-@description('Azure Managed Redis SKU name (Balanced_B0 for dev/test, Balanced_B1 for staging/prod)')
+@description('Azure Managed Redis SKU name (Balanced_B0 for dev/staging, Balanced_B1 for prod)')
 param redisSku string = environmentName == 'prod' ? 'Balanced_B1' : 'Balanced_B0'
 
 @description('Enable private endpoints for resources (recommended for prod)')

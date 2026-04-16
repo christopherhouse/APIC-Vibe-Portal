@@ -65,8 +65,9 @@ class InMemoryCache[V]:
     """Thread-unsafe in-process TTL cache.
 
     Satisfies :class:`CacheBackend`.  Used as a local-development fallback
-    when ``REDIS_URL`` is not configured.  For production (multi-replica
-    Container Apps deployments) the Redis backend should be used instead.
+    when Redis is not configured via ``REDIS_HOST``/``REDIS_PORT``.  For
+    production (multi-replica Container Apps deployments) the Redis backend
+    should be used instead.
     """
 
     def __init__(self, default_ttl_seconds: float = 300.0) -> None:

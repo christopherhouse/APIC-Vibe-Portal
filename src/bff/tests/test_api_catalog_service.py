@@ -76,14 +76,29 @@ class TestListApis:
 
         assert mock_client.list_apis.call_count == 2
 
-    def test_empty_list_returns_zero_total(self) -> None:
+    def test_empty_list_returns_zero_total_pages(self) -> None:
         service, mock_client = _make_service()
         mock_client.list_apis.return_value = []
 
         result = service.list_apis()
 
         assert result.pagination.total_count == 0
+        assert result.pagination.total_pages == 0
         assert result.items == []
+
+    def test_invalid_page_raises_value_error(self) -> None:
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = []
+
+        with pytest.raises(ValueError, match="page must be >= 1"):
+            service.list_apis(page=0)
+
+    def test_invalid_page_size_raises_value_error(self) -> None:
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = []
+
+        with pytest.raises(ValueError, match="page_size must be >= 1"):
+            service.list_apis(page_size=0)
 
     def test_filter_forwarded_to_client(self) -> None:
         service, mock_client = _make_service()
@@ -213,6 +228,17 @@ class TestGetApiDefinition:
         result = service.get_api_definition("petstore-api", "v1", definition_name="asyncapi")
 
         assert result.name == "asyncapi"
+
+    def test_raises_not_found_when_definition_name_not_matched(self) -> None:
+        from tests.api_center_mocks import make_api_spec_definition
+
+        service, mock_client = _make_service()
+        mock_client.list_api_definitions.return_value = [
+            make_api_spec_definition(name="openapi", title="OpenAPI"),
+        ]
+
+        with pytest.raises(ApiCenterNotFoundError):
+            service.get_api_definition("petstore-api", "v1", definition_name="nonexistent")
 
     def test_raises_not_found_when_no_definitions(self) -> None:
         service, mock_client = _make_service()

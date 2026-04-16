@@ -100,12 +100,12 @@ Add to BFF settings:
 
 ### Status History
 
-| Date       | Status         | Author  | Notes        |
-| ---------- | -------------- | ------- | ------------ |
-| —          | 🔲 Not Started | —       | Task created |
-| 2026-04-16 | ✅ Complete    | copilot | Full implementation: ApiCenterClient, ApiCatalogService, data mapper, in-memory cache, Pydantic models. 189 tests passing (94 new). |
-| 2026-04-16 | ✅ Complete    | copilot | Replaced in-memory cache with Azure Cache for Redis (PR review feedback). Redis Bicep module added; BFF now uses RedisCacheBackend (in-memory remains as local dev fallback). 210 tests passing. |
-| 2026-04-16 | ✅ Complete    | copilot | Switched from deprecated Azure Cache for Redis to Azure Managed Redis (PR review feedback). Updated Bicep module to `Microsoft.Cache/redisEnterprise@2024-09-01-preview` with database sub-resource on port 10000 and `Balanced_B0` SKU for dev. |
+| Date       | Status         | Author  | Notes                                                                                                                                                                                                                                                                                             |
+| ---------- | -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                                                                                                                                                                                                                                                                      |
+| 2026-04-16 | ✅ Complete    | copilot | Full implementation: ApiCenterClient, ApiCatalogService, data mapper, in-memory cache, Pydantic models. 189 tests passing (94 new).                                                                                                                                                               |
+| 2026-04-16 | ✅ Complete    | copilot | Replaced in-memory cache with Azure Cache for Redis (PR review feedback). Redis Bicep module added; BFF now uses RedisCacheBackend (in-memory remains as local dev fallback). 210 tests passing.                                                                                                  |
+| 2026-04-16 | ✅ Complete    | copilot | Switched from deprecated Azure Cache for Redis to Azure Managed Redis (PR review feedback). Updated Bicep module to `Microsoft.Cache/redisEnterprise@2024-09-01-preview` with database sub-resource on port 10000 and `Balanced_B0` SKU for dev.                                                  |
 | 2026-04-16 | ✅ Complete    | copilot | Switched Redis auth from access keys to Entra user-assigned MI (PR review feedback). BFF now authenticates with `DefaultAzureCredential` token, no embedded secrets. Added Redis env vars (`REDIS_HOST`, `REDIS_PORT`, `AZURE_CLIENT_ID`) to BFF container app at deploy time. 213 tests passing. |
 
 ### Technical Decisions

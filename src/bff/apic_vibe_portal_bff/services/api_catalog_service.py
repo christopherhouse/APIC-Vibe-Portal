@@ -96,6 +96,11 @@ class ApiCatalogService:
         filter_str:
             Optional OData filter to pass to API Center.
         """
+        if page < 1:
+            raise ValueError(f"page must be >= 1, got {page}")
+        if page_size < 1:
+            raise ValueError(f"page_size must be >= 1, got {page_size}")
+
         cache_key = f"{_KEY_APIS}{filter_str or ''}:{page}:{page_size}"
         cached = self._cache.get(cache_key)
         if cached is not None:
@@ -106,7 +111,7 @@ class ApiCatalogService:
 
         # Apply in-process pagination (API Center SDK lists all items)
         total_count = len(raw_apis)
-        total_pages = max(1, math.ceil(total_count / page_size))
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 0
         start = (page - 1) * page_size
         end = start + page_size
         page_items = raw_apis[start:end]
@@ -209,12 +214,16 @@ class ApiCatalogService:
             return getattr(obj, "name", None) or ""
 
         # Resolve target definition
-        target_raw = raw_defs[0]
-        if definition_name:
-            for d in raw_defs:
-                if _get_name(d) == definition_name:
-                    target_raw = d
-                    break
+        if definition_name is None:
+            target_raw = raw_defs[0]
+        else:
+            target_raw = next((d for d in raw_defs if _get_name(d) == definition_name), None)
+            if target_raw is None:
+                from apic_vibe_portal_bff.clients.api_center_client import ApiCenterNotFoundError
+
+                raise ApiCenterNotFoundError(
+                    f"Definition '{definition_name}' not found for api/{api_name}/versions/{version_name}"
+                )
 
         resolved_name = _get_name(target_raw)
         content = self._client.export_api_specification(api_name, version_name, resolved_name)

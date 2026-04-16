@@ -16,8 +16,9 @@ fall through to the live API Center call.
 
 from __future__ import annotations
 
+import importlib
+import json
 import logging
-import pickle
 import time
 from typing import TYPE_CHECKING
 
@@ -38,13 +39,99 @@ _TOKEN_REFRESH_BUFFER_SECONDS = 300  # 5 minutes
 # does not clash with other tenants sharing the same Redis instance.
 _DEFAULT_PREFIX = "apic:bff:"
 
+# Only allow deserialization of classes from this package to prevent arbitrary
+# code execution if Redis contents were ever tampered with.
+_SAFE_MODULE_PREFIX = "apic_vibe_portal_bff."
+
+# Number of keys to delete per UNLINK batch (avoids O(N) blocking DEL calls)
+_SCAN_BATCH_SIZE = 100
+
+
+# ---------------------------------------------------------------------------
+# Serialization helpers
+# ---------------------------------------------------------------------------
+
+
+def _serialize(value: object) -> bytes:
+    """Serialize *value* to JSON bytes with an embedded type tag.
+
+    Pydantic models and lists of Pydantic models are recorded with a
+    fully-qualified type path so they can be safely reconstructed on load.
+    All other JSON-serializable values are stored as-is under the ``__json__``
+    sentinel.
+    """
+    from pydantic import BaseModel
+
+    if isinstance(value, BaseModel):
+        cls = type(value)
+        return json.dumps(
+            {
+                "__type__": f"{cls.__module__}.{cls.__qualname__}",
+                "__data__": value.model_dump(mode="json"),
+            }
+        ).encode()
+
+    if isinstance(value, list) and value and isinstance(value[0], BaseModel):
+        cls = type(value[0])
+        return json.dumps(
+            {
+                "__type__": f"list[{cls.__module__}.{cls.__qualname__}]",
+                "__data__": [v.model_dump(mode="json") for v in value],  # type: ignore[union-attr]
+            }
+        ).encode()
+
+    # Plain JSON-serializable value (empty list, str, int, dict, …)
+    return json.dumps({"__type__": "__json__", "__data__": value}).encode()
+
+
+def _deserialize(raw: bytes) -> object:
+    """Reconstruct a value from JSON bytes produced by :func:`_serialize`.
+
+    Only Pydantic models whose module path starts with ``apic_vibe_portal_bff.``
+    are allowed to be reconstructed, preventing deserialization of untrusted
+    class paths even if Redis contents are modified by a third party.
+    """
+    wrapper = json.loads(raw)
+    type_tag: str = wrapper["__type__"]
+    data = wrapper["__data__"]
+
+    if type_tag == "__json__":
+        return data
+
+    if type_tag.startswith("list["):
+        inner = type_tag[5:-1]  # strip "list[…]"
+        cls = _safe_import_model(inner)
+        return [cls.model_validate(item) for item in data]
+
+    cls = _safe_import_model(type_tag)
+    return cls.model_validate(data)
+
+
+def _safe_import_model(type_path: str):  # type: ignore[return]
+    """Import a Pydantic BaseModel subclass from *type_path* if it is trusted.
+
+    Raises ``ValueError`` when *type_path* is not within the application
+    package, and ``TypeError`` if the resolved name is not a BaseModel subclass.
+    """
+    from pydantic import BaseModel
+
+    if not type_path.startswith(_SAFE_MODULE_PREFIX):
+        raise ValueError(f"Refusing to deserialize untrusted type path: {type_path!r}")
+    module_path, _, class_name = type_path.rpartition(".")
+    module = importlib.import_module(module_path)
+    cls = getattr(module, class_name)
+    if not (isinstance(cls, type) and issubclass(cls, BaseModel)):
+        raise TypeError(f"{type_path!r} is not a Pydantic BaseModel subclass")
+    return cls
+
 
 class RedisCacheBackend:
     """Redis-backed cache satisfying :class:`~apic_vibe_portal_bff.utils.cache.CacheBackend`.
 
     Connects to Azure Managed Redis using Entra ID token authentication.
-    Values are serialized with ``pickle`` so that arbitrary Pydantic model
-    instances and lists thereof can be stored without a custom serializer.
+    Values are serialized to JSON with embedded type information so that
+    Pydantic model instances and lists thereof can be stored and reconstructed
+    without using ``pickle``.
 
     Parameters
     ----------
@@ -133,7 +220,7 @@ class RedisCacheBackend:
             raw = self._redis().get(self._full_key(key))
             if raw is None:
                 return None
-            return pickle.loads(raw)  # noqa: S301  # data is only ever written by this BFF
+            return _deserialize(raw)
         except Exception:
             logger.warning("Redis GET failed for key %r", key, exc_info=True)
             return None
@@ -142,7 +229,7 @@ class RedisCacheBackend:
         """Serialize and store *value* in Redis with a TTL."""
         try:
             ttl = int(ttl_seconds if ttl_seconds is not None else self._default_ttl)
-            self._redis().setex(self._full_key(key), ttl, pickle.dumps(value))
+            self._redis().setex(self._full_key(key), ttl, _serialize(value))
         except Exception:
             logger.warning("Redis SET failed for key %r", key, exc_info=True)
 
@@ -154,29 +241,46 @@ class RedisCacheBackend:
             logger.warning("Redis DELETE failed for key %r", key, exc_info=True)
 
     def clear(self) -> None:
-        """Delete all keys under this backend's namespace prefix."""
+        """Delete all keys under this backend's namespace prefix.
+
+        Uses ``SCAN`` + ``UNLINK`` in batches to avoid a single O(N) blocking
+        ``KEYS`` call that could stall the Redis server.
+        """
         try:
             client = self._redis()
             pattern = f"{self._key_prefix}*"
-            keys = client.keys(pattern)
-            if keys:
-                client.delete(*keys)
+            batch: list[bytes] = []
+            for key in client.scan_iter(pattern, count=_SCAN_BATCH_SIZE):
+                batch.append(key)
+                if len(batch) >= _SCAN_BATCH_SIZE:
+                    client.unlink(*batch)
+                    batch = []
+            if batch:
+                client.unlink(*batch)
         except Exception:
             logger.warning("Redis CLEAR failed", exc_info=True)
 
     def invalidate_prefix(self, prefix: str) -> int:
         """Delete all keys whose logical name starts with *prefix*.
 
+        Uses ``SCAN`` + ``UNLINK`` in batches to avoid blocking the server.
         Returns the number of keys removed.
         """
         try:
             client = self._redis()
             pattern = f"{self._key_prefix}{prefix}*"
-            keys = client.keys(pattern)
-            if not keys:
-                return 0
-            client.delete(*keys)
-            return len(keys)
+            count = 0
+            batch: list[bytes] = []
+            for key in client.scan_iter(pattern, count=_SCAN_BATCH_SIZE):
+                batch.append(key)
+                if len(batch) >= _SCAN_BATCH_SIZE:
+                    client.unlink(*batch)
+                    count += len(batch)
+                    batch = []
+            if batch:
+                client.unlink(*batch)
+                count += len(batch)
+            return count
         except Exception:
             logger.warning("Redis INVALIDATE_PREFIX failed for prefix %r", prefix, exc_info=True)
             return 0

@@ -8,11 +8,10 @@ graceful degradation on errors, lazy connection setup, and token refresh logic.
 
 from __future__ import annotations
 
-import pickle
 import time
 from unittest.mock import MagicMock, patch
 
-from apic_vibe_portal_bff.clients.redis_cache_client import RedisCacheBackend
+from apic_vibe_portal_bff.clients.redis_cache_client import RedisCacheBackend, _serialize
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -58,7 +57,7 @@ class TestGet:
     def test_returns_deserialized_value_on_hit(self) -> None:
         backend, mock_client = _make_backend()
         value = {"key": "value", "number": 42}
-        mock_client.get.return_value = pickle.dumps(value)
+        mock_client.get.return_value = _serialize(value)
 
         result = backend.get("test-key")
 
@@ -90,7 +89,7 @@ class TestGet:
         )
         backend._token_expiry = time.time() + 7200
         backend._client = MagicMock()
-        backend._client.get.return_value = pickle.dumps("hello")
+        backend._client.get.return_value = _serialize("hello")
 
         backend.get("foo")
 
@@ -109,7 +108,7 @@ class TestSet:
 
         backend.set("my-key", value, ttl_seconds=120.0)
 
-        expected_bytes = pickle.dumps(value)
+        expected_bytes = _serialize(value)
         mock_client.setex.assert_called_once_with("apic:bff:my-key", 120, expected_bytes)
 
     def test_uses_default_ttl_when_not_specified(self) -> None:
@@ -162,26 +161,26 @@ class TestDelete:
 
 
 class TestClear:
-    def test_deletes_all_prefixed_keys(self) -> None:
+    def test_deletes_all_prefixed_keys_via_scan(self) -> None:
         backend, mock_client = _make_backend()
-        mock_client.keys.return_value = [b"apic:bff:a", b"apic:bff:b"]
+        mock_client.scan_iter.return_value = iter([b"apic:bff:a", b"apic:bff:b"])
 
         backend.clear()
 
-        mock_client.keys.assert_called_once_with("apic:bff:*")
-        mock_client.delete.assert_called_once_with(b"apic:bff:a", b"apic:bff:b")
+        mock_client.scan_iter.assert_called_once_with("apic:bff:*", count=100)
+        mock_client.unlink.assert_called_once_with(b"apic:bff:a", b"apic:bff:b")
 
-    def test_no_delete_called_when_no_keys(self) -> None:
+    def test_no_unlink_called_when_no_keys(self) -> None:
         backend, mock_client = _make_backend()
-        mock_client.keys.return_value = []
+        mock_client.scan_iter.return_value = iter([])
 
         backend.clear()
 
-        mock_client.delete.assert_not_called()
+        mock_client.unlink.assert_not_called()
 
     def test_silently_ignores_redis_error(self) -> None:
         backend, mock_client = _make_backend()
-        mock_client.keys.side_effect = ConnectionError("Redis down")
+        mock_client.scan_iter.side_effect = ConnectionError("Redis down")
 
         backend.clear()  # must not raise
 
@@ -194,26 +193,26 @@ class TestClear:
 class TestInvalidatePrefix:
     def test_deletes_matching_keys_and_returns_count(self) -> None:
         backend, mock_client = _make_backend()
-        mock_client.keys.return_value = [b"apic:bff:apis:1", b"apic:bff:apis:2"]
+        mock_client.scan_iter.return_value = iter([b"apic:bff:apis:1", b"apic:bff:apis:2"])
 
         removed = backend.invalidate_prefix("apis:")
 
         assert removed == 2
-        mock_client.keys.assert_called_once_with("apic:bff:apis:*")
-        mock_client.delete.assert_called_once_with(b"apic:bff:apis:1", b"apic:bff:apis:2")
+        mock_client.scan_iter.assert_called_once_with("apic:bff:apis:*", count=100)
+        mock_client.unlink.assert_called_once_with(b"apic:bff:apis:1", b"apic:bff:apis:2")
 
     def test_returns_zero_when_no_matching_keys(self) -> None:
         backend, mock_client = _make_backend()
-        mock_client.keys.return_value = []
+        mock_client.scan_iter.return_value = iter([])
 
         removed = backend.invalidate_prefix("nope:")
 
         assert removed == 0
-        mock_client.delete.assert_not_called()
+        mock_client.unlink.assert_not_called()
 
     def test_silently_ignores_redis_error_and_returns_zero(self) -> None:
         backend, mock_client = _make_backend()
-        mock_client.keys.side_effect = ConnectionError("Redis down")
+        mock_client.scan_iter.side_effect = ConnectionError("Redis down")
 
         removed = backend.invalidate_prefix("anything:")
 
