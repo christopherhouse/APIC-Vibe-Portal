@@ -16,6 +16,20 @@ export interface MsalConfig {
 }
 
 /**
+ * Module-level storage for runtime MSAL configuration.
+ * Set during app initialization by AuthProvider.
+ */
+let runtimeConfig: MsalConfig | null = null;
+
+/**
+ * Get the BFF API scope from runtime configuration.
+ * Returns undefined if config not yet loaded.
+ */
+export function getBffApiScope(): string | undefined {
+  return runtimeConfig?.bffApiScope;
+}
+
+/**
  * Fetch MSAL configuration from the server at runtime.
  * This is called once during application initialization.
  */
@@ -25,7 +39,10 @@ export async function fetchMsalConfig(): Promise<MsalConfig> {
     if (!response.ok) {
       throw new Error(`Failed to fetch MSAL config: ${response.status} ${response.statusText}`);
     }
-    return await response.json();
+    const config = await response.json();
+    // Store config for module-level access
+    runtimeConfig = config;
+    return config;
   } catch (error) {
     console.error('[MSAL Config] Failed to fetch runtime configuration:', error);
     throw error;
