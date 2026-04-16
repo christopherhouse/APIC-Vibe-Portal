@@ -46,7 +46,7 @@ var redisPort = 10000
 // ============================================================================
 
 // Azure Managed Redis cluster (Redis Enterprise)
-resource redisEnterprise 'Microsoft.Cache/redisEnterprise@2024-09-01-preview' = {
+resource redisEnterprise 'Microsoft.Cache/redisEnterprise@2025-07-01' = {
   name: redisCacheName
   location: location
   tags: tags
@@ -60,7 +60,7 @@ resource redisEnterprise 'Microsoft.Cache/redisEnterprise@2024-09-01-preview' = 
 }
 
 // Redis database within the cluster
-resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2024-09-01-preview' = {
+resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2025-07-01' = {
   parent: redisEnterprise
   name: 'default'
   properties: {
@@ -73,7 +73,7 @@ resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2024-09-01-pre
 
 // Grant the user-assigned managed identity data-plane access to the Redis database.
 // The built-in "default" access policy provides read/write access to all keys.
-resource redisAccessPolicyAssignment 'Microsoft.Cache/redisEnterprise/databases/accessPolicyAssignments@2024-09-01-preview' = {
+resource redisAccessPolicyAssignment 'Microsoft.Cache/redisEnterprise/databases/accessPolicyAssignments@2025-07-01' = {
   parent: redisDatabase
   name: take('bff-mi-${uniqueString(managedIdentityPrincipalId)}', 24)
   properties: {
