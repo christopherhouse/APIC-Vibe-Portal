@@ -203,7 +203,7 @@ class RedisCacheBackend:
                 host=self._host,
                 port=self._port,
                 ssl=True,
-                username="",          # Entra auth — username is unused
+                username="",  # Entra auth — username is unused
                 password=token.token,
                 decode_responses=False,
             )

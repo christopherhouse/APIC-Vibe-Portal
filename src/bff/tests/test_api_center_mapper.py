@@ -240,18 +240,14 @@ class TestMapApiDefinition:
         assert defn.kind == ApiKind.REST
 
     def test_contacts_mapped(self) -> None:
-        raw = make_api(
-            contacts=[_ns(name="Team", email="team@example.com", url="https://example.com")]
-        )
+        raw = make_api(contacts=[_ns(name="Team", email="team@example.com", url="https://example.com")])
         defn = map_api_definition(raw)
         assert len(defn.contacts) == 1
         assert defn.contacts[0].name == "Team"
         assert defn.contacts[0].email == "team@example.com"
 
     def test_external_docs_mapped(self) -> None:
-        raw = make_api(
-            external_docs=[_ns(title="Guide", url="https://guide.example.com", description="A guide")]
-        )
+        raw = make_api(external_docs=[_ns(title="Guide", url="https://guide.example.com", description="A guide")])
         defn = map_api_definition(raw)
         assert len(defn.external_docs) == 1
         assert defn.external_docs[0].title == "Guide"

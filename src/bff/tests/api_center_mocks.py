@@ -65,8 +65,7 @@ def make_deployment(
     title: str = "v1 Production Deployment",
     description: str | None = "Main deployment",
     environment_id: str = (
-        "/subscriptions/sub/resourceGroups/rg/providers/"
-        "Microsoft.ApiCenter/services/svc/environments/prod-env"
+        "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ApiCenter/services/svc/environments/prod-env"
     ),
     runtime_uri: list[str] | None = None,
 ) -> SimpleNamespace:
