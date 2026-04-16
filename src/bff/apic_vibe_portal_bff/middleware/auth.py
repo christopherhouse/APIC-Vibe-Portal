@@ -127,7 +127,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Missing or invalid Authorization header"},
             )
 
-        token = auth_header[len("Bearer "):]
+        token = auth_header[len("Bearer ") :]
         try:
             user = validate_token(token)
         except jwt.ExpiredSignatureError:
