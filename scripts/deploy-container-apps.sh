@@ -99,7 +99,12 @@ required_args=(RESOURCE_GROUP ENVIRONMENT_ID FRONTEND_APP_NAME BFF_APP_NAME \
 for arg in "${required_args[@]}"; do
   if [[ -z "${!arg:-}" ]]; then
     echo "Error: Missing required argument: --$(echo "$arg" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
-    echo "Usage: $0 --resource-group <rg> --environment-id <env-id> --frontend-app <name> --bff-app <name> --acr-server <server> --frontend-identity-resource-id <id> --bff-identity-resource-id <id> --bff-identity-client-id <id> --frontend-image-tag <tag> --bff-image-tag <tag> --redis-host <hostname> [--bff-env-vars \"KEY=val ...\"]"
+    echo "Usage: $0 --resource-group <rg> --environment-id <env-id>" \
+         "--frontend-app <name> --bff-app <name> --acr-server <server>" \
+         "--frontend-identity-resource-id <id> --bff-identity-resource-id <id>" \
+         "--bff-identity-client-id <id> --frontend-image-tag <tag>" \
+         "--bff-image-tag <tag> --redis-host <hostname>" \
+         "[--bff-env-vars \"KEY=val ...\"]"
     exit 1
   fi
 done
