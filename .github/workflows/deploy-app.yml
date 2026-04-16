@@ -208,8 +208,12 @@ jobs:
               --query "[?contains(name, '-id-bff-')].clientId | [0]" -o tsv)
           fi
 
-          if [ -z "$FRONTEND_ID" ] || [ -z "$BFF_ID" ] || [ -z "$BFF_CLIENT_ID" ]; then
-            echo "::error::Could not resolve managed identities. Ensure infrastructure is deployed with per-container UAMIs."
+          IDENTITY_ERRORS=""
+          if [ -z "$FRONTEND_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} frontend-identity-resource-id"; fi
+          if [ -z "$BFF_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-resource-id"; fi
+          if [ -z "$BFF_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-client-id"; fi
+          if [ -n "$IDENTITY_ERRORS" ]; then
+            echo "::error::Could not resolve managed identities:${IDENTITY_ERRORS}. Ensure infrastructure is deployed with per-container UAMIs."
             exit 1
           fi
 
@@ -298,8 +302,12 @@ jobs:
               --query "[?contains(name, '-id-bff-')].clientId | [0]" -o tsv)
           fi
 
-          if [ -z "$FRONTEND_ID" ] || [ -z "$BFF_ID" ] || [ -z "$BFF_CLIENT_ID" ]; then
-            echo "::error::Could not resolve managed identities. Ensure infrastructure is deployed with per-container UAMIs."
+          IDENTITY_ERRORS=""
+          if [ -z "$FRONTEND_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} frontend-identity-resource-id"; fi
+          if [ -z "$BFF_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-resource-id"; fi
+          if [ -z "$BFF_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-client-id"; fi
+          if [ -n "$IDENTITY_ERRORS" ]; then
+            echo "::error::Could not resolve managed identities:${IDENTITY_ERRORS}. Ensure infrastructure is deployed with per-container UAMIs."
             exit 1
           fi
 
@@ -388,8 +396,12 @@ jobs:
               --query "[?contains(name, '-id-bff-')].clientId | [0]" -o tsv)
           fi
 
-          if [ -z "$FRONTEND_ID" ] || [ -z "$BFF_ID" ] || [ -z "$BFF_CLIENT_ID" ]; then
-            echo "::error::Could not resolve managed identities. Ensure infrastructure is deployed with per-container UAMIs."
+          IDENTITY_ERRORS=""
+          if [ -z "$FRONTEND_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} frontend-identity-resource-id"; fi
+          if [ -z "$BFF_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-resource-id"; fi
+          if [ -z "$BFF_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-client-id"; fi
+          if [ -n "$IDENTITY_ERRORS" ]; then
+            echo "::error::Could not resolve managed identities:${IDENTITY_ERRORS}. Ensure infrastructure is deployed with per-container UAMIs."
             exit 1
           fi
 
