@@ -277,14 +277,15 @@ MSAL_REDIRECT_URI=http://localhost:3000
 BFF_API_SCOPE=api://<bff-client-id>/access_as_user
 ```
 
-| Variable              | Source                                                |
-| --------------------- | ----------------------------------------------------- |
-| `MSAL_CLIENT_ID`      | SPA app registration → Application (client) ID        |
-| `MSAL_AUTHORITY`      | `https://login.microsoftonline.com/<tenant-id>`       |
-| `MSAL_REDIRECT_URI`   | Must match a redirect URI in the SPA app registration |
-| `BFF_API_SCOPE`       | BFF API app registration → Expose an API → scope URI  |
+| Variable            | Source                                                |
+| ------------------- | ----------------------------------------------------- |
+| `MSAL_CLIENT_ID`    | SPA app registration → Application (client) ID        |
+| `MSAL_AUTHORITY`    | `https://login.microsoftonline.com/<tenant-id>`       |
+| `MSAL_REDIRECT_URI` | Must match a redirect URI in the SPA app registration |
+| `BFF_API_SCOPE`     | BFF API app registration → Expose an API → scope URI  |
 
 **Why the change?**
+
 - Previously, `NEXT_PUBLIC_*` variables were baked into the Docker image at build time
 - This prevented promoting the same image across dev/staging/prod environments
 - Now, these values are injected as Container App environment variables at deployment time

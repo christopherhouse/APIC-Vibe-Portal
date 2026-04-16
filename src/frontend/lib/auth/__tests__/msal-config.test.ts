@@ -1,4 +1,9 @@
-import { fetchMsalConfig, buildMsalConfig, buildLoginRequest, type MsalConfig } from '../msal-config';
+import {
+  fetchMsalConfig,
+  buildMsalConfig,
+  buildLoginRequest,
+  type MsalConfig,
+} from '../msal-config';
 
 // Mock fetch globally
 const mockFetch = jest.fn();
@@ -35,7 +40,9 @@ describe('fetchMsalConfig', () => {
       statusText: 'Internal Server Error',
     } as Response);
 
-    await expect(fetchMsalConfig()).rejects.toThrow('Failed to fetch MSAL config: 500 Internal Server Error');
+    await expect(fetchMsalConfig()).rejects.toThrow(
+      'Failed to fetch MSAL config: 500 Internal Server Error'
+    );
   });
 
   it('throws error when network request fails', async () => {

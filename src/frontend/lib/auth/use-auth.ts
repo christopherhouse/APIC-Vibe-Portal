@@ -96,4 +96,3 @@ export function useAuth(): UseAuthReturn {
     isLoading: inProgress !== 'none',
   };
 }
-
