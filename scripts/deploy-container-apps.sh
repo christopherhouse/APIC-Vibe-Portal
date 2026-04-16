@@ -156,46 +156,7 @@ echo "Redis Host: $REDIS_HOST"
 echo "BFF Env Vars: ${BFF_CORE_ENV_VARS[*]}"
 echo "============================================================================"
 
-# Deploy Frontend Container App
-echo ""
-echo "Deploying Frontend Container App..."
-if az containerapp show --name "$FRONTEND_APP_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
-  echo "Updating existing Frontend Container App..."
-  az containerapp update \
-    --name "$FRONTEND_APP_NAME" \
-    --resource-group "$RESOURCE_GROUP" \
-    --image "${ACR_SERVER}/frontend:${FRONTEND_IMAGE_TAG}" \
-    --cpu 1.0 \
-    --memory 2Gi \
-    --min-replicas 1 \
-    --max-replicas 10 \
-    --revision-suffix "$(date +%s)"
-else
-  echo "Creating new Frontend Container App..."
-  az containerapp create \
-    --name "$FRONTEND_APP_NAME" \
-    --resource-group "$RESOURCE_GROUP" \
-    --environment "$ENVIRONMENT_ID" \
-    --image "${ACR_SERVER}/frontend:${FRONTEND_IMAGE_TAG}" \
-    --target-port 3000 \
-    --ingress external \
-    --cpu 1.0 \
-    --memory 2Gi \
-    --min-replicas 1 \
-    --max-replicas 10 \
-    --registry-server "$ACR_SERVER" \
-    --user-assigned "$FRONTEND_IDENTITY_RESOURCE_ID" \
-    --registry-identity "$FRONTEND_IDENTITY_RESOURCE_ID"
-fi
-
-# Get Frontend URL
-FRONTEND_URL=$(az containerapp show \
-  --name "$FRONTEND_APP_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --query properties.configuration.ingress.fqdn -o tsv)
-echo "Frontend URL: https://${FRONTEND_URL}"
-
-# Deploy BFF Container App
+# Deploy BFF Container App first (its URL is needed by the frontend)
 echo ""
 echo "Deploying BFF Container App..."
 if az containerapp show --name "$BFF_APP_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
@@ -229,12 +190,54 @@ else
     --env-vars "${BFF_CORE_ENV_VARS[@]}"
 fi
 
-# Get BFF URL
+# Get BFF URL (used to configure frontend proxy)
 BFF_URL=$(az containerapp show \
   --name "$BFF_APP_NAME" \
   --resource-group "$RESOURCE_GROUP" \
   --query properties.configuration.ingress.fqdn -o tsv)
 echo "BFF URL: https://${BFF_URL}"
+
+# Deploy Frontend Container App with BFF_URL so the server-side proxy
+# can forward /api/* requests to the BFF at runtime.
+echo ""
+echo "Deploying Frontend Container App..."
+if az containerapp show --name "$FRONTEND_APP_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+  echo "Updating existing Frontend Container App..."
+  az containerapp update \
+    --name "$FRONTEND_APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --image "${ACR_SERVER}/frontend:${FRONTEND_IMAGE_TAG}" \
+    --cpu 1.0 \
+    --memory 2Gi \
+    --min-replicas 1 \
+    --max-replicas 10 \
+    --set-env-vars "BFF_URL=https://${BFF_URL}" \
+    --revision-suffix "$(date +%s)"
+else
+  echo "Creating new Frontend Container App..."
+  az containerapp create \
+    --name "$FRONTEND_APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --environment "$ENVIRONMENT_ID" \
+    --image "${ACR_SERVER}/frontend:${FRONTEND_IMAGE_TAG}" \
+    --target-port 3000 \
+    --ingress external \
+    --cpu 1.0 \
+    --memory 2Gi \
+    --min-replicas 1 \
+    --max-replicas 10 \
+    --registry-server "$ACR_SERVER" \
+    --user-assigned "$FRONTEND_IDENTITY_RESOURCE_ID" \
+    --registry-identity "$FRONTEND_IDENTITY_RESOURCE_ID" \
+    --env-vars "BFF_URL=https://${BFF_URL}"
+fi
+
+# Get Frontend URL
+FRONTEND_URL=$(az containerapp show \
+  --name "$FRONTEND_APP_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --query properties.configuration.ingress.fqdn -o tsv)
+echo "Frontend URL: https://${FRONTEND_URL}"
 
 echo ""
 echo "============================================================================"
