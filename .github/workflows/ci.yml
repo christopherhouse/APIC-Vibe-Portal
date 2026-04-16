@@ -66,6 +66,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build shared package
+        run: npm run build --workspace=@apic-vibe-portal/shared
+
       - name: Type check
         run: npx tsc --noEmit
 
@@ -85,6 +88,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build shared package
+        run: npm run build --workspace=@apic-vibe-portal/shared
+
       - name: Run frontend tests
         run: npm run test --workspace=@apic-vibe-portal/frontend
 
@@ -103,6 +109,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Build shared package
+        run: npm run build --workspace=@apic-vibe-portal/shared
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
@@ -160,6 +169,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Build shared package
+        run: npm run build --workspace=@apic-vibe-portal/shared
 
       - name: Build frontend
         run: npm run build --workspace=@apic-vibe-portal/frontend
