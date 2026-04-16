@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import type { ApiCatalogItem, PaginationMeta } from '@apic-vibe-portal/shared';
 import {
   fetchCatalogApis,
@@ -37,14 +37,18 @@ export function useCatalog(params: CatalogListParams) {
 
   const [isPending, startTransition] = useTransition();
 
-  // Serialize params for stable useCallback dependency
-  const paramsKey = JSON.stringify(params);
+  // Use a ref to hold the latest params so the callback always reads fresh values
+  // without needing params in its dependency array.
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
+
+  // Stable key derived from primitive values to trigger refetch when params change
+  const paramsKey = `${params.page}|${params.pageSize}|${params.sort}|${params.direction}|${params.lifecycle?.join(',')}|${params.kind?.join(',')}`;
 
   const load = useCallback(async () => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
-      const fetchParams: CatalogListParams = JSON.parse(paramsKey);
-      const data: CatalogListResponse = await fetchCatalogApis(fetchParams);
+      const data: CatalogListResponse = await fetchCatalogApis(paramsRef.current);
       startTransition(() => {
         setState({
           items: data.data,
@@ -60,7 +64,7 @@ export function useCatalog(params: CatalogListParams) {
         error: err instanceof Error ? err.message : 'Failed to load APIs',
       }));
     }
-  }, [paramsKey]); // stable string dependency
+  }, [paramsKey]);
 
   useEffect(() => {
     void load();
