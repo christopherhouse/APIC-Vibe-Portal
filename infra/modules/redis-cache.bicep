@@ -69,12 +69,17 @@ resource keyVaultRef 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: keyVaultName
 }
 
+// Build the redis-py SSL URL from its components for readability.
+var redisHostName = redisCache.properties.hostName
+var redisSslPort = redisCache.properties.sslPort
+var redisPrimaryKey = listKeys(redisCache.id, redisCache.apiVersion).primaryKey
+var redisConnectionString = 'rediss://:${redisPrimaryKey}@${redisHostName}:${redisSslPort}'
+
 resource redisConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVaultRef
   name: 'redis-connection-string'
   properties: {
-    // rediss://:password@hostname:6380  — redis-py URL format with SSL
-    value: 'rediss://:${listKeys(redisCache.id, redisCache.apiVersion).primaryKey}@${redisCache.properties.hostName}:${redisCache.properties.sslPort}'
+    value: redisConnectionString
     contentType: 'text/plain'
   }
 }

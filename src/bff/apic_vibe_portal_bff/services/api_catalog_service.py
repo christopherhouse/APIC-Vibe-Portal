@@ -71,7 +71,9 @@ class ApiCatalogService:
         cache_ttl_seconds: float = 300.0,
     ) -> None:
         self._client = client
-        self._cache: CacheBackend = cache if cache is not None else InMemoryCache(default_ttl_seconds=cache_ttl_seconds)
+        self._cache: CacheBackend = (
+            cache if cache is not None else InMemoryCache(default_ttl_seconds=cache_ttl_seconds)
+        )
 
     # ------------------------------------------------------------------
     # Public operations
