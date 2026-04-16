@@ -4,12 +4,13 @@ This document describes the CI/CD pipeline configuration for the APIC Vibe Porta
 
 ## Overview
 
-The CI/CD pipeline consists of four GitHub Actions workflows:
+The CI/CD pipeline consists of five GitHub Actions workflows:
 
 1. **CI** (`ci.yml`) — Runs lint, test, and build checks on PRs and pushes to main
 2. **Deploy Infrastructure** (`deploy-infra.yml`) — Deploys Bicep templates to Azure
 3. **Deploy Application** (`deploy-app.yml`) — Builds Docker images and deploys to Container Apps
-4. **PR Checks** (`pr-checks.yml`) — Automated PR quality gates (labeling, size checks, plan references)
+4. **Load Test** (`load-test.yml`) — Runs JMeter load tests via Azure App Testing after deployment
+5. **PR Checks** (`pr-checks.yml`) — Automated PR quality gates (labeling, size checks, plan references)
 
 ## GitHub Environments
 
@@ -142,6 +143,16 @@ For each GitHub environment (dev, staging, prod), add environment-scoped variabl
 | Variable Name          | Value (dev)               | Value (staging)               | Value (prod)               | Description                              |
 | ---------------------- | ------------------------- | ----------------------------- | -------------------------- | ---------------------------------------- |
 | `AZURE_RESOURCE_GROUP` | `rg-apic-vibe-portal-dev` | `rg-apic-vibe-portal-staging` | `rg-apic-vibe-portal-prod` | Environment-specific resource group name |
+| `LOADTEST_CLIENT_ID`   | `<load-test-sp-client-id>`| `<load-test-sp-client-id>`    | `<load-test-sp-client-id>` | Service principal client ID for load tests |
+| `LOADTEST_TOKEN_SCOPE` | `api://<bff-client-id>/.default` | `api://<bff-client-id>/.default` | `api://<bff-client-id>/.default` | Token scope for BFF API |
+
+##### Environment Secrets
+
+For each GitHub environment, add environment-scoped secrets:
+
+| Secret Name              | Value                      | Description                              |
+| ------------------------ | -------------------------- | ---------------------------------------- |
+| `LOADTEST_CLIENT_SECRET` | `<load-test-sp-secret>`    | Client secret for load test service principal |
 
 This approach uses GitHub environment-scoped variables, which keeps the variable name consistent across environments while allowing environment-specific values.
 
@@ -168,6 +179,15 @@ This approach uses GitHub environment-scoped variables, which keeps the variable
   - Manual trigger via `workflow_dispatch`
 - **Jobs**: build-and-push-frontend, build-and-push-bff, deploy-dev, deploy-staging, deploy-prod
 - **Purpose**: Build Docker images and deploy to Container Apps
+
+### Load Test Workflow
+
+- **Triggers**:
+  - After successful `Deploy Application` workflow on `main`
+  - Manual trigger via `workflow_dispatch`
+- **Jobs**: load-test
+- **Purpose**: Run JMeter load tests against the BFF API via Azure App Testing
+- **Docs**: See [Load Testing Setup Guide](LOAD-TESTING.md)
 
 ### PR Checks Workflow
 

@@ -1,0 +1,47 @@
+# ============================================================================
+# Azure Load Testing – YAML Configuration
+# ============================================================================
+# Used by the azure/load-testing GitHub Action to configure and run JMeter
+# tests against the APIC Vibe Portal BFF API.
+#
+# Environment variables and secrets are injected by the GitHub Actions
+# workflow (load-test.yml).  The JMeter test plan reads them via __P().
+#
+# Reference:
+#   https://learn.microsoft.com/azure/load-testing/reference-test-config-yaml
+# ============================================================================
+
+version: v0.1
+testId: apic-vibe-portal-bff-load-test
+displayName: APIC Vibe Portal – BFF API Load Test
+description: >-
+  JMeter load test for the BFF API with OAuth2 client credentials token
+  acquisition.  Validates health endpoints, catalog browsing, and
+  environment listing under concurrent load.
+testPlan: bff-load-test.jmx
+engineInstances: 1
+
+# ---------------------------------------------------------------------------
+# Failure criteria – the test run is marked as FAILED if any of these are met
+# NOTE: Request-level criteria names (e.g. "Health Check", "List APIs") must
+#       exactly match the sampler testname attributes in bff-load-test.jmx.
+#       If you rename a sampler there, update the criteria here too.
+# ---------------------------------------------------------------------------
+failureCriteria:
+  # Overall error rate must stay below 5%
+  - percentage(error) > 5
+  # Average response time must stay below 2 seconds
+  - avg(response_time_ms) > 2000
+  # 95th percentile response time must stay below 5 seconds
+  - p95(response_time_ms) > 5000
+  # Health Check must respond in under 500ms on average
+  - "Health Check: avg(response_time_ms) > 500"
+  # List APIs must respond in under 3 seconds on average
+  - "List APIs: avg(response_time_ms) > 3000"
+
+# ---------------------------------------------------------------------------
+# Auto-stop – stop the test early if error rate is extreme
+# ---------------------------------------------------------------------------
+autoStop:
+  errorPercentage: 80
+  timeWindow: 60

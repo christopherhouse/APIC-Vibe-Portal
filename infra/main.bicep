@@ -106,6 +106,7 @@ var resourceNames = {
   foundryAccount: '${namePrefix}-foundry-${environmentName}-${uniqueSuffix}'
   foundryProject: '${namePrefix}-project-${environmentName}'
   redisCache: '${namePrefix}-redis-${environmentName}-${uniqueSuffix}'
+  loadTest: '${namePrefix}-lt-${environmentName}-${uniqueSuffix}'
 }
 
 // ============================================================================
@@ -320,6 +321,20 @@ module redisCache 'modules/redis-cache.bicep' = {
 }
 
 // ============================================================================
+// MODULE 12: Azure Load Testing (Azure App Testing)
+// ============================================================================
+
+module loadTesting 'modules/load-testing.bicep' = {
+  name: 'load-testing-${deployment().name}'
+  params: {
+    location: location
+    loadTestName: resourceNames.loadTest
+    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
+    tags: tags
+  }
+}
+
+// ============================================================================
 // OUTPUTS
 // ============================================================================
 
@@ -424,3 +439,9 @@ output frontendAppName string = resourceNames.frontendApp
 
 @description('BFF Container App Name (deploy separately)')
 output bffAppName string = resourceNames.bffApp
+
+@description('Azure Load Testing resource name')
+output loadTestName string = loadTesting.outputs.name
+
+@description('Azure Load Testing data-plane endpoint')
+output loadTestDataPlaneUri string = loadTesting.outputs.dataPlaneUri
