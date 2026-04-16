@@ -259,28 +259,36 @@ Users must be assigned to at least one App Role to access the portal (when "Assi
 
 ### Frontend environment variables
 
+**IMPORTANT:** As of the runtime configuration update, frontend MSAL environment variables are **no longer** prefixed with `NEXT_PUBLIC_`. They are now server-side variables that are read at runtime by the `/api/config/msal` endpoint.
+
 Create `src/frontend/.env.local`:
 
 ```env
 # The SPA app registration's Application (client) ID
-NEXT_PUBLIC_MSAL_CLIENT_ID=<spa-client-id>
+MSAL_CLIENT_ID=<spa-client-id>
 
 # Entra ID authority URL for your tenant
-NEXT_PUBLIC_MSAL_AUTHORITY=https://login.microsoftonline.com/<tenant-id>
+MSAL_AUTHORITY=https://login.microsoftonline.com/<tenant-id>
 
 # Where Entra ID redirects after login
-NEXT_PUBLIC_MSAL_REDIRECT_URI=http://localhost:3000
+MSAL_REDIRECT_URI=http://localhost:3000
 
 # The BFF API's exposed scope (from Step 1b)
-NEXT_PUBLIC_BFF_API_SCOPE=api://<bff-client-id>/access_as_user
+BFF_API_SCOPE=api://<bff-client-id>/access_as_user
 ```
 
-| Variable                        | Source                                                |
-| ------------------------------- | ----------------------------------------------------- |
-| `NEXT_PUBLIC_MSAL_CLIENT_ID`    | SPA app registration → Application (client) ID        |
-| `NEXT_PUBLIC_MSAL_AUTHORITY`    | `https://login.microsoftonline.com/<tenant-id>`       |
-| `NEXT_PUBLIC_MSAL_REDIRECT_URI` | Must match a redirect URI in the SPA app registration |
-| `NEXT_PUBLIC_BFF_API_SCOPE`     | BFF API app registration → Expose an API → scope URI  |
+| Variable              | Source                                                |
+| --------------------- | ----------------------------------------------------- |
+| `MSAL_CLIENT_ID`      | SPA app registration → Application (client) ID        |
+| `MSAL_AUTHORITY`      | `https://login.microsoftonline.com/<tenant-id>`       |
+| `MSAL_REDIRECT_URI`   | Must match a redirect URI in the SPA app registration |
+| `BFF_API_SCOPE`       | BFF API app registration → Expose an API → scope URI  |
+
+**Why the change?**
+- Previously, `NEXT_PUBLIC_*` variables were baked into the Docker image at build time
+- This prevented promoting the same image across dev/staging/prod environments
+- Now, these values are injected as Container App environment variables at deployment time
+- The same Docker image can be deployed to multiple environments with different configs
 
 ### BFF environment variables
 
