@@ -15,13 +15,14 @@ import {
   type AuthenticationResult,
 } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
-import { fetchMsalConfig, buildMsalConfig } from './msal-config';
+import { fetchMsalConfig, buildMsalConfig, type MsalConfig } from './msal-config';
+import { MsalConfigProvider } from './msal-config-context';
 
 let msalInstance: PublicClientApplication | null = null;
 
 /**
  * AuthProvider fetches runtime MSAL config, initialises MSAL, and wraps
- * the React tree in `MsalProvider`.
+ * the React tree in `MsalProvider` and `MsalConfigProvider`.
  *
  * It waits for config fetch and `msalInstance.initialize()` to complete
  * before rendering children.
@@ -29,16 +30,18 @@ let msalInstance: PublicClientApplication | null = null;
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [config, setConfig] = useState<MsalConfig | null>(null);
 
   useEffect(() => {
     const init = async () => {
       try {
         // Fetch runtime MSAL configuration from API
-        const config = await fetchMsalConfig();
+        const runtimeConfig = await fetchMsalConfig();
+        setConfig(runtimeConfig);
 
         // Create MSAL instance with runtime config (singleton pattern)
         if (!msalInstance) {
-          const msalConfig = buildMsalConfig(config);
+          const msalConfig = buildMsalConfig(runtimeConfig);
           msalInstance = new PublicClientApplication(msalConfig);
         }
 
@@ -81,9 +84,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }
 
   // Show loading state while initializing
-  if (!isInitialized) {
+  if (!isInitialized || !config) {
     return null;
   }
 
-  return <MsalProvider instance={msalInstance!}>{children}</MsalProvider>;
+  return (
+    <MsalConfigProvider config={config}>
+      <MsalProvider instance={msalInstance!}>{children}</MsalProvider>
+    </MsalConfigProvider>
+  );
 }

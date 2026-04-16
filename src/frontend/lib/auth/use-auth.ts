@@ -9,7 +9,8 @@
 import { useCallback } from 'react';
 import { useMsal, useIsAuthenticated } from '@azure/msal-react';
 import { InteractionRequiredAuthError } from '@azure/msal-browser';
-import { loginRequest, bffApiScope } from './msal-config';
+import { useMsalConfig } from './msal-config-context';
+import { buildLoginRequest } from './msal-config';
 
 export interface AuthUser {
   name: string;
@@ -39,6 +40,7 @@ export interface UseAuthReturn {
 export function useAuth(): UseAuthReturn {
   const { instance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
+  const config = useMsalConfig();
 
   const user: AuthUser | null = (() => {
     const account = instance.getActiveAccount();
@@ -52,8 +54,9 @@ export function useAuth(): UseAuthReturn {
   })();
 
   const login = useCallback(async () => {
+    const loginRequest = buildLoginRequest(config);
     await instance.loginRedirect(loginRequest);
-  }, [instance]);
+  }, [instance, config]);
 
   const logout = useCallback(async () => {
     await instance.logoutRedirect({
@@ -66,7 +69,7 @@ export function useAuth(): UseAuthReturn {
     if (!account) return null;
 
     const tokenRequest = {
-      scopes: bffApiScope ? [bffApiScope] : ['openid', 'profile', 'email'],
+      scopes: config.bffApiScope ? [config.bffApiScope] : ['openid', 'profile', 'email'],
       account,
     };
 
@@ -82,7 +85,7 @@ export function useAuth(): UseAuthReturn {
       console.error('Token acquisition failed:', error);
       return null;
     }
-  }, [instance]);
+  }, [instance, config]);
 
   return {
     isAuthenticated,
@@ -93,3 +96,4 @@ export function useAuth(): UseAuthReturn {
     isLoading: inProgress !== 'none',
   };
 }
+
