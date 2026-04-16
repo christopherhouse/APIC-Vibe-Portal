@@ -23,6 +23,9 @@ engineInstances: 1
 
 # ---------------------------------------------------------------------------
 # Failure criteria – the test run is marked as FAILED if any of these are met
+# NOTE: Request-level criteria names (e.g. "Health Check", "List APIs") must
+#       exactly match the sampler testname attributes in bff-load-test.jmx.
+#       If you rename a sampler there, update the criteria here too.
 # ---------------------------------------------------------------------------
 failureCriteria:
   # Overall error rate must stay below 5%

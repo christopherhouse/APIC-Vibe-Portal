@@ -150,17 +150,18 @@
           <hashTree/>
 
           <!-- Store token as a JMeter property so all threads can read it -->
-          <BeanShellPostProcessor guiclass="TestBeanGUI" testclass="BeanShellPostProcessor" testname="Store Token as Property" enabled="true">
+          <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="Store Token as Property" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
             <stringProp name="script">
-              String token = vars.get("access_token");
-              if (token != null &amp;&amp; !token.equals("TOKEN_ERROR")) {
-                  props.put("BEARER_TOKEN", token);
-                  log.info("OAuth2 token acquired successfully");
+              String token = vars.get("access_token")
+              if (token != null &amp;&amp; token != "TOKEN_ERROR") {
+                  props.put("BEARER_TOKEN", token)
+                  log.info("OAuth2 token acquired successfully")
               } else {
-                  log.error("Failed to acquire OAuth2 token");
+                  log.error("Failed to acquire OAuth2 token")
               }
             </stringProp>
-          </BeanShellPostProcessor>
+          </JSR223PostProcessor>
           <hashTree/>
 
           <!-- Assert that token acquisition succeeded -->
