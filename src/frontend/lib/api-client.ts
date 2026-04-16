@@ -8,8 +8,6 @@
 import { getMsalInstance } from '@/lib/auth/auth-provider';
 import { bffApiScope } from '@/lib/auth/msal-config';
 
-const BFF_BASE_URL = process.env.NEXT_PUBLIC_BFF_URL ?? 'http://localhost:8000';
-
 /** Custom error type for API errors. */
 export class ApiError extends Error {
   constructor(
@@ -52,16 +50,20 @@ async function getAuthToken(): Promise<string | undefined> {
 }
 
 /**
- * Build a full URL from a path and optional query parameters.
+ * Build a relative URL from a path and optional query parameters.
+ *
+ * All BFF requests now go through the catch-all proxy route (`app/api/[...path]/route.ts`)
+ * on the same origin, so we only need a relative path — no absolute base URL.
  */
 function buildUrl(path: string, params?: Record<string, string>): string {
-  const url = new URL(path, BFF_BASE_URL);
+  const searchParams = new URLSearchParams();
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
-      url.searchParams.set(key, value);
+      searchParams.set(key, value);
     });
   }
-  return url.toString();
+  const query = searchParams.toString();
+  return query ? `${path}?${query}` : path;
 }
 
 /**
