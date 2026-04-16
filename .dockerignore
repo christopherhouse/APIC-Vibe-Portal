@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+docs
+README.md
+SECURITY.md
+LICENSE
+
+# Infrastructure
+infra
+
+# CI/CD
+.github
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Node
+**/node_modules
+
+# Next.js build output (excluded from Docker build context; rebuilt during container build)
+src/frontend/.next
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+.venv
+src/bff/.venv
+
+# Environment files
+.env
+.env.local
+.env.*.local
+src/bff/.env
+
+# Scripts (deployment scripts, not needed in container)
+scripts
+
+# Editor config
+.editorconfig

@@ -13,11 +13,14 @@ RUN pip install --no-cache-dir uv
 # Copy dependency files
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies (creates .venv)
-RUN uv sync --frozen --no-dev
+# Install dependencies only (creates .venv, skip project install since source isn't copied yet)
+RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy source code
 COPY . .
+
+# Install the project itself now that source is available
+RUN uv sync --frozen --no-dev
 
 # Compile Python files
 RUN python -m compileall -b .
