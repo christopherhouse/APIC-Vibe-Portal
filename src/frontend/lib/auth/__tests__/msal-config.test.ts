@@ -50,6 +50,7 @@ describe('msal-config validation', () => {
     await import('../msal-config');
 
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('NEXT_PUBLIC_MSAL_CLIENT_ID'));
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('NEXT_PUBLIC_MSAL_AUTHORITY'));
     errorSpy.mockRestore();
   });
 
