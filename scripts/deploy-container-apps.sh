@@ -160,6 +160,7 @@ echo "Frontend Image: ${ACR_SERVER}/frontend:${FRONTEND_IMAGE_TAG}"
 echo "BFF Image: ${ACR_SERVER}/bff:${BFF_IMAGE_TAG}"
 echo "Redis Host: $REDIS_HOST"
 echo "BFF Env Vars: ${BFF_CORE_ENV_VARS[*]}"
+echo "Frontend Env Vars (pre-deploy): ${FRONTEND_ENV_VARS:-<none>}"
 echo "============================================================================"
 
 # Deploy BFF Container App first (its URL is needed by the frontend)
@@ -208,11 +209,18 @@ echo "BFF URL: https://${BFF_URL}"
 echo ""
 echo "Deploying Frontend Container App..."
 
-# Build env vars string for frontend (BFF_URL + runtime MSAL config)
-FRONTEND_ENV_VARS_FULL="BFF_URL=https://${BFF_URL}"
-if [ -n "$FRONTEND_ENV_VARS" ]; then
-  FRONTEND_ENV_VARS_FULL="$FRONTEND_ENV_VARS_FULL $FRONTEND_ENV_VARS"
+# Build the array of frontend env vars (always includes BFF_URL)
+FRONTEND_CORE_ENV_VARS=(
+  "BFF_URL=https://${BFF_URL}"
+)
+
+# Append any extra frontend env vars passed via --frontend-env-vars
+if [[ -n "$FRONTEND_ENV_VARS" ]]; then
+  read -ra EXTRA_FRONTEND_ENV_VARS <<< "$FRONTEND_ENV_VARS"
+  FRONTEND_CORE_ENV_VARS+=("${EXTRA_FRONTEND_ENV_VARS[@]}")
 fi
+
+echo "Frontend Env Vars (${#FRONTEND_CORE_ENV_VARS[@]} vars): ${FRONTEND_CORE_ENV_VARS[*]}"
 
 if az containerapp show --name "$FRONTEND_APP_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
   echo "Updating existing Frontend Container App..."
@@ -224,7 +232,7 @@ if az containerapp show --name "$FRONTEND_APP_NAME" --resource-group "$RESOURCE_
     --memory 2Gi \
     --min-replicas 1 \
     --max-replicas 10 \
-    --set-env-vars "$FRONTEND_ENV_VARS_FULL" \
+    --set-env-vars "${FRONTEND_CORE_ENV_VARS[@]}" \
     --revision-suffix "$(date +%s)"
 else
   echo "Creating new Frontend Container App..."
@@ -242,7 +250,7 @@ else
     --registry-server "$ACR_SERVER" \
     --user-assigned "$FRONTEND_IDENTITY_RESOURCE_ID" \
     --registry-identity "$FRONTEND_IDENTITY_RESOURCE_ID" \
-    --env-vars "$FRONTEND_ENV_VARS_FULL"
+    --env-vars "${FRONTEND_CORE_ENV_VARS[@]}"
 fi
 
 # Get Frontend URL
