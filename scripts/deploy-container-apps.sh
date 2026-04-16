@@ -109,6 +109,24 @@ for arg in "${required_args[@]}"; do
   fi
 done
 
+# Validate identity arguments are real ARM resource IDs, not the literal string "null"
+for id_arg in FRONTEND_IDENTITY_RESOURCE_ID BFF_IDENTITY_RESOURCE_ID; do
+  if [[ "${!id_arg}" == "null" ]]; then
+    echo "Error: ${id_arg} is 'null'. This usually means the infrastructure deployment"
+    echo "       outputs are stale. Re-run the deploy-infra workflow first, then retry."
+    exit 1
+  fi
+  if [[ ! "${!id_arg}" =~ ^/subscriptions/ ]]; then
+    echo "Error: ${id_arg} does not look like a valid ARM resource ID: '${!id_arg}'"
+    echo "       Expected format: /subscriptions/{sub}/resourceGroups/{rg}/providers/..."
+    exit 1
+  fi
+done
+if [[ "$BFF_IDENTITY_CLIENT_ID" == "null" ]]; then
+  echo "Error: BFF_IDENTITY_CLIENT_ID is 'null'. Re-run the deploy-infra workflow first."
+  exit 1
+fi
+
 # Build the array of BFF env vars (always includes core infra vars)
 BFF_CORE_ENV_VARS=(
   "AZURE_CLIENT_ID=${BFF_IDENTITY_CLIENT_ID}"
