@@ -1,6 +1,6 @@
 # 013 - Phase 1 MVP: Azure AI Search Index Setup & Indexing Pipeline
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -99,14 +99,14 @@ Add to the AI Search Bicep module:
 
 ## Testing & Acceptance Criteria
 
-- [ ] Search index is created with correct schema
-- [ ] Semantic search configuration is valid
-- [ ] Vector search profile is configured with correct dimensions
-- [ ] Full reindex processes all APIs from API Center into the search index
-- [ ] Incremental index updates a single API document
-- [ ] Embeddings are generated using Azure OpenAI
-- [ ] Index statistics report correct document count
-- [ ] Unit tests cover indexing service with mocked dependencies
+- [x] Search index is created with correct schema
+- [x] Semantic search configuration is valid
+- [x] Vector search profile is configured with correct dimensions
+- [x] Full reindex processes all APIs from API Center into the search index
+- [x] Incremental index updates a single API document
+- [x] Embeddings are generated using Azure OpenAI
+- [x] Index statistics report correct document count
+- [x] Unit tests cover indexing service with mocked dependencies
 - [ ] Reindex script runs successfully end-to-end (integration test)
 
 ## Implementation Notes
@@ -122,18 +122,31 @@ Add to the AI Search Bicep module:
 | Date | Status         | Author | Notes        |
 | ---- | -------------- | ------ | ------------ |
 | —    | 🔲 Not Started | —      | Task created |
+| 2026-04-16 | ✅ Complete | @copilot | Implemented standalone container job indexer |
 
 ### Technical Decisions
 
-_No technical decisions recorded yet._
+- **Standalone container job** (`src/indexer/`) rather than embedding the indexer in FastAPI. Per the issue comment, the indexer is an Azure Container Apps Job invoked on a cron schedule, with each run performing a full reindex and exiting with code 0. The FastAPI BFF is not involved.
+- **Cron schedule via env var**: `REINDEX_CRON_SCHEDULE` (default `*/5 * * * *`) is read by infrastructure tooling when deploying the Container Apps Job; the container itself simply runs once and exits.
+- **`openai` SDK** (v1+) configured with `AzureOpenAI` client for embedding generation. `azure_ad_token_provider` is used so the container job authenticates with `DefaultAzureCredential` (managed identity in production, developer credential chain locally).
+- **Chunking strategy**: spec content is split into `EMBEDDING_CHUNK_SIZE`-character chunks (default 8 000 chars ≈ 2 000 tokens); chunk embeddings are averaged into a single vector. Title + description are prepended to each chunk.
+- **Python 3.12** used for the indexer (instead of 3.14 used by BFF) because the `azure-search-documents` SDK uses `\W` regex patterns that trigger `SyntaxWarning` on 3.14 (third-party issue, not ours).
+- **`hatchling` build backend** with explicit `packages = ["indexer"]` to match the `indexer/` source directory.
 
 ### Deviations from Plan
 
-_No deviations from the original plan._
+- **Indexer is a standalone container job, not a BFF service**: The original plan placed the indexing service inside the FastAPI BFF (`src/bff/apic_vibe_portal_bff/services/`). Per the issue update, the indexer was extracted into `src/indexer/` as a dedicated Azure Container Apps Job. The FastAPI BFF is untouched.
+- **No Bicep updates**: Index creation is handled at runtime by `IndexerService.ensure_index()` on each container job invocation (idempotent `create_or_update_index`). This avoids needing ARM/Bicep for index schema management.
 
 ### Validation Results
 
-_No validation results yet._
+- **40 unit tests** pass in `src/indexer/tests/` covering:
+  - `test_index_schema.py` — schema fields, semantic config, vector config, filterable/facetable/sortable attributes
+  - `test_embedding_service.py` — embedding generation, chunking, vector averaging
+  - `test_indexer_service.py` — `full_reindex`, `incremental_index`, `delete_from_index`, `get_index_stats`, contact serialisation
+- All Azure SDK calls are mocked using `unittest.mock.MagicMock`.
+- **251 existing BFF tests** continue to pass unchanged.
+- `ruff check` and `ruff format --check` pass with zero issues.
 
 ## Coding Agent Prompt
 
