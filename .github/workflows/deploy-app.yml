@@ -83,11 +83,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            NEXT_PUBLIC_MSAL_CLIENT_ID=${{ vars.NEXT_PUBLIC_MSAL_CLIENT_ID }}
-            NEXT_PUBLIC_MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }}
-            NEXT_PUBLIC_MSAL_REDIRECT_URI=${{ vars.NEXT_PUBLIC_MSAL_REDIRECT_URI }}
-            NEXT_PUBLIC_BFF_API_SCOPE=${{ vars.NEXT_PUBLIC_BFF_API_SCOPE }}
+          # No build-args needed — config is served from /api/config at runtime
 
   build-and-push-bff:
     name: Build and Push BFF Image
@@ -240,6 +236,7 @@ jobs:
             --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
             --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.BFF_ENTRA_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
+            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_TENANT_ID=${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
 
@@ -334,6 +331,7 @@ jobs:
             --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
             --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.BFF_ENTRA_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
+            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_TENANT_ID=${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
 
@@ -428,5 +426,6 @@ jobs:
             --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
             --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.BFF_ENTRA_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
+            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_TENANT_ID=${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}

@@ -9,7 +9,8 @@
 import { useCallback } from 'react';
 import { useMsal, useIsAuthenticated } from '@azure/msal-react';
 import { InteractionRequiredAuthError } from '@azure/msal-browser';
-import { loginRequest, bffApiScope } from './msal-config';
+import { getRuntimeConfig } from '@/lib/config/runtime-config';
+import { buildLoginRequest } from './msal-config';
 
 export interface AuthUser {
   name: string;
@@ -52,6 +53,8 @@ export function useAuth(): UseAuthReturn {
   })();
 
   const login = useCallback(async () => {
+    const config = await getRuntimeConfig();
+    const loginRequest = buildLoginRequest(config);
     await instance.loginRedirect(loginRequest);
   }, [instance]);
 
@@ -65,8 +68,11 @@ export function useAuth(): UseAuthReturn {
     const account = instance.getActiveAccount();
     if (!account) return null;
 
+    const config = await getRuntimeConfig();
+    const scopes = config.bffApiScope ? [config.bffApiScope] : ['openid', 'profile', 'email'];
+
     const tokenRequest = {
-      scopes: bffApiScope ? [bffApiScope] : ['openid', 'profile', 'email'],
+      scopes,
       account,
     };
 

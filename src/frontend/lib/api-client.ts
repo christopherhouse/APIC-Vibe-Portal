@@ -6,7 +6,7 @@
  */
 
 import { getMsalInstance } from '@/lib/auth/auth-provider';
-import { bffApiScope } from '@/lib/auth/msal-config';
+import { getRuntimeConfig } from '@/lib/config/runtime-config';
 
 /** Custom error type for API errors. */
 export class ApiError extends Error {
@@ -39,8 +39,11 @@ async function getAuthToken(): Promise<string | undefined> {
     const account = msalInstance.getActiveAccount();
     if (!account) return undefined;
 
+    const config = await getRuntimeConfig();
+    const scopes = config.bffApiScope ? [config.bffApiScope] : ['openid', 'profile', 'email'];
+
     const result = await msalInstance.acquireTokenSilent({
-      scopes: bffApiScope ? [bffApiScope] : ['openid', 'profile', 'email'],
+      scopes,
       account,
     });
     return result.accessToken;

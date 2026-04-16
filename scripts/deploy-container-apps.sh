@@ -18,21 +18,23 @@
 #     --frontend-image-tag <frontend-tag> \
 #     --bff-image-tag <bff-tag> \
 #     --redis-host <redis-hostname> \
-#     --bff-env-vars "KEY1=val1 KEY2=val2 ..."
+#     --bff-env-vars "KEY1=val1 KEY2=val2 ..." \
+#     --frontend-env-vars "KEY1=val1 KEY2=val2 ..."
 #
 # Each Container App uses its own User-Assigned Managed Identity (UAMI) for
 # ACR image pull and Azure service access.  The --*-identity-resource-id flags
 # accept full ARM resource IDs required by `az containerapp create`.
 #
-# The --bff-env-vars flag accepts a space-separated list of KEY=VALUE pairs
-# that are passed as environment variables to the BFF Container App. This
-# keeps the script generic — add new env vars in the workflow without
-# modifying this script.
+# The --bff-env-vars and --frontend-env-vars flags accept space-separated
+# lists of KEY=VALUE pairs that are passed as environment variables to their
+# respective Container Apps. This keeps the script generic — add new env vars
+# in the workflow without modifying this script.
 # ============================================================================
 
 set -euo pipefail
 
 BFF_ENV_VARS=""
+FRONTEND_ENV_VARS=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -83,6 +85,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --bff-env-vars)
       BFF_ENV_VARS="$2"
+      shift 2
+      ;;
+    --frontend-env-vars)
+      FRONTEND_ENV_VARS="$2"
       shift 2
       ;;
     *)
@@ -140,6 +146,15 @@ if [[ -n "$BFF_ENV_VARS" ]]; then
   BFF_CORE_ENV_VARS+=("${EXTRA_ENV_VARS[@]}")
 fi
 
+# Build the array of Frontend env vars (BFF_URL + any extra vars)
+FRONTEND_CORE_ENV_VARS=()
+
+# Append any extra frontend env vars passed via --frontend-env-vars
+if [[ -n "$FRONTEND_ENV_VARS" ]]; then
+  read -ra EXTRA_FRONTEND_ENV_VARS <<< "$FRONTEND_ENV_VARS"
+  FRONTEND_CORE_ENV_VARS+=("${EXTRA_FRONTEND_ENV_VARS[@]}")
+fi
+
 echo "============================================================================"
 echo "Deploying Container Apps"
 echo "============================================================================"
@@ -154,6 +169,7 @@ echo "Frontend Image: ${ACR_SERVER}/frontend:${FRONTEND_IMAGE_TAG}"
 echo "BFF Image: ${ACR_SERVER}/bff:${BFF_IMAGE_TAG}"
 echo "Redis Host: $REDIS_HOST"
 echo "BFF Env Vars: ${BFF_CORE_ENV_VARS[*]}"
+echo "Frontend Env Vars: ${FRONTEND_CORE_ENV_VARS[*]}"
 echo "============================================================================"
 
 # Deploy BFF Container App first (its URL is needed by the frontend)
@@ -199,8 +215,14 @@ echo "BFF URL: https://${BFF_URL}"
 
 # Deploy Frontend Container App with BFF_URL so the server-side proxy
 # can forward /api/* requests to the BFF at runtime.
+# Also inject runtime config env vars (MSAL_*, BFF_API_SCOPE) so the
+# /api/config endpoint can serve them to the browser.
 echo ""
 echo "Deploying Frontend Container App..."
+
+# Prepend BFF_URL to the frontend env vars array
+FRONTEND_CORE_ENV_VARS=("BFF_URL=https://${BFF_URL}" "${FRONTEND_CORE_ENV_VARS[@]}")
+
 if az containerapp show --name "$FRONTEND_APP_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
   echo "Updating existing Frontend Container App..."
   az containerapp update \
@@ -211,7 +233,7 @@ if az containerapp show --name "$FRONTEND_APP_NAME" --resource-group "$RESOURCE_
     --memory 2Gi \
     --min-replicas 1 \
     --max-replicas 10 \
-    --set-env-vars "BFF_URL=https://${BFF_URL}" \
+    --set-env-vars "${FRONTEND_CORE_ENV_VARS[@]}" \
     --revision-suffix "$(date +%s)"
 else
   echo "Creating new Frontend Container App..."
@@ -229,7 +251,7 @@ else
     --registry-server "$ACR_SERVER" \
     --user-assigned "$FRONTEND_IDENTITY_RESOURCE_ID" \
     --registry-identity "$FRONTEND_IDENTITY_RESOURCE_ID" \
-    --env-vars "BFF_URL=https://${BFF_URL}"
+    --env-vars "${FRONTEND_CORE_ENV_VARS[@]}"
 fi
 
 # Get Frontend URL

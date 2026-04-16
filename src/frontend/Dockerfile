@@ -25,14 +25,8 @@ COPY .prettierrc.json ./
 # Build the shared package first (frontend depends on it)
 RUN npm run build --workspace=@apic-vibe-portal/shared
 
-# Next.js inlines NEXT_PUBLIC_* environment variables at build time.
-# These must be passed as --build-arg values during `docker build`.
-ARG NEXT_PUBLIC_MSAL_CLIENT_ID
-ARG NEXT_PUBLIC_MSAL_AUTHORITY
-ARG NEXT_PUBLIC_MSAL_REDIRECT_URI
-ARG NEXT_PUBLIC_BFF_API_SCOPE
-
-# Build the application (NEXT_PUBLIC_* ARGs are visible as env vars in this step)
+# Build the application
+# No NEXT_PUBLIC_* env vars needed — config is fetched from /api/config at runtime
 RUN npm run build --workspace=@apic-vibe-portal/frontend
 
 # Production stage
