@@ -92,7 +92,7 @@ Alternatively, edit the app manifest JSON directly (App registrations → Manife
 ```json
 "appRoles": [
   {
-    "allowedMemberTypes": ["User"],
+    "allowedMemberTypes": ["User", "Group"],
     "displayName": "Admin",
     "description": "Full portal administration",
     "isEnabled": true,
@@ -100,7 +100,7 @@ Alternatively, edit the app manifest JSON directly (App registrations → Manife
     "value": "Portal.Admin"
   },
   {
-    "allowedMemberTypes": ["User"],
+    "allowedMemberTypes": ["User", "Group"],
     "displayName": "Maintainer",
     "description": "API catalog management",
     "isEnabled": true,
@@ -108,7 +108,7 @@ Alternatively, edit the app manifest JSON directly (App registrations → Manife
     "value": "Portal.Maintainer"
   },
   {
-    "allowedMemberTypes": ["User"],
+    "allowedMemberTypes": ["User", "Group"],
     "displayName": "User",
     "description": "Read-only portal access",
     "isEnabled": true,

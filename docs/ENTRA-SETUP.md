@@ -143,7 +143,7 @@ App Roles control what users can do in the portal. These are returned in the `ro
 ```json
 "appRoles": [
   {
-    "allowedMemberTypes": ["User"],
+    "allowedMemberTypes": ["User", "Group"],
     "displayName": "Admin",
     "description": "Full portal administration",
     "isEnabled": true,
@@ -151,7 +151,7 @@ App Roles control what users can do in the portal. These are returned in the `ro
     "value": "Portal.Admin"
   },
   {
-    "allowedMemberTypes": ["User"],
+    "allowedMemberTypes": ["User", "Group"],
     "displayName": "Maintainer",
     "description": "API catalog management",
     "isEnabled": true,
@@ -159,7 +159,7 @@ App Roles control what users can do in the portal. These are returned in the `ro
     "value": "Portal.Maintainer"
   },
   {
-    "allowedMemberTypes": ["User"],
+    "allowedMemberTypes": ["User", "Group"],
     "displayName": "User",
     "description": "Read-only portal access",
     "isEnabled": true,
@@ -480,9 +480,9 @@ MAINTAINER_ROLE_ID=$(uuidgen)
 USER_ROLE_ID=$(uuidgen)
 
 az ad app update --id $BFF_CLIENT_ID --app-roles "[
-  {\"allowedMemberTypes\":[\"User\"],\"displayName\":\"Admin\",\"description\":\"Full portal administration\",\"isEnabled\":true,\"id\":\"$ADMIN_ROLE_ID\",\"value\":\"Portal.Admin\"},
-  {\"allowedMemberTypes\":[\"User\"],\"displayName\":\"Maintainer\",\"description\":\"API catalog management\",\"isEnabled\":true,\"id\":\"$MAINTAINER_ROLE_ID\",\"value\":\"Portal.Maintainer\"},
-  {\"allowedMemberTypes\":[\"User\"],\"displayName\":\"User\",\"description\":\"Read-only portal access\",\"isEnabled\":true,\"id\":\"$USER_ROLE_ID\",\"value\":\"Portal.User\"}
+  {\"allowedMemberTypes\":[\"User\",\"Group\"],\"displayName\":\"Admin\",\"description\":\"Full portal administration\",\"isEnabled\":true,\"id\":\"$ADMIN_ROLE_ID\",\"value\":\"Portal.Admin\"},
+  {\"allowedMemberTypes\":[\"User\",\"Group\"],\"displayName\":\"Maintainer\",\"description\":\"API catalog management\",\"isEnabled\":true,\"id\":\"$MAINTAINER_ROLE_ID\",\"value\":\"Portal.Maintainer\"},
+  {\"allowedMemberTypes\":[\"User\",\"Group\"],\"displayName\":\"User\",\"description\":\"Read-only portal access\",\"isEnabled\":true,\"id\":\"$USER_ROLE_ID\",\"value\":\"Portal.User\"}
 ]"
 ```
 
