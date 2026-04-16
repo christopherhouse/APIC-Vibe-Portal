@@ -65,7 +65,9 @@ async function mockDetailApis(page: Page, apis: MockApiDefinition[]) {
     await route.fulfill({
       status: api ? 200 : 404,
       contentType: 'application/json',
-      body: JSON.stringify(api ? { data: api.versions } : { error: { code: 'NOT_FOUND', message: 'API not found' } }),
+      body: JSON.stringify(
+        api ? { data: api.versions } : { error: { code: 'NOT_FOUND', message: 'API not found' } }
+      ),
     });
   });
 
@@ -113,7 +115,9 @@ async function mockDetailApis(page: Page, apis: MockApiDefinition[]) {
     await route.fulfill({
       status: api ? 200 : 404,
       contentType: 'application/json',
-      body: JSON.stringify(api ? { data: api.deployments } : { error: { code: 'NOT_FOUND', message: 'API not found' } }),
+      body: JSON.stringify(
+        api ? { data: api.deployments } : { error: { code: 'NOT_FOUND', message: 'API not found' } }
+      ),
     });
   });
 }

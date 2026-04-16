@@ -90,11 +90,7 @@ export default function ApiDetailPage() {
               specContent={specContent}
               isLoading={isSpecLoading}
               error={specError}
-              onRetry={
-                selectedVersionId
-                  ? () => selectVersion(selectedVersionId)
-                  : undefined
-              }
+              onRetry={selectedVersionId ? () => selectVersion(selectedVersionId) : undefined}
             />
           </Box>
         )}

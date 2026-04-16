@@ -104,10 +104,8 @@ export default function ApiVersionList({
           <TableBody>
             {versions.map((version) => {
               const lifecycleLabel =
-                version.lifecycleStage.charAt(0).toUpperCase() +
-                version.lifecycleStage.slice(1);
-              const lifecycleColor =
-                lifecycleColorMap[version.lifecycleStage] ?? 'default';
+                version.lifecycleStage.charAt(0).toUpperCase() + version.lifecycleStage.slice(1);
+              const lifecycleColor = lifecycleColorMap[version.lifecycleStage] ?? 'default';
               const isSelected = version.id === selectedVersionId;
 
               return (
@@ -127,19 +125,12 @@ export default function ApiVersionList({
                   }}
                 >
                   <TableCell>
-                    <Typography
-                      variant="body2"
-                      sx={{ fontWeight: isSelected ? 700 : 400 }}
-                    >
+                    <Typography variant="body2" sx={{ fontWeight: isSelected ? 700 : 400 }}>
                       {version.title}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      label={lifecycleLabel}
-                      size="small"
-                      color={lifecycleColor}
-                    />
+                    <Chip label={lifecycleLabel} size="small" color={lifecycleColor} />
                   </TableCell>
                   <TableCell>{formatDate(version.createdAt)}</TableCell>
                   <TableCell>{formatDate(version.updatedAt)}</TableCell>

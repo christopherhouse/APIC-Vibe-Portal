@@ -56,8 +56,7 @@ export default function ApiHeader({ api, isLoading }: ApiHeaderProps) {
     );
   }
 
-  const lifecycleLabel =
-    api.lifecycleStage.charAt(0).toUpperCase() + api.lifecycleStage.slice(1);
+  const lifecycleLabel = api.lifecycleStage.charAt(0).toUpperCase() + api.lifecycleStage.slice(1);
   const lifecycleColor = lifecycleColorMap[api.lifecycleStage] ?? 'default';
   const kindLabel = kindLabelMap[api.kind] ?? api.kind.toUpperCase();
 
@@ -65,12 +64,7 @@ export default function ApiHeader({ api, isLoading }: ApiHeaderProps) {
     <Box data-testid="api-header">
       {/* Breadcrumb */}
       <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 1 }}>
-        <Link
-          component={NextLink}
-          href="/catalog"
-          underline="hover"
-          color="inherit"
-        >
+        <Link component={NextLink} href="/catalog" underline="hover" color="inherit">
           Catalog
         </Link>
         <Typography color="text.primary">{api.title}</Typography>

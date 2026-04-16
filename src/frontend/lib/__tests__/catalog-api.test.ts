@@ -24,7 +24,16 @@ describe('fetchCatalogApis', () => {
         description: 'A test API',
         kind: 'rest',
         lifecycleStage: 'production',
-        versions: [{ id: 'v1', name: 'v1', title: 'v1', lifecycle_stage: 'production', created_at: '2026-01-01', updated_at: '2026-01-01' }],
+        versions: [
+          {
+            id: 'v1',
+            name: 'v1',
+            title: 'v1',
+            lifecycle_stage: 'production',
+            created_at: '2026-01-01',
+            updated_at: '2026-01-01',
+          },
+        ],
         deployments: [],
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',
@@ -102,6 +111,8 @@ describe('fetchCatalogApis', () => {
   it('propagates errors from apiClient', async () => {
     mockGet.mockRejectedValue(new Error('API request failed: 500 Internal Server Error'));
 
-    await expect(fetchCatalogApis()).rejects.toThrow('API request failed: 500 Internal Server Error');
+    await expect(fetchCatalogApis()).rejects.toThrow(
+      'API request failed: 500 Internal Server Error'
+    );
   });
 });

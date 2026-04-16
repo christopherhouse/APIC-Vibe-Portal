@@ -4,13 +4,7 @@ import { ApiKind, ApiLifecycle } from '@apic-vibe-portal/shared';
 import ApiHeader from '../ApiHeader';
 
 jest.mock('next/link', () => {
-  return function MockNextLink({
-    children,
-    href,
-  }: {
-    children: React.ReactNode;
-    href: string;
-  }) {
+  return function MockNextLink({ children, href }: { children: React.ReactNode; href: string }) {
     return <a href={href}>{children}</a>;
   };
 });

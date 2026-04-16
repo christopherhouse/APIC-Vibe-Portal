@@ -17,8 +17,7 @@ export interface ApiMetadataProps {
 export default function ApiMetadata({ api }: ApiMetadataProps) {
   const hasContacts = api.contacts && api.contacts.length > 0;
   const hasExternalDocs = api.externalDocs && api.externalDocs.length > 0;
-  const hasCustomProperties =
-    api.customProperties && Object.keys(api.customProperties).length > 0;
+  const hasCustomProperties = api.customProperties && Object.keys(api.customProperties).length > 0;
 
   return (
     <Box data-testid="api-metadata">
@@ -71,9 +70,7 @@ export default function ApiMetadata({ api }: ApiMetadataProps) {
                     {contact.name}
                   </TableCell>
                   <TableCell>
-                    {contact.email && (
-                      <Link href={`mailto:${contact.email}`}>{contact.email}</Link>
-                    )}
+                    {contact.email && <Link href={`mailto:${contact.email}`}>{contact.email}</Link>}
                     {contact.email && contact.url && ' · '}
                     {contact.url && (
                       <Link href={contact.url} target="_blank" rel="noopener">

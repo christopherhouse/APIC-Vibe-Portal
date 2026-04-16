@@ -36,18 +36,14 @@ describe('ApiVersionList', () => {
         selectedVersionId={null}
         onVersionChange={mockOnChange}
         isLoading
-      />,
+      />
     );
     expect(screen.getByTestId('version-list-skeleton')).toBeInTheDocument();
   });
 
   it('renders empty state when no versions', () => {
     render(
-      <ApiVersionList
-        versions={[]}
-        selectedVersionId={null}
-        onVersionChange={mockOnChange}
-      />,
+      <ApiVersionList versions={[]} selectedVersionId={null} onVersionChange={mockOnChange} />
     );
     expect(screen.getByTestId('version-list-empty')).toBeInTheDocument();
     expect(screen.getByText('No versions available for this API.')).toBeInTheDocument();
@@ -59,7 +55,7 @@ describe('ApiVersionList', () => {
         versions={mockVersions}
         selectedVersionId="v1"
         onVersionChange={mockOnChange}
-      />,
+      />
     );
     expect(screen.getByTestId('version-list')).toBeInTheDocument();
     expect(screen.getByTestId('version-row-v1')).toBeInTheDocument();
@@ -72,7 +68,7 @@ describe('ApiVersionList', () => {
         versions={mockVersions}
         selectedVersionId="v1"
         onVersionChange={mockOnChange}
-      />,
+      />
     );
     expect(screen.getByText('Production')).toBeInTheDocument();
     expect(screen.getByText('Development')).toBeInTheDocument();
@@ -84,7 +80,7 @@ describe('ApiVersionList', () => {
         versions={mockVersions}
         selectedVersionId="v1"
         onVersionChange={mockOnChange}
-      />,
+      />
     );
     fireEvent.click(screen.getByTestId('version-row-v2'));
     expect(mockOnChange).toHaveBeenCalledWith('v2');
@@ -96,7 +92,7 @@ describe('ApiVersionList', () => {
         versions={mockVersions}
         selectedVersionId="v1"
         onVersionChange={mockOnChange}
-      />,
+      />
     );
     expect(screen.getByTestId('version-row-v1')).toBeInTheDocument();
     expect(screen.getByTestId('version-row-v2')).toBeInTheDocument();

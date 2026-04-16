@@ -34,9 +34,7 @@ describe('ApiMetadata', () => {
   });
 
   it('renders terms of service when present', () => {
-    render(
-      <ApiMetadata api={{ ...baseApi, termsOfService: 'https://example.com/tos' }} />,
-    );
+    render(<ApiMetadata api={{ ...baseApi, termsOfService: 'https://example.com/tos' }} />);
     expect(screen.getByText('Terms of Service')).toBeInTheDocument();
     expect(screen.getByText('https://example.com/tos')).toBeInTheDocument();
   });
@@ -50,7 +48,7 @@ describe('ApiMetadata', () => {
             { name: 'John Doe', email: 'john@example.com', url: 'https://john.example.com' },
           ],
         }}
-      />,
+      />
     );
     expect(screen.getByText('Contacts')).toBeInTheDocument();
     expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -66,7 +64,7 @@ describe('ApiMetadata', () => {
             { title: 'API Guide', url: 'https://docs.example.com', description: 'Full guide' },
           ],
         }}
-      />,
+      />
     );
     expect(screen.getByText('External Documentation')).toBeInTheDocument();
     expect(screen.getByText('API Guide')).toBeInTheDocument();
@@ -77,7 +75,7 @@ describe('ApiMetadata', () => {
     render(
       <ApiMetadata
         api={{ ...baseApi, customProperties: { team: 'Platform', region: 'US-East' } }}
-      />,
+      />
     );
     expect(screen.getByText('Custom Properties')).toBeInTheDocument();
     expect(screen.getByText('team')).toBeInTheDocument();

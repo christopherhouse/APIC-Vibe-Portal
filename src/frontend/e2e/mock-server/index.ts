@@ -60,7 +60,10 @@ export interface MockApiDefinition {
 /**
  * Generate mock API definitions for testing.
  */
-export function generateMockApis(count: number, overrides: Partial<MockApiDefinition> = {}): MockApiDefinition[] {
+export function generateMockApis(
+  count: number,
+  overrides: Partial<MockApiDefinition> = {}
+): MockApiDefinition[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `api-${i + 1}`,
     name: `api-${i + 1}`,
@@ -74,7 +77,11 @@ export function generateMockApis(count: number, overrides: Partial<MockApiDefini
       { name: 'API Team', email: 'api-team@example.com', url: 'https://team.example.com' },
     ],
     externalDocs: [
-      { title: 'Getting Started', url: 'https://docs.example.com', description: 'Full guide for API usage' },
+      {
+        title: 'Getting Started',
+        url: 'https://docs.example.com',
+        description: 'Full guide for API usage',
+      },
     ],
     customProperties: { team: 'Platform', region: 'US-East' },
     versions: Array.from({ length: Math.min(i + 1, 3) }, (__, vi) => ({
@@ -90,7 +97,12 @@ export function generateMockApis(count: number, overrides: Partial<MockApiDefini
         id: `dep-${i + 1}-prod`,
         title: `Production Deployment`,
         description: 'Production environment deployment',
-        environment: { id: 'env-prod', name: 'production', title: 'Production', kind: 'production' },
+        environment: {
+          id: 'env-prod',
+          name: 'production',
+          title: 'Production',
+          kind: 'production',
+        },
         server: { runtimeUri: [`https://api-${i + 1}.prod.example.com`] },
         createdAt: new Date(2026, 2, 15 - i).toISOString(),
         updatedAt: new Date(2026, 2, 15 - i).toISOString(),
@@ -134,7 +146,10 @@ export function generateMockSpec(apiName: string, version: string): string {
                 'application/json': {
                   schema: {
                     type: 'array',
-                    items: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' } } },
+                    items: {
+                      type: 'object',
+                      properties: { id: { type: 'string' }, name: { type: 'string' } },
+                    },
                   },
                 },
               },
@@ -150,7 +165,10 @@ export function generateMockSpec(apiName: string, version: string): string {
  * Create and start a mock BFF server on the specified port.
  * Returns a cleanup function to close the server.
  */
-export function startMockServer(port: number, apis: MockApiDefinition[] = generateMockApis(6)): Promise<() => void> {
+export function startMockServer(
+  port: number,
+  apis: MockApiDefinition[] = generateMockApis(6)
+): Promise<() => void> {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
       const url = new URL(req.url ?? '/', `http://localhost:${port}`);
@@ -183,10 +201,12 @@ export function startMockServer(port: number, apis: MockApiDefinition[] = genera
         const pageItems = filtered.slice(start, start + pageSize);
 
         res.writeHead(200);
-        res.end(JSON.stringify({
-          data: pageItems,
-          meta: { page, pageSize, totalCount, totalPages },
-        }));
+        res.end(
+          JSON.stringify({
+            data: pageItems,
+            meta: { page, pageSize, totalCount, totalPages },
+          })
+        );
         return;
       }
 
@@ -219,7 +239,9 @@ export function startMockServer(port: number, apis: MockApiDefinition[] = genera
       }
 
       // GET /api/catalog/:apiId/versions/:versionId/definition
-      const definitionMatch = pathname.match(/^\/api\/catalog\/([^/]+)\/versions\/([^/]+)\/definition$/);
+      const definitionMatch = pathname.match(
+        /^\/api\/catalog\/([^/]+)\/versions\/([^/]+)\/definition$/
+      );
       if (definitionMatch && req.method === 'GET') {
         const api = apis.find((a) => a.id === definitionMatch[1]);
         if (!api) {
@@ -255,13 +277,15 @@ export function startMockServer(port: number, apis: MockApiDefinition[] = genera
       // GET /api/environments
       if (pathname === '/api/environments' && req.method === 'GET') {
         res.writeHead(200);
-        res.end(JSON.stringify({
-          data: [
-            { id: 'env-prod', name: 'production', title: 'Production', kind: 'production' },
-            { id: 'env-staging', name: 'staging', title: 'Staging', kind: 'staging' },
-            { id: 'env-dev', name: 'development', title: 'Development', kind: 'development' },
-          ],
-        }));
+        res.end(
+          JSON.stringify({
+            data: [
+              { id: 'env-prod', name: 'production', title: 'Production', kind: 'production' },
+              { id: 'env-staging', name: 'staging', title: 'Staging', kind: 'staging' },
+              { id: 'env-dev', name: 'development', title: 'Development', kind: 'development' },
+            ],
+          })
+        );
         return;
       }
 
@@ -273,7 +297,9 @@ export function startMockServer(port: number, apis: MockApiDefinition[] = genera
       }
 
       res.writeHead(404);
-      res.end(JSON.stringify({ error: { code: 'NOT_FOUND', message: `Route not found: ${pathname}` } }));
+      res.end(
+        JSON.stringify({ error: { code: 'NOT_FOUND', message: `Route not found: ${pathname}` } })
+      );
     });
 
     server.listen(port, () => {

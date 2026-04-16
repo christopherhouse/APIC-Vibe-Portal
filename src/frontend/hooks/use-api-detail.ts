@@ -89,35 +89,31 @@ export function useApiDetail(apiId: string) {
   }, [apiId]);
 
   // Load spec for a specific version
-  const loadSpec = useCallback(
-    async (id: string, versionId: string) => {
-      latestSpecRequestRef.current = versionId;
-      setState((prev) => ({ ...prev, isSpecLoading: true, specError: null }));
-      try {
-        const specContent = await fetchApiDefinition(id, versionId);
-        if (!mountedRef.current) return;
-        // Ignore stale responses from earlier version requests
-        if (latestSpecRequestRef.current !== versionId) return;
-        setState((prev) => ({
-          ...prev,
-          specContent,
-          isSpecLoading: false,
-          specError: null,
-        }));
-      } catch (err) {
-        if (!mountedRef.current) return;
-        if (latestSpecRequestRef.current !== versionId) return;
-        setState((prev) => ({
-          ...prev,
-          specContent: null,
-          isSpecLoading: false,
-          specError:
-            err instanceof Error ? err.message : 'Failed to load specification',
-        }));
-      }
-    },
-    [],
-  );
+  const loadSpec = useCallback(async (id: string, versionId: string) => {
+    latestSpecRequestRef.current = versionId;
+    setState((prev) => ({ ...prev, isSpecLoading: true, specError: null }));
+    try {
+      const specContent = await fetchApiDefinition(id, versionId);
+      if (!mountedRef.current) return;
+      // Ignore stale responses from earlier version requests
+      if (latestSpecRequestRef.current !== versionId) return;
+      setState((prev) => ({
+        ...prev,
+        specContent,
+        isSpecLoading: false,
+        specError: null,
+      }));
+    } catch (err) {
+      if (!mountedRef.current) return;
+      if (latestSpecRequestRef.current !== versionId) return;
+      setState((prev) => ({
+        ...prev,
+        specContent: null,
+        isSpecLoading: false,
+        specError: err instanceof Error ? err.message : 'Failed to load specification',
+      }));
+    }
+  }, []);
 
   // Select a different version and load its spec
   const selectVersion = useCallback(
@@ -125,7 +121,7 @@ export function useApiDetail(apiId: string) {
       setState((prev) => ({ ...prev, selectedVersionId: versionId }));
       void loadSpec(apiId, versionId);
     },
-    [apiId, loadSpec],
+    [apiId, loadSpec]
   );
 
   useEffect(() => {

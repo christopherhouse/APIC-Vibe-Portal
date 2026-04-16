@@ -110,10 +110,10 @@ app/catalog/[apiId]/
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
-| 2026-04-16 | ✅ Complete | copilot | Full implementation: 7 detail components (ApiHeader, ApiTabs, ApiMetadata, ApiVersionList, ApiSpecViewer, ApiDeployments, SpecDownloadButton), catalog-detail-api client, useApiDetail hook, /catalog/[apiId] page with loading/error states, breadcrumb navigation. 49 new unit tests (159 total), 10 new Playwright e2e tests (33 total), build and lint clean. Mock BFF server created for e2e testing. |
+| Date       | Status         | Author  | Notes                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------- | -------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                                                                                                                                                                                                                                                                                                                                                                               |
+| 2026-04-16 | ✅ Complete    | copilot | Full implementation: 7 detail components (ApiHeader, ApiTabs, ApiMetadata, ApiVersionList, ApiSpecViewer, ApiDeployments, SpecDownloadButton), catalog-detail-api client, useApiDetail hook, /catalog/[apiId] page with loading/error states, breadcrumb navigation. 49 new unit tests (159 total), 10 new Playwright e2e tests (33 total), build and lint clean. Mock BFF server created for e2e testing. |
 
 ### Technical Decisions
 

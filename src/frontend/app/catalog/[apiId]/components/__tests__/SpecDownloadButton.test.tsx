@@ -3,9 +3,7 @@ import SpecDownloadButton from '../SpecDownloadButton';
 
 describe('SpecDownloadButton', () => {
   it('renders download button', () => {
-    render(
-      <SpecDownloadButton specContent='{"openapi":"3.0.0"}' apiName="test" versionId="v1" />,
-    );
+    render(<SpecDownloadButton specContent='{"openapi":"3.0.0"}' apiName="test" versionId="v1" />);
     expect(screen.getByTestId('spec-download-button')).toBeInTheDocument();
     expect(screen.getByText('Download Spec')).toBeInTheDocument();
   });
@@ -17,7 +15,7 @@ describe('SpecDownloadButton', () => {
 
   it('is disabled when disabled prop is true', () => {
     render(
-      <SpecDownloadButton specContent='{"test": true}' apiName="test" versionId="v1" disabled />,
+      <SpecDownloadButton specContent='{"test": true}' apiName="test" versionId="v1" disabled />
     );
     expect(screen.getByTestId('spec-download-button')).toBeDisabled();
   });
@@ -39,7 +37,9 @@ describe('SpecDownloadButton', () => {
       jest.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => {
         if (node instanceof HTMLAnchorElement) {
           capturedLink = node;
-          jest.spyOn(node, 'click').mockImplementation(() => { /* no-op */ });
+          jest.spyOn(node, 'click').mockImplementation(() => {
+            /* no-op */
+          });
         }
         return originalAppendChild(node);
       });
@@ -51,7 +51,7 @@ describe('SpecDownloadButton', () => {
       });
 
       render(
-        <SpecDownloadButton specContent='{"openapi":"3.0.0"}' apiName="petstore" versionId="v1" />,
+        <SpecDownloadButton specContent='{"openapi":"3.0.0"}' apiName="petstore" versionId="v1" />
       );
       fireEvent.click(screen.getByTestId('spec-download-button'));
       expect(createObjectURL).toHaveBeenCalled();

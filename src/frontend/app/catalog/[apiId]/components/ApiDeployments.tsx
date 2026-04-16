@@ -58,11 +58,7 @@ export default function ApiDeployments({ deployments, isLoading }: ApiDeployment
                   <Typography variant="body2">{deployment.title}</Typography>
                 </TableCell>
                 <TableCell>
-                  <Chip
-                    label={deployment.environment.title}
-                    size="small"
-                    variant="outlined"
-                  />
+                  <Chip label={deployment.environment.title} size="small" variant="outlined" />
                 </TableCell>
                 <TableCell>
                   {deployment.server.runtimeUri.map((uri, idx) => (
