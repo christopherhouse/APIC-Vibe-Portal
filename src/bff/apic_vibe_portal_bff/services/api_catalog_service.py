@@ -84,6 +84,8 @@ class ApiCatalogService:
         page: int = 1,
         page_size: int = 20,
         filter_str: str | None = None,
+        sort_field: str | None = None,
+        sort_reverse: bool = False,
     ) -> PaginatedResponse:
         """Return a paginated list of API definitions.
 
@@ -95,13 +97,19 @@ class ApiCatalogService:
             Number of items per page.
         filter_str:
             Optional OData filter to pass to API Center.
+        sort_field:
+            Attribute name on :class:`ApiDefinition` to sort by
+            (e.g. ``"name"``, ``"updated_at"``).  ``None`` keeps the
+            order returned by the API Center SDK.
+        sort_reverse:
+            When ``True``, sort in descending order.
         """
         if page < 1:
             raise ValueError(f"page must be >= 1, got {page}")
         if page_size < 1:
             raise ValueError(f"page_size must be >= 1, got {page_size}")
 
-        cache_key = f"{_KEY_APIS}{filter_str or ''}:{page}:{page_size}"
+        cache_key = f"{_KEY_APIS}{filter_str or ''}:{sort_field}:{sort_reverse}:{page}:{page_size}"
         cached = self._cache.get(cache_key)
         if cached is not None:
             logger.debug("list_apis cache hit", extra={"key": cache_key})
@@ -109,17 +117,22 @@ class ApiCatalogService:
 
         raw_apis = self._client.list_apis(filter_str=filter_str)
 
+        # Map all items first so we can sort on model attributes
+        definitions = [map_api_definition(raw) for raw in raw_apis]
+
+        # Sort BEFORE pagination so ordering is consistent across pages
+        if sort_field is not None:
+            definitions.sort(key=lambda x: getattr(x, sort_field, ""), reverse=sort_reverse)
+
         # Apply in-process pagination (API Center SDK lists all items)
-        total_count = len(raw_apis)
+        total_count = len(definitions)
         total_pages = math.ceil(total_count / page_size) if total_count > 0 else 0
         start = (page - 1) * page_size
         end = start + page_size
-        page_items = raw_apis[start:end]
-
-        definitions = [map_api_definition(raw) for raw in page_items]
+        page_items = definitions[start:end]
 
         result = PaginatedResponse(
-            items=definitions,
+            items=page_items,
             pagination=PaginationMeta(
                 page=page,
                 page_size=page_size,
