@@ -21,8 +21,9 @@ test.describe('Navigation', () => {
     await expect(page.getByRole('button', { name: /toggle navigation/i })).toBeVisible();
   });
 
-  test('user avatar is present in header', async ({ page }) => {
+  test('auth controls are present in header', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByLabel('user avatar')).toBeVisible();
+    // When unauthenticated, the "Sign in" button is shown instead of an avatar
+    await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
   });
 });

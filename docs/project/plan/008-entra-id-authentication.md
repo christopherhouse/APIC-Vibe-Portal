@@ -1,6 +1,6 @@
 # 008 - Phase 1 MVP: Entra ID Authentication Integration
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -33,7 +33,7 @@ Configure:
 
 - Frontend app requests token for BFF API scope
 - BFF validates tokens from frontend
-- Define app roles: `Portal.User`, `Portal.Admin`, `API.Owner`
+- Define app roles: `Portal.User`, `Portal.Admin`, `Portal.Maintainer`
 
 ### 2. Frontend Authentication (MSAL)
 
@@ -132,21 +132,32 @@ BFF environment variables:
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
+| Date       | Status         | Author  | Notes                                                                      |
+| ---------- | -------------- | ------- | -------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                                               |
+| 2026-04-15 | ✅ Complete    | Copilot | Full Entra ID auth integration: MSAL frontend, JWT middleware, RBAC in BFF |
 
 ### Technical Decisions
 
-_No technical decisions recorded yet._
+- **PyJWT over python-jose**: Used `PyJWT` with `cryptography` backend for JWT validation. PyJWT is actively maintained, supports RS256 with JWKS, and has a simpler API than python-jose.
+- **SessionStorage for MSAL cache**: Used `sessionStorage` instead of `localStorage` to reduce risk of token leakage across browser tabs. Tokens are cleared when the tab is closed.
+- **Middleware-based auth (BFF)**: Kept the `BaseHTTPMiddleware` pattern for token validation (consistent with existing middleware stack), with public paths exempted. RBAC is implemented as FastAPI dependencies for per-route enforcement.
+- **Dependency factory pattern for RBAC**: Used `require_role()` and `require_any_role()` as dependency factories that return FastAPI `Depends`-compatible callables, following FastAPI best practices for route-level access control.
+- **MSAL v5**: Used `@azure/msal-browser` v5 and `@azure/msal-react` v5 (latest major versions available via npm).
 
 ### Deviations from Plan
 
-_No deviations from the original plan._
+- **Login page not created**: The plan mentioned an "optional branded login page." AuthGuard triggers MSAL redirect login automatically for protected routes, so a separate login page was not implemented — it can be added in a future task if needed.
+- **Task numbering reference**: The original auth.py placeholder referenced "task 016"; this was updated to align with the actual task numbering (008).
 
 ### Validation Results
 
-_No validation results yet._
+- **BFF tests**: 95 tests passed (23 auth middleware tests, 8 RBAC tests, 64 existing tests updated for auth)
+- **Frontend tests**: 71 tests passed (5 msal-config, 5 auth-provider, 5 useAuth, 6 AuthGuard, 7 Header auth UI, 43 existing)
+- **Lint**: All Ruff (BFF) and ESLint (frontend) checks passing with zero errors
+- **Auth middleware verifies**: Missing token → 401, expired token → 401, wrong audience → 401, valid token → 200 with user context
+- **RBAC verifies**: Missing role → 403, correct role → 200, any-of-roles → 200, no auth → 401
+- **Public paths**: /health, /health/ready, /docs, /openapi.json exempt from auth
 
 ## Coding Agent Prompt
 

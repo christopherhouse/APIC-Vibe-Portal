@@ -2,8 +2,20 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 from httpx import AsyncClient
+
+from apic_vibe_portal_bff.middleware.auth import AuthenticatedUser
+
+_MOCK_USER = AuthenticatedUser(
+    oid="test-user",
+    name="Test User",
+    email="test@example.com",
+    roles=["Portal.User"],
+    claims={},
+)
 
 
 @pytest.mark.asyncio
@@ -32,8 +44,9 @@ async def test_health_liveness_method_not_allowed(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_api_catalog_placeholder(client: AsyncClient) -> None:
+@patch("apic_vibe_portal_bff.middleware.auth.validate_token", return_value=_MOCK_USER)
+async def test_api_catalog_placeholder(_mock, client: AsyncClient) -> None:
     """GET /api/catalog/ returns 200 with a placeholder message."""
-    response = await client.get("/api/catalog/")
+    response = await client.get("/api/catalog/", headers={"Authorization": "Bearer test-token"})
     assert response.status_code == 200
     assert "message" in response.json()
