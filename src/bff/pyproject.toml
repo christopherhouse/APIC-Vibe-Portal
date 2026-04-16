@@ -4,6 +4,8 @@ version = "0.0.0"
 description = "Backend-for-Frontend API for APIC Vibe Portal"
 requires-python = ">=3.14"
 dependencies = [
+    "azure-identity>=1.21.0",
+    "azure-mgmt-apicenter>=1.0.0",
     "cryptography>=46.0.7",
     "fastapi>=0.135.3",
     "pydantic-settings>=2.13.1",

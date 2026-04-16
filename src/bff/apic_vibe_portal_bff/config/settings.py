@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     key_vault_url: str = Field(default="", description="Azure Key Vault URL")
     appinsights_connection_string: str = Field(default="", description="Application Insights connection string")
 
+    # --- Azure API Center -----------------------------------------------
+    api_center_subscription_id: str = Field(default="", description="Azure subscription ID containing API Center")
+    api_center_resource_group: str = Field(default="", description="Resource group containing API Center")
+    api_center_service_name: str = Field(default="", description="API Center service name")
+    cache_ttl_seconds: int = Field(default=300, description="Default in-memory cache TTL in seconds")
+
     # --- Entra ID (authentication) ---------------------------------------
     entra_tenant_id: str = Field(default="", description="Entra ID (Azure AD) tenant ID")
     entra_client_id: str = Field(default="", description="Entra ID client (audience) ID for the BFF API")
