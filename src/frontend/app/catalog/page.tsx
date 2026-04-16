@@ -54,9 +54,19 @@ export default function CatalogPage() {
   }, []);
 
   // ---------- data fetching ----------
+  // Serialize array values for stable useMemo dependencies
+  const lifecyclesKey = lifecycles.join(',');
+  const kindsKey = kinds.join(',');
   const params = useMemo<CatalogListParams>(
-    () => ({ page, pageSize, sort, direction, lifecycle: lifecycles, kind: kinds }),
-    [page, pageSize, sort, direction, lifecycles, kinds]
+    () => ({
+      page,
+      pageSize,
+      sort,
+      direction,
+      lifecycle: lifecyclesKey ? lifecyclesKey.split(',') : [],
+      kind: kindsKey ? kindsKey.split(',') : [],
+    }),
+    [page, pageSize, sort, direction, lifecyclesKey, kindsKey]
   );
   const { items, pagination, isLoading, error } = useCatalog(params);
 

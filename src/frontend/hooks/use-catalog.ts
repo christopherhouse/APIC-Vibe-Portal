@@ -37,10 +37,14 @@ export function useCatalog(params: CatalogListParams) {
 
   const [isPending, startTransition] = useTransition();
 
+  // Serialize params for stable useCallback dependency
+  const paramsKey = JSON.stringify(params);
+
   const load = useCallback(async () => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
-      const data: CatalogListResponse = await fetchCatalogApis(params);
+      const fetchParams: CatalogListParams = JSON.parse(paramsKey);
+      const data: CatalogListResponse = await fetchCatalogApis(fetchParams);
       startTransition(() => {
         setState({
           items: data.data,
@@ -56,7 +60,7 @@ export function useCatalog(params: CatalogListParams) {
         error: err instanceof Error ? err.message : 'Failed to load APIs',
       }));
     }
-  }, [params]); // params is a memoized object
+  }, [paramsKey]); // stable string dependency
 
   useEffect(() => {
     void load();
