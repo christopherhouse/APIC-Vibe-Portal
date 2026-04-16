@@ -14,7 +14,6 @@ from unittest.mock import MagicMock, patch
 
 from apic_vibe_portal_bff.clients.redis_cache_client import RedisCacheBackend
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

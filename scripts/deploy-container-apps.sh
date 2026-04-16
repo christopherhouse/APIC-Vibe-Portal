@@ -66,15 +66,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate required arguments
-if [[ -z "${RESOURCE_GROUP:-}" ]] || [[ -z "${ENVIRONMENT_ID:-}" ]] || \
-   [[ -z "${FRONTEND_APP_NAME:-}" ]] || [[ -z "${BFF_APP_NAME:-}" ]] || \
-   [[ -z "${ACR_SERVER:-}" ]] || [[ -z "${MANAGED_IDENTITY:-}" ]] || \
-   [[ -z "${FRONTEND_IMAGE_TAG:-}" ]] || [[ -z "${BFF_IMAGE_TAG:-}" ]] || \
-   [[ -z "${REDIS_HOST:-}" ]]; then
-  echo "Error: Missing required arguments"
-  echo "Usage: $0 --resource-group <rg> --environment-id <env-id> --frontend-app <name> --bff-app <name> --acr-server <server> --managed-identity <id> --frontend-image-tag <tag> --bff-image-tag <tag> --redis-host <hostname>"
-  exit 1
-fi
+required_args=(RESOURCE_GROUP ENVIRONMENT_ID FRONTEND_APP_NAME BFF_APP_NAME \
+               ACR_SERVER MANAGED_IDENTITY FRONTEND_IMAGE_TAG BFF_IMAGE_TAG REDIS_HOST)
+for arg in "${required_args[@]}"; do
+  if [[ -z "${!arg:-}" ]]; then
+    echo "Error: Missing required argument: --$(echo "$arg" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
+    echo "Usage: $0 --resource-group <rg> --environment-id <env-id> --frontend-app <name> --bff-app <name> --acr-server <server> --managed-identity <id> --frontend-image-tag <tag> --bff-image-tag <tag> --redis-host <hostname>"
+    exit 1
+  fi
+done
 
 echo "============================================================================"
 echo "Deploying Container Apps"

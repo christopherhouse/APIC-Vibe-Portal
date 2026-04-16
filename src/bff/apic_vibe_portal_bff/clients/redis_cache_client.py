@@ -89,7 +89,8 @@ class RedisCacheBackend:
             from azure.identity import DefaultAzureCredential
 
             self._credential = DefaultAzureCredential()
-        return self._credential  # type: ignore[return-value]
+        assert self._credential is not None
+        return self._credential
 
     def _redis(self) -> redis_lib.Redis:  # type: ignore[type-arg]
         """Lazily create/refresh the Redis client when the token is near expiry."""

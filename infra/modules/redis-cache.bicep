@@ -136,7 +136,7 @@ output id string = redisEnterprise.id
 @description('Azure Managed Redis cluster name')
 output name string = redisEnterprise.name
 
-@description('Azure Managed Redis hostname (set as REDIS_HOST env var on the BFF)')
+@description('Azure Managed Redis hostname (set as REDIS_HOST env var on the BFF at deploy time)')
 output hostName string = redisEnterprise.properties.hostName
 
 @description('Azure Managed Redis database port (10000)')
