@@ -34,8 +34,18 @@ jest.mock('@azure/msal-react', () => ({
 // Must import after mocks are set up
 import { useAuth } from '../use-auth';
 import { useIsAuthenticated } from '@azure/msal-react';
+import { MsalConfigProvider } from '../msal-config-context';
+import type { MsalConfig } from '../msal-config';
 
 const mockUseIsAuthenticated = useIsAuthenticated as jest.MockedFunction<typeof useIsAuthenticated>;
+
+// Test MSAL configuration
+const testMsalConfig: MsalConfig = {
+  clientId: 'test-client-id',
+  authority: 'https://login.microsoftonline.com/test-tenant',
+  redirectUri: 'http://localhost:3000',
+  bffApiScope: 'api://test-bff/.default',
+};
 
 // Helper component to test the hook
 function TestComponent() {
@@ -50,6 +60,11 @@ function TestComponent() {
   );
 }
 
+// Wrapper that provides MSAL config context
+function TestWrapper({ children }: { children: React.ReactNode }) {
+  return <MsalConfigProvider config={testMsalConfig}>{children}</MsalConfigProvider>;
+}
+
 describe('useAuth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -59,7 +74,7 @@ describe('useAuth', () => {
 
   it('returns isAuthenticated=false when not logged in', () => {
     mockUseIsAuthenticated.mockReturnValue(false);
-    render(<TestComponent />);
+    render(<TestComponent />, { wrapper: TestWrapper });
     expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
   });
 
@@ -72,7 +87,7 @@ describe('useAuth', () => {
       idTokenClaims: { roles: ['Portal.User'] },
     });
 
-    render(<TestComponent />);
+    render(<TestComponent />, { wrapper: TestWrapper });
     expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
     expect(screen.getByTestId('user-name')).toHaveTextContent('Test User');
     expect(screen.getByTestId('user-email')).toHaveTextContent('test@example.com');
@@ -82,7 +97,7 @@ describe('useAuth', () => {
     mockUseIsAuthenticated.mockReturnValue(false);
     mockGetActiveAccount.mockReturnValue(null);
 
-    render(<TestComponent />);
+    render(<TestComponent />, { wrapper: TestWrapper });
     expect(screen.getByTestId('user-name')).toHaveTextContent('none');
   });
 
@@ -101,12 +116,12 @@ describe('useAuth', () => {
       return <span data-testid="roles">{user?.roles.join(',') ?? 'none'}</span>;
     }
 
-    render(<RolesComponent />);
+    render(<RolesComponent />, { wrapper: TestWrapper });
     expect(screen.getByTestId('roles')).toHaveTextContent('Portal.Admin,Portal.User');
   });
 
   it('returns isLoading=false when inProgress is none', () => {
-    render(<TestComponent />);
+    render(<TestComponent />, { wrapper: TestWrapper });
     expect(screen.getByTestId('loading')).toHaveTextContent('false');
   });
 });

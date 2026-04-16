@@ -1,67 +1,138 @@
-import { msalConfig, loginRequest, bffApiScope } from '../msal-config';
+import { fetchMsalConfig, buildMsalConfig, buildLoginRequest, type MsalConfig } from '../msal-config';
 
-describe('msal-config', () => {
-  it('exports a valid MSAL configuration object', () => {
-    expect(msalConfig).toBeDefined();
-    expect(msalConfig.auth).toBeDefined();
-    expect(msalConfig.auth.clientId).toBeDefined();
-    expect(msalConfig.auth.authority).toBeDefined();
-    expect(msalConfig.auth.redirectUri).toBeDefined();
+// Mock fetch globally
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
+describe('fetchMsalConfig', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('uses sessionStorage for cache', () => {
-    expect(msalConfig.cache?.cacheLocation).toBe('sessionStorage');
+  it('fetches MSAL config from API endpoint', async () => {
+    const testConfig: MsalConfig = {
+      clientId: 'test-client-id',
+      authority: 'https://login.microsoftonline.com/test-tenant',
+      redirectUri: 'http://localhost:3000',
+      bffApiScope: 'api://test-bff/.default',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => testConfig,
+    } as Response);
+
+    const result = await fetchMsalConfig();
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/config/msal');
+    expect(result).toEqual(testConfig);
   });
 
-  it('does not configure cookie-based cache (sessionStorage only)', () => {
-    // MSAL v5 removed storeAuthStateInCookie; sessionStorage-only is the default
-    expect(msalConfig.cache?.cacheLocation).toBe('sessionStorage');
+  it('throws error when fetch fails', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    } as Response);
+
+    await expect(fetchMsalConfig()).rejects.toThrow('Failed to fetch MSAL config: 500 Internal Server Error');
   });
 
-  it('exports loginRequest with scopes', () => {
-    expect(loginRequest).toBeDefined();
-    expect(loginRequest.scopes).toBeInstanceOf(Array);
-    expect(loginRequest.scopes.length).toBeGreaterThan(0);
-  });
+  it('throws error when network request fails', async () => {
+    const networkError = new Error('Network error');
+    mockFetch.mockRejectedValueOnce(networkError);
 
-  it('exports bffApiScope', () => {
-    expect(typeof bffApiScope).toBe('string');
+    await expect(fetchMsalConfig()).rejects.toThrow('Network error');
   });
 });
 
-describe('msal-config validation', () => {
-  const originalEnv = process.env;
+describe('buildMsalConfig', () => {
+  it('builds valid MSAL browser configuration from runtime config', () => {
+    const runtimeConfig: MsalConfig = {
+      clientId: 'test-client-id',
+      authority: 'https://login.microsoftonline.com/test-tenant',
+      redirectUri: 'http://localhost:3000',
+      bffApiScope: 'api://test-bff/.default',
+    };
 
-  beforeEach(() => {
-    jest.resetModules();
-    process.env = { ...originalEnv };
+    const msalConfig = buildMsalConfig(runtimeConfig);
+
+    expect(msalConfig).toBeDefined();
+    expect(msalConfig.auth).toBeDefined();
+    expect(msalConfig.auth.clientId).toBe('test-client-id');
+    expect(msalConfig.auth.authority).toBe('https://login.microsoftonline.com/test-tenant');
+    expect(msalConfig.auth.redirectUri).toBe('http://localhost:3000');
+    expect(msalConfig.auth.postLogoutRedirectUri).toBe('http://localhost:3000');
   });
 
-  afterEach(() => {
-    process.env = originalEnv;
+  it('uses sessionStorage for cache', () => {
+    const runtimeConfig: MsalConfig = {
+      clientId: 'test-client-id',
+      authority: 'https://login.microsoftonline.com/test-tenant',
+      redirectUri: 'http://localhost:3000',
+      bffApiScope: 'api://test-bff/.default',
+    };
+
+    const msalConfig = buildMsalConfig(runtimeConfig);
+
+    expect(msalConfig.cache?.cacheLocation).toBe('sessionStorage');
   });
 
-  it('logs error when NEXT_PUBLIC_MSAL_CLIENT_ID is missing', async () => {
-    delete process.env.NEXT_PUBLIC_MSAL_CLIENT_ID;
-    delete process.env.NEXT_PUBLIC_MSAL_AUTHORITY;
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation();
+  it('configures logger options', () => {
+    const runtimeConfig: MsalConfig = {
+      clientId: 'test-client-id',
+      authority: 'https://login.microsoftonline.com/test-tenant',
+      redirectUri: 'http://localhost:3000',
+      bffApiScope: 'api://test-bff/.default',
+    };
 
-    // Re-import to re-trigger validation
-    await import('../msal-config');
+    const msalConfig = buildMsalConfig(runtimeConfig);
 
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('NEXT_PUBLIC_MSAL_CLIENT_ID'));
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('NEXT_PUBLIC_MSAL_AUTHORITY'));
-    errorSpy.mockRestore();
+    expect(msalConfig.system?.loggerOptions).toBeDefined();
+    expect(msalConfig.system?.loggerOptions?.logLevel).toBeDefined();
+    expect(msalConfig.system?.loggerOptions?.loggerCallback).toBeDefined();
+  });
+});
+
+describe('buildLoginRequest', () => {
+  it('builds login request with BFF API scope when provided', () => {
+    const config: MsalConfig = {
+      clientId: 'test-client-id',
+      authority: 'https://login.microsoftonline.com/test-tenant',
+      redirectUri: 'http://localhost:3000',
+      bffApiScope: 'api://test-bff/.default',
+    };
+
+    const loginRequest = buildLoginRequest(config);
+
+    expect(loginRequest).toBeDefined();
+    expect(loginRequest.scopes).toBeInstanceOf(Array);
+    expect(loginRequest.scopes).toEqual(['api://test-bff/.default']);
   });
 
-  it('does not log error when required env vars are set', async () => {
-    process.env.NEXT_PUBLIC_MSAL_CLIENT_ID = 'test-client-id';
-    process.env.NEXT_PUBLIC_MSAL_AUTHORITY = 'https://login.microsoftonline.com/test-tenant';
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation();
+  it('builds login request with default scopes when BFF API scope is empty', () => {
+    const config: MsalConfig = {
+      clientId: 'test-client-id',
+      authority: 'https://login.microsoftonline.com/test-tenant',
+      redirectUri: 'http://localhost:3000',
+      bffApiScope: '',
+    };
 
-    await import('../msal-config');
+    const loginRequest = buildLoginRequest(config);
 
-    expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining('[MSAL Config]'));
-    errorSpy.mockRestore();
+    expect(loginRequest.scopes).toEqual(['openid', 'profile', 'email']);
+  });
+
+  it('builds login request with default scopes when BFF API scope is not provided', () => {
+    const config: MsalConfig = {
+      clientId: 'test-client-id',
+      authority: 'https://login.microsoftonline.com/test-tenant',
+      redirectUri: 'http://localhost:3000',
+      bffApiScope: '',
+    };
+
+    const loginRequest = buildLoginRequest(config);
+
+    expect(loginRequest.scopes).toEqual(['openid', 'profile', 'email']);
   });
 });
