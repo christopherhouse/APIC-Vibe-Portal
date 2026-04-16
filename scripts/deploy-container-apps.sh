@@ -18,21 +18,23 @@
 #     --frontend-image-tag <frontend-tag> \
 #     --bff-image-tag <bff-tag> \
 #     --redis-host <redis-hostname> \
-#     --bff-env-vars "KEY1=val1 KEY2=val2 ..."
+#     --bff-env-vars "KEY1=val1 KEY2=val2 ..." \
+#     --frontend-env-vars "KEY1=val1 KEY2=val2 ..."
 #
 # Each Container App uses its own User-Assigned Managed Identity (UAMI) for
 # ACR image pull and Azure service access.  The --*-identity-resource-id flags
 # accept full ARM resource IDs required by `az containerapp create`.
 #
-# The --bff-env-vars flag accepts a space-separated list of KEY=VALUE pairs
-# that are passed as environment variables to the BFF Container App. This
-# keeps the script generic — add new env vars in the workflow without
-# modifying this script.
+# The --bff-env-vars and --frontend-env-vars flags accept space-separated lists
+# of KEY=VALUE pairs that are passed as environment variables to the respective
+# Container Apps. This keeps the script generic — add new env vars in the
+# workflow without modifying this script.
 # ============================================================================
 
 set -euo pipefail
 
 BFF_ENV_VARS=""
+FRONTEND_ENV_VARS=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -83,6 +85,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --bff-env-vars)
       BFF_ENV_VARS="$2"
+      shift 2
+      ;;
+    --frontend-env-vars)
+      FRONTEND_ENV_VARS="$2"
       shift 2
       ;;
     *)
@@ -198,9 +204,16 @@ BFF_URL=$(az containerapp show \
 echo "BFF URL: https://${BFF_URL}"
 
 # Deploy Frontend Container App with BFF_URL so the server-side proxy
-# can forward /api/* requests to the BFF at runtime.
+# can forward /api/* requests to the BFF at runtime, plus runtime MSAL config.
 echo ""
 echo "Deploying Frontend Container App..."
+
+# Build env vars string for frontend (BFF_URL + runtime MSAL config)
+FRONTEND_ENV_VARS_FULL="BFF_URL=https://${BFF_URL}"
+if [ -n "$FRONTEND_ENV_VARS" ]; then
+  FRONTEND_ENV_VARS_FULL="$FRONTEND_ENV_VARS_FULL $FRONTEND_ENV_VARS"
+fi
+
 if az containerapp show --name "$FRONTEND_APP_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
   echo "Updating existing Frontend Container App..."
   az containerapp update \
@@ -211,7 +224,7 @@ if az containerapp show --name "$FRONTEND_APP_NAME" --resource-group "$RESOURCE_
     --memory 2Gi \
     --min-replicas 1 \
     --max-replicas 10 \
-    --set-env-vars "BFF_URL=https://${BFF_URL}" \
+    --set-env-vars "$FRONTEND_ENV_VARS_FULL" \
     --revision-suffix "$(date +%s)"
 else
   echo "Creating new Frontend Container App..."
@@ -229,7 +242,7 @@ else
     --registry-server "$ACR_SERVER" \
     --user-assigned "$FRONTEND_IDENTITY_RESOURCE_ID" \
     --registry-identity "$FRONTEND_IDENTITY_RESOURCE_ID" \
-    --env-vars "BFF_URL=https://${BFF_URL}"
+    --env-vars "$FRONTEND_ENV_VARS_FULL"
 fi
 
 # Get Frontend URL

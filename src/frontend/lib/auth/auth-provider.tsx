@@ -3,8 +3,8 @@
 /**
  * MSAL authentication provider that wraps the application.
  *
- * Initialises a `PublicClientApplication` singleton and provides it
- * to the React tree via `MsalProvider`.
+ * Fetches MSAL configuration from the runtime API, then initializes
+ * a `PublicClientApplication` singleton and provides it to the React tree via `MsalProvider`.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -15,56 +15,82 @@ import {
   type AuthenticationResult,
 } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
-import { msalConfig } from './msal-config';
+import { fetchMsalConfig, buildMsalConfig, type MsalConfig } from './msal-config';
+import { MsalConfigProvider } from './msal-config-context';
 
 let msalInstance: PublicClientApplication | null = null;
 
 /**
- * Get (or create) the singleton MSAL PublicClientApplication instance.
- */
-export function getMsalInstance(): PublicClientApplication {
-  if (!msalInstance) {
-    msalInstance = new PublicClientApplication(msalConfig);
-  }
-  return msalInstance;
-}
-
-/**
- * AuthProvider initialises MSAL and wraps the React tree in `MsalProvider`.
+ * AuthProvider fetches runtime MSAL config, initialises MSAL, and wraps
+ * the React tree in `MsalProvider` and `MsalConfigProvider`.
  *
- * It waits for `msalInstance.initialize()` to complete before rendering children.
+ * It waits for config fetch and `msalInstance.initialize()` to complete
+ * before rendering children.
  */
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
-  const [pca] = useState(() => getMsalInstance());
+  const [error, setError] = useState<Error | null>(null);
+  const [config, setConfig] = useState<MsalConfig | null>(null);
 
   useEffect(() => {
     const init = async () => {
-      await pca.initialize();
+      try {
+        // Fetch runtime MSAL configuration from API
+        const runtimeConfig = await fetchMsalConfig();
+        setConfig(runtimeConfig);
 
-      // Set the first account as the active account if there is one after redirect
-      const accounts = pca.getAllAccounts();
-      if (accounts.length > 0) {
-        pca.setActiveAccount(accounts[0]);
-      }
-
-      // Listen for login success to set the active account
-      pca.addEventCallback((event: EventMessage) => {
-        if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
-          const result = event.payload as AuthenticationResult;
-          pca.setActiveAccount(result.account);
+        // Create MSAL instance with runtime config (singleton pattern)
+        if (!msalInstance) {
+          const msalConfig = buildMsalConfig(runtimeConfig);
+          msalInstance = new PublicClientApplication(msalConfig);
         }
-      });
 
-      setIsInitialized(true);
+        // Initialize MSAL
+        await msalInstance.initialize();
+
+        // Set the first account as the active account if there is one after redirect
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0) {
+          msalInstance.setActiveAccount(accounts[0]);
+        }
+
+        // Listen for login success to set the active account
+        msalInstance.addEventCallback((event: EventMessage) => {
+          if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
+            const result = event.payload as AuthenticationResult;
+            msalInstance?.setActiveAccount(result.account);
+          }
+        });
+
+        setIsInitialized(true);
+      } catch (err) {
+        console.error('[AuthProvider] Failed to initialize MSAL:', err);
+        setError(err instanceof Error ? err : new Error('Unknown error'));
+      }
     };
 
     init();
-  }, [pca]);
+  }, []);
 
-  if (!isInitialized) {
+  // Show error state if initialization failed
+  if (error) {
+    return (
+      <div style={{ padding: '20px', color: 'red' }}>
+        <h1>Authentication Error</h1>
+        <p>Failed to initialize authentication. Please check the console for details.</p>
+        <pre>{error.message}</pre>
+      </div>
+    );
+  }
+
+  // Show loading state while initializing
+  if (!isInitialized || !config) {
     return null;
   }
 
-  return <MsalProvider instance={pca}>{children}</MsalProvider>;
+  return (
+    <MsalConfigProvider config={config}>
+      <MsalProvider instance={msalInstance!}>{children}</MsalProvider>
+    </MsalConfigProvider>
+  );
 }

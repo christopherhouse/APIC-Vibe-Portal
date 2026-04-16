@@ -2,6 +2,10 @@ import React from 'react';
 import { render, screen, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
+// Mock fetch before importing AuthProvider
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
 // Mock MSAL before importing AuthProvider
 const mockInitialize = jest.fn().mockResolvedValue(undefined);
 const mockGetAllAccounts = jest.fn().mockReturnValue([]);
@@ -37,9 +41,22 @@ jest.mock('@azure/msal-react', () => ({
 
 import AuthProvider from '../auth-provider';
 
+// Test MSAL configuration
+const testMsalConfig = {
+  clientId: 'test-client-id',
+  authority: 'https://login.microsoftonline.com/test-tenant',
+  redirectUri: 'http://localhost:3000',
+  bffApiScope: 'api://test-bff/.default',
+};
+
 describe('AuthProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Mock successful fetch of MSAL config by default
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => testMsalConfig,
+    } as Response);
   });
 
   it('renders nothing until MSAL is initialized', () => {
