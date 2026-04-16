@@ -43,7 +43,7 @@ export function useCatalog(params: CatalogListParams) {
   paramsRef.current = params;
 
   // Stable key derived from primitive values to trigger refetch when params change
-  const paramsKey = `${params.page}|${params.pageSize}|${params.sort}|${params.direction}|${params.lifecycle?.join(',')}|${params.kind?.join(',')}`;
+  const paramsKey = `${params.page}|${params.pageSize}|${params.sort}|${params.direction}|${params.lifecycle}|${params.kind}`;
 
   const load = useCallback(async () => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));

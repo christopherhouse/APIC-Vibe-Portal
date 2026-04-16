@@ -2,9 +2,10 @@
 
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import FormGroup from '@mui/material/FormGroup';
+import FormControl from '@mui/material/FormControl';
+import RadioGroup from '@mui/material/RadioGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
-import Checkbox from '@mui/material/Checkbox';
+import Radio from '@mui/material/Radio';
 import Divider from '@mui/material/Divider';
 import Button from '@mui/material/Button';
 import { ApiLifecycle, ApiKind } from '@apic-vibe-portal/shared';
@@ -29,33 +30,19 @@ const KIND_OPTIONS: { value: ApiKind; label: string }[] = [
 ];
 
 export interface CatalogFiltersProps {
-  selectedLifecycles: string[];
-  selectedKinds: string[];
-  onLifecycleChange: (lifecycles: string[]) => void;
-  onKindChange: (kinds: string[]) => void;
+  selectedLifecycle?: string;
+  selectedKind?: string;
+  onLifecycleChange: (lifecycle: string | undefined) => void;
+  onKindChange: (kind: string | undefined) => void;
 }
 
 export default function CatalogFilters({
-  selectedLifecycles,
-  selectedKinds,
+  selectedLifecycle,
+  selectedKind,
   onLifecycleChange,
   onKindChange,
 }: CatalogFiltersProps) {
-  const handleLifecycleToggle = (value: string) => {
-    const next = selectedLifecycles.includes(value)
-      ? selectedLifecycles.filter((v) => v !== value)
-      : [...selectedLifecycles, value];
-    onLifecycleChange(next);
-  };
-
-  const handleKindToggle = (value: string) => {
-    const next = selectedKinds.includes(value)
-      ? selectedKinds.filter((v) => v !== value)
-      : [...selectedKinds, value];
-    onKindChange(next);
-  };
-
-  const hasFilters = selectedLifecycles.length > 0 || selectedKinds.length > 0;
+  const hasFilters = selectedLifecycle !== undefined || selectedKind !== undefined;
 
   return (
     <Box>
@@ -67,8 +54,8 @@ export default function CatalogFilters({
           <Button
             size="small"
             onClick={() => {
-              onLifecycleChange([]);
-              onKindChange([]);
+              onLifecycleChange(undefined);
+              onKindChange(undefined);
             }}
           >
             Clear all
@@ -79,44 +66,44 @@ export default function CatalogFilters({
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
         Lifecycle Stage
       </Typography>
-      <FormGroup>
-        {LIFECYCLE_OPTIONS.map((opt) => (
-          <FormControlLabel
-            key={opt.value}
-            control={
-              <Checkbox
-                size="small"
-                checked={selectedLifecycles.includes(opt.value)}
-                onChange={() => handleLifecycleToggle(opt.value)}
-                aria-label={`Filter by ${opt.label}`}
-              />
-            }
-            label={<Typography variant="body2">{opt.label}</Typography>}
-          />
-        ))}
-      </FormGroup>
+      <FormControl>
+        <RadioGroup
+          value={selectedLifecycle ?? ''}
+          onChange={(e) => onLifecycleChange(e.target.value || undefined)}
+        >
+          {LIFECYCLE_OPTIONS.map((opt) => (
+            <FormControlLabel
+              key={opt.value}
+              value={opt.value}
+              control={<Radio size="small" />}
+              label={<Typography variant="body2">{opt.label}</Typography>}
+              aria-label={`Filter by ${opt.label}`}
+            />
+          ))}
+        </RadioGroup>
+      </FormControl>
 
       <Divider sx={{ my: 1.5 }} />
 
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
         API Kind
       </Typography>
-      <FormGroup>
-        {KIND_OPTIONS.map((opt) => (
-          <FormControlLabel
-            key={opt.value}
-            control={
-              <Checkbox
-                size="small"
-                checked={selectedKinds.includes(opt.value)}
-                onChange={() => handleKindToggle(opt.value)}
-                aria-label={`Filter by ${opt.label}`}
-              />
-            }
-            label={<Typography variant="body2">{opt.label}</Typography>}
-          />
-        ))}
-      </FormGroup>
+      <FormControl>
+        <RadioGroup
+          value={selectedKind ?? ''}
+          onChange={(e) => onKindChange(e.target.value || undefined)}
+        >
+          {KIND_OPTIONS.map((opt) => (
+            <FormControlLabel
+              key={opt.value}
+              value={opt.value}
+              control={<Radio size="small" />}
+              label={<Typography variant="body2">{opt.label}</Typography>}
+              aria-label={`Filter by ${opt.label}`}
+            />
+          ))}
+        </RadioGroup>
+      </FormControl>
     </Box>
   );
 }

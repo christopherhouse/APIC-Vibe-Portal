@@ -4,8 +4,8 @@ import CatalogFilters from '../CatalogFilters';
 
 describe('CatalogFilters', () => {
   const defaultProps = {
-    selectedLifecycles: [] as string[],
-    selectedKinds: [] as string[],
+    selectedLifecycle: undefined as string | undefined,
+    selectedKind: undefined as string | undefined,
     onLifecycleChange: jest.fn(),
     onKindChange: jest.fn(),
   };
@@ -31,29 +31,28 @@ describe('CatalogFilters', () => {
     expect(screen.getByText('gRPC')).toBeInTheDocument();
   });
 
-  it('calls onLifecycleChange when lifecycle checkbox is toggled', async () => {
+  it('calls onLifecycleChange when lifecycle radio is selected', async () => {
     const user = userEvent.setup();
     render(<CatalogFilters {...defaultProps} />);
     await user.click(screen.getByLabelText('Filter by Production'));
-    expect(defaultProps.onLifecycleChange).toHaveBeenCalledWith(['production']);
+    expect(defaultProps.onLifecycleChange).toHaveBeenCalledWith('production');
   });
 
-  it('calls onKindChange when kind checkbox is toggled', async () => {
+  it('calls onKindChange when kind radio is selected', async () => {
     const user = userEvent.setup();
     render(<CatalogFilters {...defaultProps} />);
     await user.click(screen.getByLabelText('Filter by REST'));
-    expect(defaultProps.onKindChange).toHaveBeenCalledWith(['rest']);
+    expect(defaultProps.onKindChange).toHaveBeenCalledWith('rest');
   });
 
-  it('unchecks a previously selected lifecycle', async () => {
-    const user = userEvent.setup();
-    render(<CatalogFilters {...defaultProps} selectedLifecycles={['production']} />);
-    await user.click(screen.getByLabelText('Filter by Production'));
-    expect(defaultProps.onLifecycleChange).toHaveBeenCalledWith([]);
+  it('shows selected lifecycle radio as checked', () => {
+    render(<CatalogFilters {...defaultProps} selectedLifecycle="production" />);
+    expect(screen.getByRole('radio', { name: 'Filter by Production' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Filter by Design' })).not.toBeChecked();
   });
 
   it('shows clear all button when filters are active', () => {
-    render(<CatalogFilters {...defaultProps} selectedLifecycles={['production']} />);
+    render(<CatalogFilters {...defaultProps} selectedLifecycle="production" />);
     expect(screen.getByText('Clear all')).toBeInTheDocument();
   });
 
@@ -64,9 +63,9 @@ describe('CatalogFilters', () => {
 
   it('clears all filters when clear all is clicked', async () => {
     const user = userEvent.setup();
-    render(<CatalogFilters {...defaultProps} selectedLifecycles={['production']} selectedKinds={['rest']} />);
+    render(<CatalogFilters {...defaultProps} selectedLifecycle="production" selectedKind="rest" />);
     await user.click(screen.getByText('Clear all'));
-    expect(defaultProps.onLifecycleChange).toHaveBeenCalledWith([]);
-    expect(defaultProps.onKindChange).toHaveBeenCalledWith([]);
+    expect(defaultProps.onLifecycleChange).toHaveBeenCalledWith(undefined);
+    expect(defaultProps.onKindChange).toHaveBeenCalledWith(undefined);
   });
 });

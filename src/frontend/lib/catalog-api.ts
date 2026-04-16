@@ -6,8 +6,9 @@
  */
 
 import type { ApiCatalogItem, PaginationMeta } from '@apic-vibe-portal/shared';
-
-const BFF_BASE_URL = process.env.NEXT_PUBLIC_BFF_URL ?? 'http://localhost:8000';
+import { toApiCatalogItem } from '@apic-vibe-portal/shared';
+import type { ApiDefinition } from '@apic-vibe-portal/shared';
+import { apiClient } from '@/lib/api-client';
 
 /** Parameters accepted by the catalog list endpoint. */
 export interface CatalogListParams {
@@ -15,8 +16,8 @@ export interface CatalogListParams {
   pageSize?: number;
   sort?: string;
   direction?: string;
-  lifecycle?: string[];
-  kind?: string[];
+  lifecycle?: string;
+  kind?: string;
 }
 
 /** Shape of the BFF list-APIs response envelope. */
@@ -25,38 +26,36 @@ export interface CatalogListResponse {
   meta: PaginationMeta;
 }
 
+/** Raw BFF response shape (returns ApiDefinition[], not ApiCatalogItem[]). */
+interface BffCatalogResponse {
+  data: ApiDefinition[];
+  meta: PaginationMeta;
+}
+
 /**
  * Fetch a paginated, filtered, sorted list of APIs from the BFF.
  *
- * Designed to be called both server-side (initial SSR) and client-side
- * (when filters / sort / page change).
+ * The BFF returns full `ApiDefinition` objects; this function maps them
+ * to `ApiCatalogItem` summaries for the catalog listing UI.
  */
 export async function fetchCatalogApis(
   params: CatalogListParams = {},
-  init?: RequestInit
 ): Promise<CatalogListResponse> {
-  const url = new URL('/api/catalog', BFF_BASE_URL);
+  const queryParams: Record<string, string> = {};
 
-  if (params.page) url.searchParams.set('page', String(params.page));
-  if (params.pageSize) url.searchParams.set('pageSize', String(params.pageSize));
-  if (params.sort) url.searchParams.set('sort', params.sort);
-  if (params.direction) url.searchParams.set('direction', params.direction);
-  if (params.lifecycle?.length) {
-    // BFF accepts a single lifecycle value; send the first selected
-    url.searchParams.set('lifecycle', params.lifecycle[0]);
-  }
-  if (params.kind?.length) {
-    url.searchParams.set('kind', params.kind[0]);
-  }
+  if (params.page) queryParams['page'] = String(params.page);
+  if (params.pageSize) queryParams['pageSize'] = String(params.pageSize);
+  if (params.sort) queryParams['sort'] = params.sort;
+  if (params.direction) queryParams['direction'] = params.direction;
+  if (params.lifecycle) queryParams['lifecycle'] = params.lifecycle;
+  if (params.kind) queryParams['kind'] = params.kind;
 
-  const res = await fetch(url.toString(), {
-    headers: { Accept: 'application/json' },
-    ...init,
+  const raw = await apiClient.get<BffCatalogResponse>('/api/catalog', {
+    params: queryParams,
   });
 
-  if (!res.ok) {
-    throw new Error(`Catalog API error: ${res.status} ${res.statusText}`);
-  }
-
-  return res.json() as Promise<CatalogListResponse>;
+  return {
+    data: raw.data.map(toApiCatalogItem),
+    meta: raw.meta,
+  };
 }

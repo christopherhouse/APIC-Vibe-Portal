@@ -1,10 +1,27 @@
 import { test, expect, type Page } from '@playwright/test';
-import type { ApiCatalogItem, PaginationMeta } from '@apic-vibe-portal/shared';
+import type { PaginationMeta } from '@apic-vibe-portal/shared';
 
 /**
- * Generate mock catalog API items for testing.
+ * Shape matching the BFF's actual response (ApiDefinition with arrays).
+ * The frontend maps these to ApiCatalogItem via toApiCatalogItem.
  */
-function makeMockApis(count: number, overrides: Partial<ApiCatalogItem> = {}): ApiCatalogItem[] {
+interface MockApiDefinition {
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  kind: string;
+  lifecycleStage: string;
+  versions: { id: string; name: string; title: string; lifecycleStage: string; createdAt: string; updatedAt: string }[];
+  deployments: { id: string; title: string; environment: { id: string; name: string; title: string; kind: string }; server: { runtimeUri: string[] }; createdAt: string; updatedAt: string }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Generate mock API definitions matching the BFF response shape.
+ */
+function makeMockApis(count: number, overrides: Partial<MockApiDefinition> = {}): MockApiDefinition[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `api-${i + 1}`,
     name: `api-${i + 1}`,
@@ -12,11 +29,26 @@ function makeMockApis(count: number, overrides: Partial<ApiCatalogItem> = {}): A
     description: `Description for API ${i + 1}. This API provides various endpoints for testing purposes.`,
     kind: i % 2 === 0 ? 'rest' : 'graphql',
     lifecycleStage: i % 3 === 0 ? 'production' : i % 3 === 1 ? 'development' : 'deprecated',
-    versionCount: i + 1,
-    deploymentCount: 1,
+    versions: Array.from({ length: i + 1 }, (__, vi) => ({
+      id: `v${vi + 1}`,
+      name: `v${vi + 1}`,
+      title: `Version ${vi + 1}`,
+      lifecycleStage: 'production',
+      createdAt: new Date(2026, 2, 15 - i).toISOString(),
+      updatedAt: new Date(2026, 2, 15 - i).toISOString(),
+    })),
+    deployments: [{
+      id: `dep-${i + 1}`,
+      title: `Deployment ${i + 1}`,
+      environment: { id: 'env-1', name: 'prod', title: 'Production', kind: 'production' },
+      server: { runtimeUri: ['https://api.example.com'] },
+      createdAt: new Date(2026, 2, 15 - i).toISOString(),
+      updatedAt: new Date(2026, 2, 15 - i).toISOString(),
+    }],
+    createdAt: new Date(2026, 1, 1).toISOString(),
     updatedAt: new Date(2026, 2, 15 - i).toISOString(),
     ...overrides,
-  })) as ApiCatalogItem[];
+  }));
 }
 
 /**
@@ -24,7 +56,7 @@ function makeMockApis(count: number, overrides: Partial<ApiCatalogItem> = {}): A
  */
 async function mockCatalogApi(
   page: Page,
-  apis: ApiCatalogItem[],
+  apis: MockApiDefinition[],
   pagination?: Partial<PaginationMeta>
 ) {
   await page.route('**/api/catalog*', async (route) => {
@@ -170,7 +202,7 @@ test.describe('Catalog Filtering', () => {
     // Navigate directly with filter params
     await page.goto('/catalog?lifecycle=production');
 
-    // The production checkbox should be checked
+    // The production radio should be checked
     await expect(page.getByLabel('Filter by Production')).toBeChecked();
   });
 });

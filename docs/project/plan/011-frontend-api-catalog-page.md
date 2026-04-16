@@ -57,8 +57,8 @@ Each API card displays:
 
 ### 4. Filtering
 
-- **Lifecycle Stage**: Multi-select checkboxes (Design, Development, Production, Deprecated, Retired)
-- **API Kind**: Multi-select checkboxes (REST, GraphQL, gRPC, SOAP)
+- **Lifecycle Stage**: Single-select radio buttons (Design, Development, Production, Deprecated, Retired)
+- **API Kind**: Single-select radio buttons (REST, GraphQL, gRPC, SOAP)
 - Filters reflected in URL query parameters for shareability
 - Filter state managed via URL search params (Next.js `useSearchParams`)
 
@@ -126,10 +126,11 @@ Each API card displays:
 
 - **Client component page**: The `/catalog/page.tsx` is a `'use client'` component rather than a server component because all filtering, sorting, pagination, and view toggle state is managed client-side via URL search params and React hooks. The initial render shows a loading skeleton while data is fetched client-side from the BFF.
 - **URL-based filter state**: All filter, sort, and pagination state is stored in URL search params using Next.js `useSearchParams()` and `router.push()`, making filter states shareable via URL and supporting browser back/forward navigation.
-- **Stable hook dependencies**: Serialized array params (`lifecycles.join(',')`, `JSON.stringify(params)`) are used as stable dependency keys for `useMemo` and `useCallback` to prevent infinite re-render loops caused by array reference changes.
+- **Stable hook dependencies**: All filter/sort/pagination params are scalar (string or number) primitives, so `useMemo` and `useCallback` dependency arrays use them directly without serialization. A `paramsKey` string concatenation (`page|pageSize|sort|direction|lifecycle|kind`) drives the refetch callback.
 - **MUI v9 API**: Uses `slotProps` instead of deprecated `PaperProps`/`inputProps` for MUI Drawer and Checkbox, and `aria-label` directly on Checkbox instead of `inputProps`.
 - **LocalStorage view mode**: Grid/list view preference is persisted in `localStorage` and read on mount, defaulting to grid view.
-- **BFF API client**: Separate `lib/catalog-api.ts` module wraps fetch calls to the BFF's `/api/catalog` endpoint with typed request/response handling, usable both server-side and client-side.
+- **Single-select filters**: The BFF accepts a single `lifecycle` and a single `kind` value; the filter UI uses radio buttons (not checkboxes) to match the API contract exactly.
+- **Shared API client**: `lib/catalog-api.ts` uses the shared `apiClient` from `lib/api-client.ts`, which automatically injects MSAL auth tokens and provides consistent error handling. The BFF returns full `ApiDefinition` objects which are mapped to `ApiCatalogItem` summaries via the shared `toApiCatalogItem` function.
 - **Playwright route mocking**: E2e tests use `page.route()` to intercept BFF API calls and return mock data, enabling full catalog page testing without a running BFF server.
 
 ### Deviations from Plan

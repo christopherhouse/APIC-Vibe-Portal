@@ -24,10 +24,20 @@ import ViewToggle, { type ViewMode } from './components/ViewToggle';
 
 const FILTER_DRAWER_WIDTH = 260;
 
+/** Allowed page size values. */
+const ALLOWED_PAGE_SIZES = [10, 20, 50] as const;
+
+/** Valid sort fields. */
+const VALID_SORT_FIELDS: SortField[] = ['name', 'updatedAt', 'createdAt'];
+
+/** Valid sort directions. */
+const VALID_SORT_DIRECTIONS: SortDirection[] = ['asc', 'desc'];
+
 /** Read view-mode preference from localStorage (client only). */
 function getStoredViewMode(): ViewMode {
   if (typeof window === 'undefined') return 'grid';
-  return (localStorage.getItem('catalog-view-mode') as ViewMode) ?? 'grid';
+  const stored = localStorage.getItem('catalog-view-mode');
+  return stored === 'grid' || stored === 'list' ? stored : 'grid';
 }
 
 export default function CatalogPage() {
@@ -36,13 +46,28 @@ export default function CatalogPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // ---------- state from URL ----------
-  const page = Number(searchParams.get('page') ?? '1');
-  const pageSize = Number(searchParams.get('pageSize') ?? '20');
-  const sort = (searchParams.get('sort') ?? 'updatedAt') as SortField;
-  const direction = (searchParams.get('direction') ?? 'desc') as SortDirection;
-  const lifecycles = searchParams.getAll('lifecycle');
-  const kinds = searchParams.getAll('kind');
+  // ---------- state from URL (validated / clamped) ----------
+  const rawPage = Number(searchParams.get('page') ?? '1');
+  const page = Number.isFinite(rawPage) ? Math.max(1, Math.round(rawPage)) : 1;
+
+  const rawPageSize = Number(searchParams.get('pageSize') ?? '20');
+  const pageSize = ALLOWED_PAGE_SIZES.includes(rawPageSize as (typeof ALLOWED_PAGE_SIZES)[number])
+    ? rawPageSize
+    : 20;
+
+  const rawSort = searchParams.get('sort') ?? 'updatedAt';
+  const sort: SortField = VALID_SORT_FIELDS.includes(rawSort as SortField)
+    ? (rawSort as SortField)
+    : 'updatedAt';
+
+  const rawDirection = searchParams.get('direction') ?? 'desc';
+  const direction: SortDirection = VALID_SORT_DIRECTIONS.includes(rawDirection as SortDirection)
+    ? (rawDirection as SortDirection)
+    : 'desc';
+
+  // BFF accepts a single lifecycle and a single kind value
+  const lifecycle = searchParams.get('lifecycle') ?? undefined;
+  const kind = searchParams.get('kind') ?? undefined;
 
   // ---------- local UI state ----------
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -54,19 +79,16 @@ export default function CatalogPage() {
   }, []);
 
   // ---------- data fetching ----------
-  // Serialize array values for stable useMemo dependencies
-  const lifecyclesKey = lifecycles.join(',');
-  const kindsKey = kinds.join(',');
   const params = useMemo<CatalogListParams>(
     () => ({
       page,
       pageSize,
       sort,
       direction,
-      lifecycle: lifecyclesKey ? lifecyclesKey.split(',') : [],
-      kind: kindsKey ? kindsKey.split(',') : [],
+      lifecycle,
+      kind,
     }),
-    [page, pageSize, sort, direction, lifecyclesKey, kindsKey]
+    [page, pageSize, sort, direction, lifecycle, kind]
   );
   const { items, pagination, isLoading, error } = useCatalog(params);
 
@@ -92,8 +114,8 @@ export default function CatalogPage() {
   const handlePageChange = (newPage: number) => updateSearch({ page: String(newPage) });
   const handlePageSizeChange = (newSize: number) => updateSearch({ pageSize: String(newSize), page: '1' });
   const handleSortChange = (s: SortField, d: SortDirection) => updateSearch({ sort: s, direction: d, page: '1' });
-  const handleLifecycleChange = (values: string[]) => updateSearch({ lifecycle: values.length ? values : undefined, page: '1' });
-  const handleKindChange = (values: string[]) => updateSearch({ kind: values.length ? values : undefined, page: '1' });
+  const handleLifecycleChange = (value: string | undefined) => updateSearch({ lifecycle: value, page: '1' });
+  const handleKindChange = (value: string | undefined) => updateSearch({ kind: value, page: '1' });
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
     localStorage.setItem('catalog-view-mode', mode);
@@ -102,8 +124,8 @@ export default function CatalogPage() {
   // ---------- filter sidebar content ----------
   const filterContent = (
     <CatalogFilters
-      selectedLifecycles={lifecycles}
-      selectedKinds={kinds}
+      selectedLifecycle={lifecycle}
+      selectedKind={kind}
       onLifecycleChange={handleLifecycleChange}
       onKindChange={handleKindChange}
     />
