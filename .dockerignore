@@ -21,10 +21,9 @@ infra
 *.swo
 
 # Node
-node_modules
 **/node_modules
 
-# Next.js build output (keep .next for local dev, exclude for Docker)
+# Next.js build output (excluded from Docker build context; rebuilt during container build)
 src/frontend/.next
 
 # Python
