@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
@@ -11,8 +11,6 @@ import IconButton from '@mui/material/IconButton';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
-import { useState } from 'react';
-import { useAuth } from '@/lib/auth/use-auth';
 import { useSearch } from '@/hooks/use-search';
 import type { SearchMode } from '@/lib/search-api';
 import type { ApiKind, ApiLifecycle } from '@apic-vibe-portal/shared';
@@ -32,7 +30,6 @@ export default function SearchPage() {
   const searchParams = useSearchParams();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { isAuthenticated } = useAuth();
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
 
   // ---------------------------------------------------------------------------
@@ -68,7 +65,7 @@ export default function SearchPage() {
     page,
     pageSize: 10,
     searchMode,
-    enabled: isAuthenticated && query.trim().length > 0,
+    enabled: query.trim().length > 0,
   });
 
   // ---------------------------------------------------------------------------
