@@ -56,6 +56,7 @@ class IndexerSettings(BaseSettings):
     api_center_subscription_id: str = Field(default="", description="Azure subscription ID")
     api_center_resource_group: str = Field(default="", description="Resource group name")
     api_center_service_name: str = Field(default="", description="API Center service name")
+    api_center_workspace_name: str = Field(default="default", description="API Center workspace name")
 
     # --- Indexing behaviour ----------------------------------------------
     embedding_chunk_size: int = Field(
