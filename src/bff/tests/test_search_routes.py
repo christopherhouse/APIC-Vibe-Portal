@@ -312,6 +312,7 @@ class TestSuggestEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["suggestions"] == []
+        assert data["query_prefix"] == ""
         mock_service.suggest.assert_not_called()
 
     @patch("apic_vibe_portal_bff.middleware.auth.validate_token")
@@ -327,4 +328,5 @@ class TestSuggestEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["suggestions"] == []
+        assert data["query_prefix"] == "a"
         mock_service.suggest.assert_not_called()
