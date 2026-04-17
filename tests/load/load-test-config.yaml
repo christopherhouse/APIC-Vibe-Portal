@@ -14,10 +14,7 @@
 version: v0.1
 testId: apic-vibe-portal-bff-load-test
 displayName: APIC Vibe Portal – BFF API Load Test
-description: >-
-  JMeter load test for the BFF API with OAuth2 client credentials token
-  acquisition.  Validates health endpoints, catalog browsing, and
-  environment listing under concurrent load.
+description: BFF API load test – health, catalog, and environment endpoints
 testPlan: bff-load-test.jmx
 engineInstances: 1
 
