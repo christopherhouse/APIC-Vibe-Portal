@@ -238,7 +238,7 @@ class IndexerService:
         if last_updated_str:
             try:
                 updated_at = datetime.fromisoformat(last_updated_str)
-            except ValueError, TypeError:
+            except (ValueError, TypeError):
                 pass
 
         # Embedding vector
