@@ -31,14 +31,25 @@ from indexer.indexer_service import IndexerService
 
 
 def _configure_logging(log_level: str) -> None:
+    resolved_level = getattr(logging, log_level.upper(), logging.INFO)
+
     logging.basicConfig(
-        level=getattr(logging, log_level.upper(), logging.INFO),
+        level=resolved_level,
         format="%(message)s",
         stream=sys.stdout,
     )
     structlog.configure(
-        wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, log_level.upper(), logging.INFO)),
+        wrapper_class=structlog.make_filtering_bound_logger(resolved_level),
     )
+
+    # Silence the Azure SDK HTTP pipeline loggers — they log every single
+    # HTTP request/response at INFO level which drowns out useful output.
+    for azure_logger_name in (
+        "azure.core.pipeline.policies.http_logging_policy",
+        "azure.identity",
+        "azure.mgmt.apicenter",
+    ):
+        logging.getLogger(azure_logger_name).setLevel(logging.WARNING)
 
 
 def run() -> None:
