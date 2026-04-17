@@ -404,23 +404,11 @@ class IndexerService:
                 result = poller.result()
                 return result.value if result and result.value else None
             except ResourceNotFoundError:
-                logger.info(
-                    "Spec not available for API — this is expected for "
-                    "some API types (e.g. GraphQL). The API will be "
-                    "indexed without spec content.",
-                    api_name=api_name,
-                    version=version_name,
-                )
+                self._log_spec_not_available(api_name, version_name)
                 continue
             except HttpResponseError as exc:
                 if exc.status_code == 404:
-                    logger.info(
-                        "Spec not available for API — this is expected for "
-                        "some API types (e.g. GraphQL). The API will be "
-                        "indexed without spec content.",
-                        api_name=api_name,
-                        version=version_name,
-                    )
+                    self._log_spec_not_available(api_name, version_name)
                 else:
                     logger.warning(
                         "Failed to fetch spec content for API",
@@ -439,6 +427,17 @@ class IndexerService:
                 )
                 continue
         return None
+
+    @staticmethod
+    def _log_spec_not_available(api_name: str, version_name: str) -> None:
+        """Log that a spec is not available — expected for some API types."""
+        logger.info(
+            "Spec not available for API — this is expected for "
+            "some API types (e.g. GraphQL). The API will be "
+            "indexed without spec content.",
+            api_name=api_name,
+            version=version_name,
+        )
 
     @staticmethod
     def _contact_to_str(contact: object) -> str:
