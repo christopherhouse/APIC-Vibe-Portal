@@ -45,6 +45,7 @@ export interface SearchFiltersProps {
   facets?: SearchFacets;
   onLifecycleChange: (value: string | undefined) => void;
   onKindChange: (value: string | undefined) => void;
+  onClearAll: () => void;
 }
 
 /**
@@ -67,6 +68,7 @@ export default function SearchFilters({
   facets,
   onLifecycleChange,
   onKindChange,
+  onClearAll,
 }: SearchFiltersProps) {
   const hasFilters = selectedLifecycle !== undefined || selectedKind !== undefined;
 
@@ -77,13 +79,7 @@ export default function SearchFilters({
           Filters
         </Typography>
         {hasFilters && (
-          <Button
-            size="small"
-            onClick={() => {
-              onLifecycleChange(undefined);
-              onKindChange(undefined);
-            }}
-          >
+          <Button size="small" onClick={onClearAll}>
             Clear all
           </Button>
         )}

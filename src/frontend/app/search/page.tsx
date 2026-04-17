@@ -95,6 +95,8 @@ export default function SearchPage() {
 
   const handleModeChange = (mode: SearchMode) => updateSearch({ mode, page: '1' });
 
+  const handleClearAll = () => updateSearch({ lifecycle: undefined, kind: undefined, page: '1' });
+
   // ---------------------------------------------------------------------------
   // Filter sidebar content
   // ---------------------------------------------------------------------------
@@ -105,6 +107,7 @@ export default function SearchPage() {
       facets={facets}
       onLifecycleChange={handleLifecycleChange}
       onKindChange={handleKindChange}
+      onClearAll={handleClearAll}
     />
   );
 

@@ -107,16 +107,16 @@ Add the following to each GitHub environment (dev, staging, prod):
 
 #### Environment Variables (`vars`)
 
-| Variable                 | Value                                         | Description                                     |
-| ------------------------ | --------------------------------------------- | ----------------------------------------------- |
-| `LOADTEST_CLIENT_ID`     | `<load-test-app-client-id>`                   | Client ID of the load test service principal     |
-| `LOADTEST_TOKEN_SCOPE`   | `api://<BFF_ENTRA_CLIENT_ID>/.default`        | Token scope for the BFF API                     |
+| Variable               | Value                                  | Description                                  |
+| ---------------------- | -------------------------------------- | -------------------------------------------- |
+| `LOADTEST_CLIENT_ID`   | `<load-test-app-client-id>`            | Client ID of the load test service principal |
+| `LOADTEST_TOKEN_SCOPE` | `api://<BFF_ENTRA_CLIENT_ID>/.default` | Token scope for the BFF API                  |
 
 #### Environment Secrets (`secrets`)
 
-| Secret                    | Value                                        | Description                                     |
-| ------------------------- | -------------------------------------------- | ----------------------------------------------- |
-| `LOADTEST_CLIENT_SECRET`  | `<load-test-app-client-secret>`              | Client secret for the load test service principal |
+| Secret                   | Value                           | Description                                       |
+| ------------------------ | ------------------------------- | ------------------------------------------------- |
+| `LOADTEST_CLIENT_SECRET` | `<load-test-app-client-secret>` | Client secret for the load test service principal |
 
 > **Security**: The client secret should also be stored in Azure Key Vault for rotation and auditing purposes.
 
@@ -187,35 +187,35 @@ jmeter -n -t tests/load/bff-load-test.jmx \
 
 The JMeter test plan includes:
 
-| Scenario           | Method | Path                       | Auth Required | Description                     |
-| ------------------ | ------ | -------------------------- | ------------- | ------------------------------- |
-| Health Check       | GET    | `/health`                  | No            | Basic health endpoint           |
-| Health Ready       | GET    | `/health/ready`            | No            | Readiness probe                 |
-| List APIs          | GET    | `/api/catalog`             | Yes           | API catalog browsing            |
-| List Environments  | GET    | `/api/environments`        | Yes           | Environment listing             |
+| Scenario          | Method | Path                | Auth Required | Description           |
+| ----------------- | ------ | ------------------- | ------------- | --------------------- |
+| Health Check      | GET    | `/health`           | No            | Basic health endpoint |
+| Health Ready      | GET    | `/health/ready`     | No            | Readiness probe       |
+| List APIs         | GET    | `/api/catalog`      | Yes           | API catalog browsing  |
+| List Environments | GET    | `/api/environments` | Yes           | Environment listing   |
 
 ## Failure Criteria
 
 The test is marked as **FAILED** if any of these conditions are met:
 
-| Criterion                              | Threshold      |
-| -------------------------------------- | -------------- |
-| Overall error rate                     | > 5%           |
-| Average response time                  | > 2,000 ms     |
-| 95th percentile response time          | > 5,000 ms     |
-| Health Check average response time     | > 500 ms       |
-| List APIs average response time        | > 3,000 ms     |
+| Criterion                          | Threshold  |
+| ---------------------------------- | ---------- |
+| Overall error rate                 | > 5%       |
+| Average response time              | > 2,000 ms |
+| 95th percentile response time      | > 5,000 ms |
+| Health Check average response time | > 500 ms   |
+| List APIs average response time    | > 3,000 ms |
 
 Auto-stop is enabled: the test stops early if error rate exceeds 80% for 60 seconds.
 
 ## Files
 
-| File                                     | Description                                      |
-| ---------------------------------------- | ------------------------------------------------ |
-| `infra/modules/load-testing.bicep`       | Bicep module for Azure Load Testing resource      |
-| `tests/load/bff-load-test.jmx`          | JMeter test plan with OAuth2 token acquisition    |
-| `tests/load/load-test-config.yaml`      | Azure Load Testing YAML configuration             |
-| `.github/workflows/load-test.yml`        | GitHub Actions workflow for automated execution   |
+| File                               | Description                                     |
+| ---------------------------------- | ----------------------------------------------- |
+| `infra/modules/load-testing.bicep` | Bicep module for Azure Load Testing resource    |
+| `tests/load/bff-load-test.jmx`     | JMeter test plan with OAuth2 token acquisition  |
+| `tests/load/load-test-config.yaml` | Azure Load Testing YAML configuration           |
+| `.github/workflows/load-test.yml`  | GitHub Actions workflow for automated execution |
 
 ## FAQ
 
@@ -225,10 +225,10 @@ Auto-stop is enabled: the test stops early if error rate exceeds 80% for 60 seco
 
 ### Where are the test credentials stored?
 
-| Credential               | Storage Location                    |
-| ------------------------ | ----------------------------------- |
-| `LOADTEST_CLIENT_ID`     | GitHub environment variable (`vars`) |
-| `LOADTEST_TOKEN_SCOPE`   | GitHub environment variable (`vars`) |
+| Credential               | Storage Location                      |
+| ------------------------ | ------------------------------------- |
+| `LOADTEST_CLIENT_ID`     | GitHub environment variable (`vars`)  |
+| `LOADTEST_TOKEN_SCOPE`   | GitHub environment variable (`vars`)  |
 | `LOADTEST_CLIENT_SECRET` | GitHub environment secret (`secrets`) |
 
 The client secret is passed to Azure Load Testing as a secret parameter, which maps it to a JMeter property that the test plan reads.
@@ -236,6 +236,7 @@ The client secret is passed to Azure Load Testing as a secret parameter, which m
 ### Can I customize the load profile?
 
 Yes. Modify the env vars in the workflow or pass overrides via `workflow_dispatch`:
+
 - `THREAD_COUNT` — concurrent virtual users (default: 10)
 - `RAMP_UP_SECONDS` — ramp-up period (default: 30)
 - `LOOP_COUNT` — iterations per thread (default: 50)

@@ -105,7 +105,8 @@ describe('useSearch', () => {
     });
 
     const { rerender } = renderHook(
-      ({ enabled }: { enabled: boolean }) => useSearch({ query: 'petstore', debounceMs: 0, enabled }),
+      ({ enabled }: { enabled: boolean }) =>
+        useSearch({ query: 'petstore', debounceMs: 0, enabled }),
       { initialProps: { enabled: true } }
     );
 

@@ -9,12 +9,14 @@ const defaultProps = {
   facets: undefined as SearchFacets | undefined,
   onLifecycleChange: jest.fn(),
   onKindChange: jest.fn(),
+  onClearAll: jest.fn(),
 };
 
 describe('SearchFilters', () => {
   beforeEach(() => {
     defaultProps.onLifecycleChange.mockClear();
     defaultProps.onKindChange.mockClear();
+    defaultProps.onClearAll.mockClear();
   });
 
   it('renders lifecycle filter options', () => {
@@ -55,12 +57,11 @@ describe('SearchFilters', () => {
     expect(screen.queryByText('Clear all')).not.toBeInTheDocument();
   });
 
-  it('clears all filters when clear all is clicked', async () => {
+  it('calls onClearAll when clear all is clicked', async () => {
     const user = userEvent.setup();
     render(<SearchFilters {...defaultProps} selectedLifecycle="production" selectedKind="rest" />);
     await user.click(screen.getByText('Clear all'));
-    expect(defaultProps.onLifecycleChange).toHaveBeenCalledWith(undefined);
-    expect(defaultProps.onKindChange).toHaveBeenCalledWith(undefined);
+    expect(defaultProps.onClearAll).toHaveBeenCalled();
   });
 
   it('displays facet counts when facets are provided', () => {
