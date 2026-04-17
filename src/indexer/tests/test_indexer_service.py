@@ -6,6 +6,8 @@ import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
+
 from indexer.indexer_service import IndexerService, IndexStats
 
 # ---------------------------------------------------------------------------
@@ -555,3 +557,78 @@ class TestFetchSpecContent:
         search_client.upload_documents.assert_called_once()
         uploaded = search_client.upload_documents.call_args.kwargs["documents"]
         assert uploaded[0]["specContent"] == ""
+
+    def test_resource_not_found_logs_info_not_warning(self) -> None:
+        """A ResourceNotFoundError (404) is logged at info, not warning, since
+        some API types (e.g. GraphQL) simply don't have downloadable specs.
+        """
+        service, apic_client, _, search_client, _ = _make_service()
+
+        api = make_api(name="graphql-api")
+        apic_client.apis.list.return_value = iter([api])
+        apic_client.api_versions.list.return_value = iter([_ns(name="v1")])
+        apic_client.api_definitions.list.return_value = iter([_ns(name="graphql-def")])
+        apic_client.api_definitions.begin_export_specification.side_effect = ResourceNotFoundError("Spec not found")
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            count = service.full_reindex()
+            # Should log at info (expected), NOT at warning
+            info_str = str(mock_logger.info.call_args_list)
+            assert "graphql-api" in info_str
+            assert "Spec not available" in info_str
+            # No warning should mention spec failure for this API
+            warning_str = str(mock_logger.warning.call_args_list)
+            assert "graphql-api" not in warning_str
+
+        assert count == 1
+        search_client.upload_documents.assert_called_once()
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        assert uploaded[0]["specContent"] == ""
+
+    def test_http_404_error_logs_info_not_warning(self) -> None:
+        """An HttpResponseError with status 404 is treated the same as
+        ResourceNotFoundError — logged at info level.
+        """
+        service, apic_client, _, search_client, _ = _make_service()
+
+        api = make_api(name="no-spec-api")
+        apic_client.apis.list.return_value = iter([api])
+        apic_client.api_versions.list.return_value = iter([_ns(name="v1")])
+        apic_client.api_definitions.list.return_value = iter([_ns(name="def1")])
+
+        error_404 = HttpResponseError(message="Not Found")
+        error_404.status_code = 404
+        apic_client.api_definitions.begin_export_specification.side_effect = error_404
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            count = service.full_reindex()
+            info_str = str(mock_logger.info.call_args_list)
+            assert "no-spec-api" in info_str
+            assert "Spec not available" in info_str
+            warning_str = str(mock_logger.warning.call_args_list)
+            assert "no-spec-api" not in warning_str
+
+        assert count == 1
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        assert uploaded[0]["specContent"] == ""
+
+    def test_http_500_error_still_logs_warning(self) -> None:
+        """Non-404 HTTP errors should still be logged as warnings."""
+        service, apic_client, _, search_client, _ = _make_service()
+
+        api = make_api(name="server-error-api")
+        apic_client.apis.list.return_value = iter([api])
+        apic_client.api_versions.list.return_value = iter([_ns(name="v1")])
+        apic_client.api_definitions.list.return_value = iter([_ns(name="def1")])
+
+        error_500 = HttpResponseError(message="Internal Server Error")
+        error_500.status_code = 500
+        apic_client.api_definitions.begin_export_specification.side_effect = error_500
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            service.full_reindex()
+            warning_str = str(mock_logger.warning.call_args_list)
+            assert "server-error-api" in warning_str
