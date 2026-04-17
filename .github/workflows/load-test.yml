@@ -87,28 +87,43 @@ jobs:
           echo "bff-host=$BFF_FQDN" >> $GITHUB_OUTPUT
           echo "BFF Host: $BFF_FQDN"
 
+      - name: Build load test parameters
+        id: lt-params
+        run: |
+          # Use jq to construct JSON so that any control characters in
+          # variable values are properly escaped (the previous inline
+          # approach broke JSON.parse() inside azure/load-testing@v1).
+          ENV_JSON=$(jq -c -n \
+            --arg host  "${{ steps.infra.outputs.bff-host }}" \
+            --arg tenant "${{ vars.AZURE_TENANT_ID }}" \
+            --arg client "${{ vars.LOADTEST_CLIENT_ID }}" \
+            --arg scope  "${{ vars.LOADTEST_TOKEN_SCOPE }}" \
+            '[
+              {"name":"TARGET_HOST",      "value":$host},
+              {"name":"TARGET_PORT",      "value":"443"},
+              {"name":"PROTOCOL",         "value":"https"},
+              {"name":"TENANT_ID",        "value":$tenant},
+              {"name":"TOKEN_CLIENT_ID",  "value":$client},
+              {"name":"TOKEN_SCOPE",      "value":$scope},
+              {"name":"THREAD_COUNT",     "value":"10"},
+              {"name":"RAMP_UP_SECONDS",  "value":"30"},
+              {"name":"LOOP_COUNT",       "value":"50"}
+            ]')
+          echo "env-json=$ENV_JSON" >> "$GITHUB_OUTPUT"
+
+          SECRETS_JSON=$(jq -c -n \
+            --arg secret "${{ secrets.LOADTEST_CLIENT_SECRET }}" \
+            '[{"name":"TOKEN_CLIENT_SECRET","value":$secret}]')
+          echo "secrets-json=$SECRETS_JSON" >> "$GITHUB_OUTPUT"
+
       - name: Run Azure Load Test
         uses: azure/load-testing@v1
         with:
           loadTestConfigFile: tests/load/load-test-config.yaml
           loadTestResource: ${{ steps.infra.outputs.load-test-resource }}
           resourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
-          env: |
-            [
-              { "name": "TARGET_HOST", "value": "${{ steps.infra.outputs.bff-host }}" },
-              { "name": "TARGET_PORT", "value": "443" },
-              { "name": "PROTOCOL", "value": "https" },
-              { "name": "TENANT_ID", "value": "${{ vars.AZURE_TENANT_ID }}" },
-              { "name": "TOKEN_CLIENT_ID", "value": "${{ vars.LOADTEST_CLIENT_ID }}" },
-              { "name": "TOKEN_SCOPE", "value": "${{ vars.LOADTEST_TOKEN_SCOPE }}" },
-              { "name": "THREAD_COUNT", "value": "10" },
-              { "name": "RAMP_UP_SECONDS", "value": "30" },
-              { "name": "LOOP_COUNT", "value": "50" }
-            ]
-          secrets: |
-            [
-              { "name": "TOKEN_CLIENT_SECRET", "value": "${{ secrets.LOADTEST_CLIENT_SECRET }}" }
-            ]
+          env: ${{ steps.lt-params.outputs.env-json }}
+          secrets: ${{ steps.lt-params.outputs.secrets-json }}
 
       - name: Upload load test results
         if: always()
