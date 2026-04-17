@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 
 # ---------------------------------------------------------------------------
 # Enums (mirror src/shared/src/enums/)
@@ -52,7 +53,19 @@ class EnvironmentKind(StrEnum):
 # ---------------------------------------------------------------------------
 
 
-class ExternalDoc(BaseModel):
+class CamelModel(BaseModel):
+    """Base model that serialises field names as camelCase in JSON.
+
+    Python code continues to use snake_case attribute names.
+    """
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
+
+
+class ExternalDoc(CamelModel):
     """External documentation link for an API."""
 
     title: str
@@ -60,7 +73,7 @@ class ExternalDoc(BaseModel):
     description: str | None = None
 
 
-class Contact(BaseModel):
+class Contact(CamelModel):
     """Contact information for an API."""
 
     name: str
@@ -68,7 +81,7 @@ class Contact(BaseModel):
     url: str | None = None
 
 
-class ApiEnvironment(BaseModel):
+class ApiEnvironment(CamelModel):
     """An environment where APIs can be deployed."""
 
     id: str
@@ -78,13 +91,13 @@ class ApiEnvironment(BaseModel):
     kind: EnvironmentKind = EnvironmentKind.DEVELOPMENT
 
 
-class DeploymentServer(BaseModel):
+class DeploymentServer(CamelModel):
     """Server information for a deployed API."""
 
     runtime_uri: list[str] = Field(default_factory=list)
 
 
-class ApiDeployment(BaseModel):
+class ApiDeployment(CamelModel):
     """Deployment information for an API version in a specific environment."""
 
     id: str
@@ -96,7 +109,7 @@ class ApiDeployment(BaseModel):
     updated_at: str
 
 
-class ApiVersion(BaseModel):
+class ApiVersion(CamelModel):
     """A specific version of an API."""
 
     id: str
@@ -107,7 +120,7 @@ class ApiVersion(BaseModel):
     updated_at: str
 
 
-class ApiSpecification(BaseModel):
+class ApiSpecification(CamelModel):
     """An API specification document (OpenAPI, AsyncAPI, etc.)."""
 
     id: str
@@ -119,7 +132,7 @@ class ApiSpecification(BaseModel):
     content: str | None = None
 
 
-class ApiDefinition(BaseModel):
+class ApiDefinition(CamelModel):
     """Core API definition model, mirroring Azure API Center's API entity."""
 
     id: str
