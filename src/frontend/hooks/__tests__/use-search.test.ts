@@ -60,7 +60,10 @@ describe('useSearch', () => {
     });
 
     expect(mockFetchSearch).toHaveBeenCalledWith(
-      expect.objectContaining({ query: 'petstore' }),
+      expect.objectContaining({
+        query: 'petstore',
+        pagination: { page: 1, pageSize: 10 },
+      }),
       expect.any(AbortSignal)
     );
   });
@@ -90,5 +93,34 @@ describe('useSearch', () => {
     });
 
     expect(result.current.error).toBe('Network error');
+  });
+
+  it('aborts in-flight request when enabled becomes false', async () => {
+    let abortSignal: AbortSignal | undefined;
+    mockFetchSearch.mockImplementation(async (_req, signal) => {
+      abortSignal = signal;
+      return new Promise(() => {
+        // Never resolve — simulates a long-running request
+      });
+    });
+
+    const { rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) => useSearch({ query: 'petstore', debounceMs: 0, enabled }),
+      { initialProps: { enabled: true } }
+    );
+
+    // Trigger the search
+    await act(async () => {
+      jest.runAllTimers();
+      await Promise.resolve();
+    });
+
+    expect(abortSignal).toBeDefined();
+    expect(abortSignal!.aborted).toBe(false);
+
+    // Disable the hook — should abort the in-flight request
+    rerender({ enabled: false });
+
+    expect(abortSignal!.aborted).toBe(true);
   });
 });

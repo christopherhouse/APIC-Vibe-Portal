@@ -83,7 +83,7 @@ export function useSearch({
 
     try {
       const data = await fetchSearch(
-        { query: q, filters: f, page: pg, pageSize: ps, searchMode: sm },
+        { query: q, filters: f, pagination: { page: pg, pageSize: ps }, searchMode: sm },
         controller.signal
       );
       if (controller.signal.aborted) return;
@@ -109,6 +109,8 @@ export function useSearch({
 
   useEffect(() => {
     if (!enabled || query.trim() === '') {
+      abortRef.current?.abort();
+      abortRef.current = null;
       setState(EMPTY_STATE);
       return;
     }

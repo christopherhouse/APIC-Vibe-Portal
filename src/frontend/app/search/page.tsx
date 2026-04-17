@@ -13,7 +13,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { useSearch } from '@/hooks/use-search';
 import type { SearchMode } from '@/lib/search-api';
-import type { ApiKind, ApiLifecycle } from '@apic-vibe-portal/shared';
+import { ApiKind, ApiLifecycle, isApiKind, isApiLifecycle } from '@apic-vibe-portal/shared';
 
 import SearchResults from './components/SearchResults';
 import SearchSummary from './components/SearchSummary';
@@ -36,8 +36,10 @@ export default function SearchPage() {
   // Parse URL state
   // ---------------------------------------------------------------------------
   const query = searchParams.get('q') ?? '';
-  const kind = searchParams.get('kind') ?? undefined;
-  const lifecycle = searchParams.get('lifecycle') ?? undefined;
+  const rawKind = searchParams.get('kind') ?? undefined;
+  const kind = rawKind && isApiKind(rawKind) ? rawKind : undefined;
+  const rawLifecycle = searchParams.get('lifecycle') ?? undefined;
+  const lifecycle = rawLifecycle && isApiLifecycle(rawLifecycle) ? rawLifecycle : undefined;
   const rawMode = searchParams.get('mode') ?? 'hybrid';
   const searchMode: SearchMode = VALID_MODES.includes(rawMode as SearchMode)
     ? (rawMode as SearchMode)
@@ -51,7 +53,7 @@ export default function SearchPage() {
   const filters = useMemo(
     () => ({
       kind: kind ? ([kind] as ApiKind[]) : undefined,
-      lifecycle: lifecycle ? ([lifecycle] as ApiLifecycle[]) : undefined,
+      lifecycleStage: lifecycle ? ([lifecycle] as ApiLifecycle[]) : undefined,
     }),
     [kind, lifecycle]
   );

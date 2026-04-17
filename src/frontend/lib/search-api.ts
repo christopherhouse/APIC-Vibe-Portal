@@ -6,7 +6,12 @@
  *   GET  /api/search/suggest  — autocomplete prefix suggestions
  */
 
-import type { ApiKind, ApiLifecycle } from '@apic-vibe-portal/shared';
+import type {
+  ApiKind,
+  ApiLifecycle,
+  SearchFilters as SharedSearchFilters,
+  PaginationParams,
+} from '@apic-vibe-portal/shared';
 import { apiClient } from '@/lib/api-client';
 
 // ---------------------------------------------------------------------------
@@ -45,17 +50,20 @@ export interface SearchFacets {
   tags: SearchFacetValue[];
 }
 
-export interface SearchFilters {
-  kind?: ApiKind[];
-  lifecycle?: ApiLifecycle[];
-  tags?: string[];
-}
+/**
+ * Re-export the shared SearchFilters type so consumers import from one place.
+ * Uses `lifecycleStage` (not `lifecycle`) to match the shared DTO.
+ */
+export type SearchFilters = SharedSearchFilters;
 
+/**
+ * Search request DTO aligned with the shared SearchRequest shape.
+ * Pagination is nested under `pagination: { page, pageSize }`.
+ */
 export interface SearchRequest {
   query: string;
   filters?: SearchFilters;
-  page?: number;
-  pageSize?: number;
+  pagination?: PaginationParams;
   searchMode?: SearchMode;
 }
 

@@ -138,7 +138,7 @@ Each result card shows:
 - **Debounce via `setTimeout`**: Used the project's built-in `debounce` pattern (300ms) inside hooks rather than an external library.
 - **SearchBar as separate component**: Extracted the search bar with autocomplete into `components/layout/SearchBar.tsx` (imported by `Header.tsx`) to keep the header component clean and allow independent testing.
 - **Search result types**: Defined a local `SearchResultItem` interface in `lib/search-api.ts` aligned with the plan-014 BFF contract (includes `score`, `highlights`, `semanticCaption`), decoupled from `ApiCatalogItem`.
-- **dangerouslySetInnerHTML for highlights**: Used for rendering `<em>` highlight tags returned by the BFF. The data originates from the controlled BFF server — not from user input — so XSS risk is minimal and consistent with common search UX patterns.
+- **Dedicated highlight parser**: Rendered BFF-provided `<em>` highlight tags through the `HighlightedText` component rather than `dangerouslySetInnerHTML`, preserving the expected search highlighting UX while avoiding raw HTML injection.
 - **URL-based state**: All search state (query, kind, lifecycle, mode, page) lives in the URL, ensuring shareability and browser history support.
 
 ### Deviations from Plan
