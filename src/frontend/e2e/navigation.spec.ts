@@ -12,7 +12,7 @@ test.describe('Navigation', () => {
     const catalogLink = page.getByRole('link', { name: /api catalog/i });
     await catalogLink.click();
     // After navigation, the URL should update and the link should be selected
-    await expect(page).toHaveURL(/\/apis/);
+    await expect(page).toHaveURL(/\/catalog/);
     await expect(catalogLink).toHaveClass(/Mui-selected/);
   });
 
