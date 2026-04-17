@@ -530,3 +530,28 @@ class TestFetchSpecContent:
         search_client.upload_documents.assert_called_once()
         uploaded = search_client.upload_documents.call_args.kwargs["documents"]
         assert uploaded[0]["specContent"] == ""
+
+    def test_logs_warning_on_poller_result_failure(self) -> None:
+        """When the LRO poller.result() raises, warning is logged and doc still indexed."""
+        service, apic_client, _, search_client, _ = _make_service()
+
+        api = make_api(name="poller-fail-api")
+        apic_client.apis.list.return_value = iter([api])
+        apic_client.api_versions.list.return_value = iter([_ns(name="v1")])
+        apic_client.api_definitions.list.return_value = iter([_ns(name="openapi")])
+
+        poller = MagicMock()
+        poller.result.side_effect = RuntimeError("LRO polling failed")
+        apic_client.api_definitions.begin_export_specification.return_value = poller
+
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            service.full_reindex()
+            assert mock_logger.warning.call_count >= 1
+            call_args_str = str(mock_logger.warning.call_args_list)
+            assert "poller-fail-api" in call_args_str
+
+        search_client.upload_documents.assert_called_once()
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        assert uploaded[0]["specContent"] == ""
