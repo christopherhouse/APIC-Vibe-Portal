@@ -11,6 +11,16 @@ jest.mock('@/lib/auth/use-auth', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
+}));
+
+jest.mock('@/hooks/use-autocomplete', () => ({
+  useAutocomplete: () => ({ suggestions: [], isLoading: false, error: null }),
+}));
+
 import Header from '../layout/Header';
 
 describe('Header Auth UI', () => {
