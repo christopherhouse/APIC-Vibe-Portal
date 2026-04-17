@@ -54,7 +54,7 @@ class EnvironmentKind(StrEnum):
 
 
 class CamelModel(BaseModel):
-    """Base model that serialises field names as camelCase in JSON.
+    """Base model that serializes field names as camelCase in JSON.
 
     Python code continues to use snake_case attribute names.
     """
