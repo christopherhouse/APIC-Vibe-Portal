@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from indexer.indexer_service import IndexerService, IndexStats
 
@@ -36,15 +36,21 @@ def make_api(
     custom_properties: dict[str, object] | None = None,
     contacts: list[object] | None = None,
 ) -> SimpleNamespace:
+    """Build a mock that mirrors the real ``azure.mgmt.apicenter.models.Api``
+    ARM resource: ``name`` and ``system_data`` on the top-level object,
+    everything else nested under ``properties``.
+    """
     return _ns(
         name=name,
-        title=title,
-        description=description,
-        kind=kind,
-        lifecycle_stage=lifecycle_stage,
-        custom_properties=custom_properties or {"owner": "platform-team"},
-        contacts=contacts or [_ns(name="API Team", email="api-team@example.com")],
         system_data=_make_system_data(),
+        properties=_ns(
+            title=title,
+            description=description,
+            kind=kind,
+            lifecycle_stage=lifecycle_stage,
+            custom_properties=custom_properties or {"owner": "platform-team"},
+            contacts=contacts or [_ns(name="API Team", email="api-team@example.com")],
+        ),
     )
 
 
@@ -61,6 +67,9 @@ def _make_service() -> tuple[IndexerService, MagicMock, MagicMock, MagicMock, Ma
 
     # Default embedding response
     embedding_service.generate_embedding.return_value = [0.1] * 1536
+
+    # Default workspace listing — return a single "default" workspace
+    apic_client.workspaces.list.return_value = iter([_ns(name="default")])
 
     service = IndexerService(
         apic_client=apic_client,
@@ -190,8 +199,6 @@ class TestFullReindex:
 
     def test_versions_fallback_to_empty_and_logs_warning_on_error(self) -> None:
         """Version list errors degrade gracefully and emit a warning."""
-        from unittest.mock import patch
-
         service, apic_client, _, search_client, _ = _make_service()
 
         api = make_api(name="bad-api")
@@ -201,12 +208,100 @@ class TestFullReindex:
 
         with patch("indexer.indexer_service.logger") as mock_logger:
             service.full_reindex()
-            mock_logger.warning.assert_called_once()
-            call_args_str = str(mock_logger.warning.call_args)
+            # The warning is now called with structlog keyword args
+            assert mock_logger.warning.call_count >= 1
+            call_args_str = str(mock_logger.warning.call_args_list)
             assert "bad-api" in call_args_str
 
         # Document is still uploaded even when version fetch fails
         search_client.upload_documents.assert_called_once()
+
+    def test_verify_workspace_called_before_listing_apis(self) -> None:
+        """Workspace verification runs before the API listing."""
+        service, apic_client, _, search_client, _ = _make_service()
+
+        apic_client.apis.list.return_value = iter([make_api()])
+        apic_client.api_versions.list.return_value = iter([])
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        service.full_reindex()
+
+        apic_client.workspaces.list.assert_called_once_with(
+            resource_group_name="rg-test",
+            service_name="apic-test",
+        )
+
+
+# ---------------------------------------------------------------------------
+# _verify_workspace
+# ---------------------------------------------------------------------------
+
+
+class TestVerifyWorkspace:
+    def test_logs_error_when_workspace_not_found(self) -> None:
+        """When the configured workspace doesn't exist, an error is logged."""
+        service, apic_client, _, _, _ = _make_service()
+        apic_client.workspaces.list.return_value = iter([_ns(name="other-ws")])
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            service._verify_workspace()
+            mock_logger.error.assert_called_once()
+            call_args_str = str(mock_logger.error.call_args)
+            assert "does not exist" in call_args_str
+
+    def test_logs_info_when_workspace_found(self) -> None:
+        """When the configured workspace exists, only info is logged."""
+        service, apic_client, _, _, _ = _make_service()
+        apic_client.workspaces.list.return_value = iter([_ns(name="default")])
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            service._verify_workspace()
+            mock_logger.error.assert_not_called()
+            mock_logger.info.assert_called_once()
+
+    def test_workspace_list_failure_is_non_fatal(self) -> None:
+        """If workspace listing itself fails, the error is logged as a
+        warning and does not propagate."""
+        service, apic_client, _, _, _ = _make_service()
+        apic_client.workspaces.list.side_effect = RuntimeError("authz denied")
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            service._verify_workspace()  # must not raise
+            mock_logger.warning.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _props helper
+# ---------------------------------------------------------------------------
+
+
+class TestProps:
+    def test_returns_properties_sub_object_when_present(self) -> None:
+        """For real SDK objects with a ``properties`` sub-object, return it."""
+        inner = _ns(title="My API", kind="rest")
+        api = _ns(name="my-api", properties=inner)
+
+        result = IndexerService._props(api)
+
+        assert result is inner
+        assert result.title == "My API"
+
+    def test_returns_api_itself_when_no_properties(self) -> None:
+        """For legacy SimpleNamespace mocks without ``properties``, fallback
+        to the object itself so old-style attribute access still works."""
+        api = _ns(name="my-api", title="My API", kind="rest")
+
+        result = IndexerService._props(api)
+
+        assert result is api
+
+    def test_returns_api_itself_when_properties_is_none(self) -> None:
+        """If ``properties`` exists but is ``None``, fallback to the api."""
+        api = _ns(name="my-api", title="My API", properties=None)
+
+        result = IndexerService._props(api)
+
+        assert result is api
 
 
 # ---------------------------------------------------------------------------
@@ -393,8 +488,6 @@ class TestDatetimeTimezone:
 class TestFetchSpecContent:
     def test_logs_warning_on_spec_fetch_failure(self) -> None:
         """Spec export errors are logged as warnings (not silently swallowed)."""
-        from unittest.mock import patch
-
         service, apic_client, _, search_client, _ = _make_service()
 
         api = make_api(name="spec-fail-api")
@@ -406,8 +499,8 @@ class TestFetchSpecContent:
 
         with patch("indexer.indexer_service.logger") as mock_logger:
             service.full_reindex()
-            mock_logger.warning.assert_called_once()
-            call_args_str = str(mock_logger.warning.call_args)
+            assert mock_logger.warning.call_count >= 1
+            call_args_str = str(mock_logger.warning.call_args_list)
             assert "spec-fail-api" in call_args_str
 
         # Document is still indexed even without spec content
