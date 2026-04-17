@@ -28,6 +28,9 @@ RUN uv sync --frozen --no-dev --no-install-project
 # Copy source code
 COPY src/indexer/ .
 
+# Install the project itself now that source is available
+RUN uv sync --frozen --no-dev
+
 # Compile Python files
 RUN .venv/bin/python -m compileall -b .
 
@@ -49,6 +52,9 @@ RUN apt-get update && \
 # Create non-root user
 RUN useradd -m -u 1001 -s /bin/bash appuser && \
     chown -R appuser:appuser /app
+
+# Copy the shared apic_client source (editable install references /apic_client)
+COPY --from=builder --chown=appuser:appuser /apic_client /apic_client
 
 # Copy virtual environment and compiled code from builder
 COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
