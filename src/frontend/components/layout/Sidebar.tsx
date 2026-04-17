@@ -22,17 +22,19 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   href: string;
+  /** Disable prefetch for routes whose pages do not exist yet. */
+  prefetch?: boolean;
 }
 
 const mainNavItems: NavItem[] = [
   { label: 'Home', icon: <HomeIcon />, href: '/' },
-  { label: 'API Catalog', icon: <ApiIcon />, href: '/apis' },
-  { label: 'AI Assistant', icon: <ChatIcon />, href: '/chat' },
+  { label: 'API Catalog', icon: <ApiIcon />, href: '/catalog' },
+  { label: 'AI Assistant', icon: <ChatIcon />, href: '/chat', prefetch: false },
 ];
 
 const secondaryNavItems: NavItem[] = [
-  { label: 'Settings', icon: <SettingsIcon />, href: '/settings' },
-  { label: 'Help', icon: <HelpIcon />, href: '/help' },
+  { label: 'Settings', icon: <SettingsIcon />, href: '/settings', prefetch: false },
+  { label: 'Help', icon: <HelpIcon />, href: '/help', prefetch: false },
 ];
 
 export default function Sidebar() {
@@ -54,7 +56,12 @@ export default function Sidebar() {
       <List component="nav" aria-label="main navigation">
         {mainNavItems.map((item) => (
           <ListItem key={item.label} disablePadding>
-            <ListItemButton component={Link} href={item.href} selected={pathname === item.href}>
+            <ListItemButton
+              component={Link}
+              href={item.href}
+              prefetch={item.prefetch}
+              selected={pathname === item.href}
+            >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} />
             </ListItemButton>
@@ -65,7 +72,12 @@ export default function Sidebar() {
       <List component="nav" aria-label="secondary navigation">
         {secondaryNavItems.map((item) => (
           <ListItem key={item.label} disablePadding>
-            <ListItemButton component={Link} href={item.href} selected={pathname === item.href}>
+            <ListItemButton
+              component={Link}
+              href={item.href}
+              prefetch={item.prefetch}
+              selected={pathname === item.href}
+            >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} />
             </ListItemButton>
