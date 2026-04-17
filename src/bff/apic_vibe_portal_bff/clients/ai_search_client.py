@@ -77,6 +77,9 @@ class AISearchClient:
     endpoint:
         Azure AI Search service endpoint URL
         (e.g. ``https://my-search.search.windows.net``).
+        If the URL uses ``http://``, it is automatically upgraded to
+        ``https://`` because the Azure SDK requires TLS for bearer-token
+        authentication.
     index_name:
         Name of the search index to query.
     credential:
@@ -89,10 +92,31 @@ class AISearchClient:
         index_name: str,
         credential: TokenCredential | AzureKeyCredential | None = None,
     ) -> None:
-        self._endpoint = endpoint
+        self._endpoint = self._normalize_endpoint(endpoint)
         self._index_name = index_name
         self._credential = credential or DefaultAzureCredential()
         self._client: _SearchClientType | None = None
+
+    @staticmethod
+    def _normalize_endpoint(endpoint: str) -> str:
+        """Ensure the endpoint uses HTTPS.
+
+        The Azure SDK enforces HTTPS for bearer-token authentication.
+        This method upgrades ``http://`` to ``https://`` and prepends
+        ``https://`` when no scheme is present.
+        """
+        stripped = endpoint.strip()
+        if not stripped:
+            return stripped
+        if stripped.startswith("http://"):
+            logger.warning(
+                "AI Search endpoint uses http:// — upgrading to https://",
+                extra={"original_endpoint": stripped},
+            )
+            return "https://" + stripped[len("http://") :]
+        if not stripped.startswith("https://"):
+            return "https://" + stripped
+        return stripped
 
     # ------------------------------------------------------------------
     # Internal helpers

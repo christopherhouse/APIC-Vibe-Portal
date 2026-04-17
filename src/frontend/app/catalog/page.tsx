@@ -52,20 +52,20 @@ export default function CatalogPage() {
   const rawPage = Number(searchParams.get('page') ?? '1');
   const page = Number.isFinite(rawPage) ? Math.max(1, Math.round(rawPage)) : 1;
 
-  const rawPageSize = Number(searchParams.get('pageSize') ?? '20');
+  const rawPageSize = Number(searchParams.get('pageSize') ?? '10');
   const pageSize = ALLOWED_PAGE_SIZES.includes(rawPageSize as (typeof ALLOWED_PAGE_SIZES)[number])
     ? rawPageSize
-    : 20;
+    : 10;
 
-  const rawSort = searchParams.get('sort') ?? 'updatedAt';
+  const rawSort = searchParams.get('sort') ?? 'name';
   const sort: SortField = VALID_SORT_FIELDS.includes(rawSort as SortField)
     ? (rawSort as SortField)
-    : 'updatedAt';
+    : 'name';
 
-  const rawDirection = searchParams.get('direction') ?? 'desc';
+  const rawDirection = searchParams.get('direction') ?? 'asc';
   const direction: SortDirection = VALID_SORT_DIRECTIONS.includes(rawDirection as SortDirection)
     ? (rawDirection as SortDirection)
-    : 'desc';
+    : 'asc';
 
   // BFF accepts a single lifecycle and a single kind value
   const lifecycle = searchParams.get('lifecycle') ?? undefined;
