@@ -73,6 +73,38 @@ class TestAISearchClientInit:
     def test_lazy_client_creation(self, client):
         assert client._client is None
 
+    def test_normalizes_http_to_https(self, mock_credential):
+        client = AISearchClient(
+            endpoint="http://test.search.windows.net",
+            index_name="my-index",
+            credential=mock_credential,
+        )
+        assert client._endpoint == "https://test.search.windows.net"
+
+    def test_prepends_https_when_no_scheme(self, mock_credential):
+        client = AISearchClient(
+            endpoint="test.search.windows.net",
+            index_name="my-index",
+            credential=mock_credential,
+        )
+        assert client._endpoint == "https://test.search.windows.net"
+
+    def test_preserves_https_endpoint(self, mock_credential):
+        client = AISearchClient(
+            endpoint="https://test.search.windows.net",
+            index_name="my-index",
+            credential=mock_credential,
+        )
+        assert client._endpoint == "https://test.search.windows.net"
+
+    def test_handles_empty_endpoint(self, mock_credential):
+        client = AISearchClient(
+            endpoint="",
+            index_name="my-index",
+            credential=mock_credential,
+        )
+        assert client._endpoint == ""
+
 
 # ---------------------------------------------------------------------------
 # Search

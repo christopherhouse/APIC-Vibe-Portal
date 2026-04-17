@@ -301,7 +301,7 @@ class TestSuggestEndpoint:
         assert response.status_code == 401
 
     @patch("apic_vibe_portal_bff.middleware.auth.validate_token")
-    async def test_suggest_requires_q_param(self, mock_validate, client, mock_service):
+    async def test_suggest_returns_empty_for_missing_q(self, mock_validate, client, mock_service):
         mock_validate.return_value = _MOCK_USER
 
         response = await client.get(
@@ -309,4 +309,22 @@ class TestSuggestEndpoint:
             headers=_AUTH_HEADERS,
         )
 
-        assert response.status_code == 422  # Validation error — missing required param
+        assert response.status_code == 200
+        data = response.json()
+        assert data["suggestions"] == []
+        mock_service.suggest.assert_not_called()
+
+    @patch("apic_vibe_portal_bff.middleware.auth.validate_token")
+    async def test_suggest_returns_empty_for_short_q(self, mock_validate, client, mock_service):
+        mock_validate.return_value = _MOCK_USER
+
+        response = await client.get(
+            "/api/search/suggest",
+            params={"q": "a"},
+            headers=_AUTH_HEADERS,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["suggestions"] == []
+        mock_service.suggest.assert_not_called()

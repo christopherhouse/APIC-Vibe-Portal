@@ -139,10 +139,16 @@ def search(
     dependencies=[Depends(require_any_role(_ALLOWED_ROLES))],
 )
 def suggest(
-    q: str = Query(description="Search prefix for autocomplete suggestions"),  # noqa: B008
+    q: str = Query(default="", description="Search prefix for autocomplete suggestions"),  # noqa: B008
     service: SearchService = Depends(_get_search_service),  # noqa: B008
 ) -> SuggestResponse:
-    """Return autocomplete suggestions for the given prefix."""
+    """Return autocomplete suggestions for the given prefix.
+
+    Returns an empty result set when ``q`` is shorter than 2 characters
+    so the downstream search service is not called with unusable input.
+    """
+    if len(q.strip()) < 2:
+        return SuggestResponse(suggestions=[], query_prefix=q)
     try:
         return service.suggest(prefix=q)
     except AISearchClientError as exc:

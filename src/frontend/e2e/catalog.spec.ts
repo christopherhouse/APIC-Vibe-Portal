@@ -168,7 +168,7 @@ test.describe('API Catalog Page', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: makeMockApis(3),
-          meta: { page: 1, pageSize: 20, totalCount: 3, totalPages: 1 },
+          meta: { page: 1, pageSize: 10, totalCount: 3, totalPages: 1 },
         }),
       });
     });
@@ -255,7 +255,7 @@ test.describe('Catalog Pagination', () => {
     await page.goto('/catalog');
 
     // Should show pagination info
-    await expect(page.getByTestId('pagination-info')).toContainText('Showing 1–20 of 25 APIs');
+    await expect(page.getByTestId('pagination-info')).toContainText('Showing 1–10 of 25 APIs');
   });
 
   test('page navigation works', async ({ page }) => {
@@ -263,12 +263,12 @@ test.describe('Catalog Pagination', () => {
     await mockCatalogApi(page, apis);
     await page.goto('/catalog');
 
-    await expect(page.getByTestId('pagination-info')).toContainText('Showing 1–20 of 25 APIs');
+    await expect(page.getByTestId('pagination-info')).toContainText('Showing 1–10 of 25 APIs');
 
     // Click page 2
     await page.getByRole('button', { name: /go to page 2/i }).click();
     await expect(page).toHaveURL(/page=2/);
-    await expect(page.getByTestId('pagination-info')).toContainText('Showing 21–25 of 25 APIs');
+    await expect(page.getByTestId('pagination-info')).toContainText('Showing 11–20 of 25 APIs');
   });
 });
 
