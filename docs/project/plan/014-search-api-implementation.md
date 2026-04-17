@@ -125,7 +125,8 @@ Returns top-5 autocomplete suggestions based on API names and descriptions.
 ## Testing & Acceptance Criteria
 
 - [x] `POST /api/search` returns relevant results for text queries
-- [x] Hybrid search combines keyword, semantic, and vector results
+- [x] Search combines keyword and semantic ranking for relevant results
+- [ ] Vector search integration (deferred to task 017 — requires embedding generation)
 - [x] Search results include relevance scores and highlights
 - [x] Faceted results return correct counts per category
 - [x] `GET /api/search/suggest` returns autocomplete suggestions
@@ -169,11 +170,11 @@ Returns top-5 autocomplete suggestions based on API names and descriptions.
 
 ### Validation Results
 
-- **60 new unit tests** across 3 test files:
+- **72 new unit tests** across 3 test files:
   - `test_ai_search_client.py` — 17 tests covering client construction, search (basic, filters, pagination, semantic, vector, error handling), suggest, and lifecycle
-  - `test_search_service.py` — 30 tests covering OData filter building, highlight extraction, caption extraction, facet parsing, result mapping, search service logic, and suggest
+  - `test_search_service.py` — 42 tests covering OData filter building (incl. injection prevention), value escaping, highlight extraction, caption extraction, facet parsing, result mapping, reranker score, sort support, search service logic, and suggest
   - `test_search_routes.py` — 13 tests covering POST /api/search (results, filters, pagination, empty query, facets, highlights, captions, errors, auth) and GET /api/search/suggest (results, errors, auth, param validation)
-- **311 total tests pass** (251 existing + 60 new) — all in 1.83s
+- **323 total tests pass** (251 existing + 72 new)
 - `ruff check .` passes with zero issues
 - `ruff format --check .` passes with zero issues
 - `python -m compileall .` compiles all files successfully
