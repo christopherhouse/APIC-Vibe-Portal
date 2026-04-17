@@ -15,6 +15,16 @@ from apic_vibe_portal_bff.models.api_center import (
     PaginatedResponse,
     PaginationMeta,
 )
+from apic_vibe_portal_bff.models.search import (
+    FacetValue,
+    SearchDocument,
+    SearchFacets,
+    SearchRequest,
+    SearchResponse,
+    SearchResult,
+    SuggestResponse,
+    SuggestResult,
+)
 
 __all__ = [
     "ApiDefinition",
@@ -28,6 +38,14 @@ __all__ = [
     "DeploymentServer",
     "EnvironmentKind",
     "ExternalDoc",
+    "FacetValue",
     "PaginatedResponse",
     "PaginationMeta",
+    "SearchDocument",
+    "SearchFacets",
+    "SearchRequest",
+    "SearchResponse",
+    "SearchResult",
+    "SuggestResponse",
+    "SuggestResult",
 ]

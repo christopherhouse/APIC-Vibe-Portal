@@ -3,7 +3,7 @@
 # ============================================================================
 
 # Build stage
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 WORKDIR /app
 
@@ -30,14 +30,14 @@ COPY . .
 RUN .venv/bin/python -m compileall -b .
 
 # Production stage
-FROM python:3.12-slim AS production
+FROM python:3.14-slim AS production
 
 WORKDIR /app
 
 # Upgrade OS packages and remove pip to reduce attack surface
 RUN apt-get update && \
     apt-get upgrade -y && \
-    pip uninstall -y pip setuptools 2>/dev/null; \
+    pip uninstall -y pip setuptools 2>/dev/null && \
     rm -rf /usr/local/lib/python*/site-packages/pip* \
            /usr/local/lib/python*/site-packages/setuptools* \
            /usr/local/bin/pip* && \

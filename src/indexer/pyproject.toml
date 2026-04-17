@@ -2,7 +2,7 @@
 name = "apic-vibe-portal-indexer"
 version = "0.0.0"
 description = "Azure Container Job — AI Search indexing pipeline for APIC Vibe Portal"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "azure-identity>=1.21.0",
     "azure-mgmt-apicenter>=1.0.0",
@@ -31,11 +31,12 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 filterwarnings = [
     "ignore::DeprecationWarning",
+    "ignore::SyntaxWarning",
 ]
 
 [tool.ruff]
 line-length = 120
-target-version = "py312"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = [
