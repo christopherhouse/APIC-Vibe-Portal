@@ -9,12 +9,11 @@ Usage
 Required environment variables (or set them in a .env file):
     AI_SEARCH_ENDPOINT
     OPENAI_ENDPOINT
-    API_CENTER_SUBSCRIPTION_ID
-    API_CENTER_RESOURCE_GROUP
-    API_CENTER_SERVICE_NAME
+    API_CENTER_ENDPOINT
 
 Optional:
     AI_SEARCH_INDEX_NAME        (default: apic-apis)
+    API_CENTER_WORKSPACE_NAME   (default: default)
     OPENAI_EMBEDDING_DEPLOYMENT (default: text-embedding-ada-002)
     OPENAI_EMBEDDING_DIMENSIONS (default: 1536)
     LOG_LEVEL                   (default: INFO)
@@ -27,6 +26,7 @@ from pathlib import Path
 
 # Allow running from the repo root without installing the package
 sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "indexer"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "apic_client"))
 
 from indexer.config import get_settings  # noqa: E402
 from indexer.embedding_service import EmbeddingService  # noqa: E402
@@ -37,8 +37,8 @@ from indexer.indexer_service import IndexerService  # noqa: E402
 def main() -> None:
     import logging
 
+    from apic_client import ApiCenterDataPlaneClient
     from azure.identity import DefaultAzureCredential
-    from azure.mgmt.apicenter import ApiCenterMgmtClient
     from azure.search.documents import SearchClient
     from azure.search.documents.indexes import SearchIndexClient
     from openai import AzureOpenAI
@@ -51,9 +51,10 @@ def main() -> None:
 
     credential = DefaultAzureCredential()
 
-    apic_client = ApiCenterMgmtClient(
+    apic_client = ApiCenterDataPlaneClient(
+        base_url=settings.api_center_endpoint,
+        workspace_name=settings.api_center_workspace_name,
         credential=credential,
-        subscription_id=settings.api_center_subscription_id,
     )
     search_index_client = SearchIndexClient(
         endpoint=settings.ai_search_endpoint,
@@ -83,8 +84,6 @@ def main() -> None:
         search_index_client=search_index_client,
         search_client=search_client,
         embedding_service=embedding_service,
-        resource_group=settings.api_center_resource_group,
-        service_name=settings.api_center_service_name,
         index_name=settings.ai_search_index_name,
     )
 

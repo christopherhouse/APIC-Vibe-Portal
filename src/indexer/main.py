@@ -6,10 +6,9 @@ Container Apps scheduler on the cron schedule defined by the
 ``REINDEX_CRON_SCHEDULE`` environment variable (default: ``*/5 * * * *``).
 
 Each invocation performs a full reindex: it fetches all APIs from Azure API
-Center, generates embeddings via Azure OpenAI, and upserts them into the
-configured AI Search index.  The process exits with code 0 on success or
-non-zero on failure, which Azure Container Apps Jobs use to determine
-retry/failure behaviour.
+Center via the **data-plane** REST API, generates embeddings via Azure OpenAI,
+and upserts them into the configured AI Search index.  The process exits with
+code 0 on success or non-zero on failure.
 """
 
 from __future__ import annotations
@@ -18,8 +17,8 @@ import logging
 import sys
 
 import structlog
+from apic_client import ApiCenterDataPlaneClient
 from azure.identity import DefaultAzureCredential
-from azure.mgmt.apicenter import ApiCenterMgmtClient
 from azure.search.documents import SearchClient
 from azure.search.documents.indexes import SearchIndexClient
 from openai import AzureOpenAI
@@ -42,12 +41,11 @@ def _configure_logging(log_level: str) -> None:
         wrapper_class=structlog.make_filtering_bound_logger(resolved_level),
     )
 
-    # Silence the Azure SDK HTTP pipeline loggers — they log every single
-    # HTTP request/response at INFO level which drowns out useful output.
+    # Silence noisy Azure SDK HTTP pipeline loggers.
     for azure_logger_name in (
         "azure.core.pipeline.policies.http_logging_policy",
         "azure.identity",
-        "azure.mgmt.apicenter",
+        "httpx",
     ):
         logging.getLogger(azure_logger_name).setLevel(logging.WARNING)
 
@@ -61,7 +59,7 @@ def run() -> None:
     log.info(
         "Indexer job starting",
         index=settings.ai_search_index_name,
-        service=settings.api_center_service_name,
+        endpoint=settings.api_center_endpoint,
         cron_schedule=settings.reindex_cron_schedule,
     )
 
@@ -73,10 +71,11 @@ def run() -> None:
         managed_identity_client_id=settings.azure_client_id or None,
     )
 
-    # --- Azure API Center client -----------------------------------------
-    apic_client = ApiCenterMgmtClient(
+    # --- Azure API Center data-plane client ------------------------------
+    apic_client = ApiCenterDataPlaneClient(
+        base_url=settings.api_center_endpoint,
+        workspace_name=settings.api_center_workspace_name,
         credential=credential,
-        subscription_id=settings.api_center_subscription_id,
     )
 
     # --- AI Search clients -----------------------------------------------
@@ -110,8 +109,6 @@ def run() -> None:
         search_index_client=search_index_client,
         search_client=search_client,
         embedding_service=embedding_service,
-        resource_group=settings.api_center_resource_group,
-        service_name=settings.api_center_service_name,
         index_name=settings.ai_search_index_name,
         workspace_name=settings.api_center_workspace_name,
     )

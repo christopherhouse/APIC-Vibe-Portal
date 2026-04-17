@@ -68,9 +68,7 @@ def _get_service() -> ApiCatalogService:
 
         settings = get_settings()
         client = ApiCenterClient(
-            subscription_id=settings.api_center_subscription_id,
-            resource_group=settings.api_center_resource_group,
-            service_name=settings.api_center_service_name,
+            base_url=settings.api_center_endpoint,
             workspace_name=settings.api_center_workspace_name,
         )
 

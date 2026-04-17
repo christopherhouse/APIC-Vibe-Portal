@@ -245,7 +245,7 @@ jobs:
           echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
           echo "ai-search-endpoint=$(echo $DEPLOYMENT | jq -r '.aiSearchEndpoint.value')" >> $GITHUB_OUTPUT
           echo "openai-endpoint=$(echo $DEPLOYMENT | jq -r '.openAiEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "api-center-name=$(echo $DEPLOYMENT | jq -r '.apiCenterName.value')" >> $GITHUB_OUTPUT
+          echo "api-center-endpoint=$(echo $DEPLOYMENT | jq -r '.apiCenterEndpoint.value')" >> $GITHUB_OUTPUT
 
           # Extract identity outputs from deployment
           FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
@@ -320,7 +320,7 @@ jobs:
             --indexer-image-tag ${{ needs.build-and-push-indexer.outputs.image-tag }} \
             --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
             --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
-            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }} API_CENTER_RESOURCE_GROUP=${{ vars.AZURE_RESOURCE_GROUP }} API_CENTER_SERVICE_NAME=${{ steps.infra.outputs.api-center-name }}"
+            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }}"
 
   deploy-staging:
     name: Deploy to Staging
@@ -363,7 +363,7 @@ jobs:
           echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
           echo "ai-search-endpoint=$(echo $DEPLOYMENT | jq -r '.aiSearchEndpoint.value')" >> $GITHUB_OUTPUT
           echo "openai-endpoint=$(echo $DEPLOYMENT | jq -r '.openAiEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "api-center-name=$(echo $DEPLOYMENT | jq -r '.apiCenterName.value')" >> $GITHUB_OUTPUT
+          echo "api-center-endpoint=$(echo $DEPLOYMENT | jq -r '.apiCenterEndpoint.value')" >> $GITHUB_OUTPUT
 
           # Extract identity outputs from deployment
           FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
@@ -438,7 +438,7 @@ jobs:
             --indexer-image-tag ${{ needs.build-and-push-indexer.outputs.image-tag }} \
             --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
             --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
-            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }} API_CENTER_RESOURCE_GROUP=${{ vars.AZURE_RESOURCE_GROUP }} API_CENTER_SERVICE_NAME=${{ steps.infra.outputs.api-center-name }}"
+            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }}"
 
   deploy-prod:
     name: Deploy to Production
@@ -481,7 +481,7 @@ jobs:
           echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
           echo "ai-search-endpoint=$(echo $DEPLOYMENT | jq -r '.aiSearchEndpoint.value')" >> $GITHUB_OUTPUT
           echo "openai-endpoint=$(echo $DEPLOYMENT | jq -r '.openAiEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "api-center-name=$(echo $DEPLOYMENT | jq -r '.apiCenterName.value')" >> $GITHUB_OUTPUT
+          echo "api-center-endpoint=$(echo $DEPLOYMENT | jq -r '.apiCenterEndpoint.value')" >> $GITHUB_OUTPUT
 
           # Extract identity outputs from deployment
           FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
@@ -556,4 +556,4 @@ jobs:
             --indexer-image-tag ${{ needs.build-and-push-indexer.outputs.image-tag }} \
             --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
             --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
-            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }} API_CENTER_RESOURCE_GROUP=${{ vars.AZURE_RESOURCE_GROUP }} API_CENTER_SERVICE_NAME=${{ steps.infra.outputs.api-center-name }}"
+            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }}"

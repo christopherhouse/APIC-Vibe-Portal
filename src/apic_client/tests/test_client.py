@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from apic_client.client import ApiCenterDataPlaneClient, _API_VERSION, _DATA_PLANE_SCOPE
+from apic_client.client import _DATA_PLANE_SCOPE, ApiCenterDataPlaneClient
 from apic_client.exceptions import (
     ApiCenterAuthError,
     ApiCenterClientError,

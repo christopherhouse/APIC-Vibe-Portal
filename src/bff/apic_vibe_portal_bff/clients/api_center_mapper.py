@@ -1,8 +1,12 @@
-"""Data mapping utilities for Azure API Center SDK responses.
+"""Data mapping utilities for Azure API Center data-plane responses.
 
-Converts ``azure-mgmt-apicenter`` SDK model instances (or plain dict
-representations) into BFF Pydantic models.  All mappers are pure functions
-that handle ``None`` / missing fields gracefully.
+Converts data-plane JSON dicts (or legacy SDK model instances) into BFF
+Pydantic models.  All mappers are pure functions that handle ``None`` /
+missing fields gracefully.
+
+The data-plane API returns flat JSON objects (``name``, ``title``,
+``lifecycleStage``, ``lastUpdated``, ``externalDocumentation``, etc.)
+rather than the ARM envelope pattern (``properties`` sub-object).
 """
 
 from __future__ import annotations
@@ -104,7 +108,7 @@ def _map_env_kind(value: Any) -> EnvironmentKind:
 
 
 def map_environment(raw: Any) -> ApiEnvironment:
-    """Map an API Center environment SDK object → :class:`ApiEnvironment`."""
+    """Map an API Center environment data-plane dict → :class:`ApiEnvironment`."""
     return ApiEnvironment(
         id=str(_get_attr(raw, "name") or _get_attr(raw, "id") or ""),
         name=str(_get_attr(raw, "name") or ""),
@@ -115,10 +119,11 @@ def map_environment(raw: Any) -> ApiEnvironment:
 
 
 def map_deployment(raw: Any) -> ApiDeployment:
-    """Map an API Center deployment SDK object → :class:`ApiDeployment`."""
-    raw_env = _get_attr(raw, "environment_id") or _get_attr(raw, "environment") or {}
+    """Map an API Center deployment data-plane dict → :class:`ApiDeployment`."""
+    # Data plane uses ``environmentId`` (camelCase resource path)
+    raw_env = _get_attr(raw, "environmentId") or _get_attr(raw, "environment_id") or _get_attr(raw, "environment") or {}
     if isinstance(raw_env, str):
-        # environment_id is just a resource ID string
+        # environmentId is a resource path string — extract the last segment
         env_id = raw_env.split("/")[-1] if raw_env else ""
         environment = ApiEnvironment(
             id=env_id,
@@ -130,15 +135,21 @@ def map_deployment(raw: Any) -> ApiDeployment:
         environment = map_environment(raw_env)
 
     raw_server = _get_attr(raw, "server") or {}
-    runtime_uri_raw = _get_attr(raw_server, "runtime_uri") or _get_attr(raw_server, "runtimeUri") or []
+    # Data plane: ``runtimeUri`` (camelCase); SDK: ``runtime_uri``
+    runtime_uri_raw = _get_attr(raw_server, "runtimeUri") or _get_attr(raw_server, "runtime_uri") or []
     runtime_uri = list(runtime_uri_raw) if runtime_uri_raw else []
 
+    # Data plane: ``lastUpdated`` at top level; SDK: ``system_data``
     system_data = _get_attr(raw, "system_data") or {}
     created_at = _iso_or_empty(
-        _get_attr(raw, "created_at") or _get_attr(system_data, "created_at") or _get_attr(system_data, "createdAt")
+        _get_attr(raw, "created_at")
+        or _get_attr(raw, "createdAt")
+        or _get_attr(system_data, "created_at")
+        or _get_attr(system_data, "createdAt")
     )
     updated_at = _iso_or_empty(
         _get_attr(raw, "updated_at")
+        or _get_attr(raw, "lastUpdated")
         or _get_attr(system_data, "last_modified_at")
         or _get_attr(system_data, "lastModifiedAt")
     )
@@ -155,13 +166,17 @@ def map_deployment(raw: Any) -> ApiDeployment:
 
 
 def map_api_version(raw: Any) -> ApiVersion:
-    """Map an API Center API version SDK object → :class:`ApiVersion`."""
+    """Map an API Center API version data-plane dict → :class:`ApiVersion`."""
     system_data = _get_attr(raw, "system_data") or {}
     created_at = _iso_or_empty(
-        _get_attr(raw, "created_at") or _get_attr(system_data, "created_at") or _get_attr(system_data, "createdAt")
+        _get_attr(raw, "created_at")
+        or _get_attr(raw, "createdAt")
+        or _get_attr(system_data, "created_at")
+        or _get_attr(system_data, "createdAt")
     )
     updated_at = _iso_or_empty(
         _get_attr(raw, "updated_at")
+        or _get_attr(raw, "lastUpdated")
         or _get_attr(system_data, "last_modified_at")
         or _get_attr(system_data, "lastModifiedAt")
     )
@@ -170,14 +185,14 @@ def map_api_version(raw: Any) -> ApiVersion:
         id=str(_get_attr(raw, "name") or _get_attr(raw, "id") or ""),
         name=str(_get_attr(raw, "name") or ""),
         title=str(_get_attr(raw, "title") or _get_attr(raw, "name") or ""),
-        lifecycle_stage=_map_lifecycle(_get_attr(raw, "lifecycle_stage")),
+        lifecycle_stage=_map_lifecycle(_get_attr(raw, "lifecycleStage") or _get_attr(raw, "lifecycle_stage")),
         created_at=created_at,
         updated_at=updated_at,
     )
 
 
 def map_api_specification(raw: Any, content: str | None = None) -> ApiSpecification:
-    """Map an API Center definition SDK object → :class:`ApiSpecification`."""
+    """Map an API Center definition data-plane dict → :class:`ApiSpecification`."""
     spec_info = _get_attr(raw, "specification") or {}
     return ApiSpecification(
         id=str(_get_attr(raw, "name") or _get_attr(raw, "id") or ""),
@@ -194,17 +209,21 @@ def map_api_definition(
     versions: list[ApiVersion] | None = None,
     deployments: list[ApiDeployment] | None = None,
 ) -> ApiDefinition:
-    """Map an API Center API SDK object → :class:`ApiDefinition`.
+    """Map an API Center API data-plane dict → :class:`ApiDefinition`.
 
     *versions* and *deployments* are pre-fetched lists that are embedded into
     the definition.  Pass empty lists (the default) to omit them.
     """
     system_data = _get_attr(raw, "system_data") or {}
     created_at = _iso_or_empty(
-        _get_attr(raw, "created_at") or _get_attr(system_data, "created_at") or _get_attr(system_data, "createdAt")
+        _get_attr(raw, "created_at")
+        or _get_attr(raw, "createdAt")
+        or _get_attr(system_data, "created_at")
+        or _get_attr(system_data, "createdAt")
     )
     updated_at = _iso_or_empty(
         _get_attr(raw, "updated_at")
+        or _get_attr(raw, "lastUpdated")
         or _get_attr(system_data, "last_modified_at")
         or _get_attr(system_data, "lastModifiedAt")
     )
@@ -224,8 +243,13 @@ def map_api_definition(
         except Exception:
             logger.debug("Failed to map contact entry", exc_info=True)
 
-    # externalDocs
-    raw_ext_docs = _get_attr(raw, "external_docs") or _get_attr(raw, "externalDocs") or []
+    # externalDocumentation (data plane camelCase) / external_docs (SDK)
+    raw_ext_docs = (
+        _get_attr(raw, "externalDocumentation")
+        or _get_attr(raw, "external_docs")
+        or _get_attr(raw, "externalDocs")
+        or []
+    )
     external_docs: list[ExternalDoc] = []
     for d in raw_ext_docs:
         try:
@@ -239,15 +263,15 @@ def map_api_definition(
         except Exception:
             logger.debug("Failed to map external doc entry", exc_info=True)
 
-    # customProperties
-    raw_custom = _get_attr(raw, "custom_properties") or _get_attr(raw, "customProperties") or {}
+    # customProperties (data plane camelCase) / custom_properties (SDK)
+    raw_custom = _get_attr(raw, "customProperties") or _get_attr(raw, "custom_properties") or {}
     custom_properties: dict[str, object] = dict(raw_custom) if isinstance(raw_custom, dict) else {}
 
     # license / termsOfService
     license_info = _get_attr(raw, "license") or {}
     license_url = _get_attr(license_info, "url") if license_info else None
 
-    tos_info = _get_attr(raw, "terms_of_service") or {}
+    tos_info = _get_attr(raw, "termsOfService") or _get_attr(raw, "terms_of_service") or {}
     tos_url = _get_attr(tos_info, "url") if tos_info else None
 
     return ApiDefinition(
@@ -256,7 +280,7 @@ def map_api_definition(
         title=str(_get_attr(raw, "title") or _get_attr(raw, "name") or ""),
         description=str(_get_attr(raw, "description") or ""),
         kind=_map_api_kind(_get_attr(raw, "kind")),
-        lifecycle_stage=_map_lifecycle(_get_attr(raw, "lifecycle_stage")),
+        lifecycle_stage=_map_lifecycle(_get_attr(raw, "lifecycleStage") or _get_attr(raw, "lifecycle_stage")),
         terms_of_service=tos_url,
         license=license_url,
         external_docs=external_docs,

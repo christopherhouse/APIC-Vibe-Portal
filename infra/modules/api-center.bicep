@@ -101,16 +101,14 @@ resource apiCenterCatalogContributorAssignment 'Microsoft.Authorization/roleAssi
   }
 }
 
-// RBAC: Grant indexer identity "Azure API Center Service Reader" — required to enumerate
-// APIs via the management plane SDK (azure-mgmt-apicenter).
-// Note: The previous role "Azure API Center Data Reader" (c7244dfb-...) only grants
-// DataActions (data plane).  The management plane SDK needs control-plane Actions
-// (Microsoft.ApiCenter/services/*/read) which are included in Service Reader.
-resource apiCenterServiceReaderRoleIndexer 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(apiCenter.id, indexerManagedIdentityPrincipalId, 'Azure API Center Service Reader')
+// RBAC: Grant indexer identity "Azure API Center Data Reader" — required for
+// the data-plane REST API used by the indexer to enumerate APIs, versions,
+// definitions, and export specifications.
+resource apiCenterDataReaderRoleIndexer 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(apiCenter.id, indexerManagedIdentityPrincipalId, 'Azure API Center Data Reader')
   scope: apiCenter
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '6cba8790-29c5-48e5-bab1-c7541b01cb04') // Azure API Center Service Reader
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'c7244dfb-f447-457d-b2ba-3999044d1706') // Azure API Center Data Reader
     principalId: indexerManagedIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
@@ -128,5 +126,5 @@ output id string = apiCenter.id
 @description('API Center name')
 output name string = apiCenter.name
 
-@description('API Center endpoint')
-output endpoint string = 'https://${apiCenterName}.data.${location}.azure.microsoft.com'
+@description('API Center data-plane endpoint')
+output endpoint string = 'https://${apiCenterName}.data.${location}.azure-apicenter.ms'

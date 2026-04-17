@@ -1,20 +1,18 @@
-"""Unit tests for ApiCenterClient error handling and method delegation."""
+"""Unit tests for ApiCenterClient (data-plane wrapper)."""
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
-
-from apic_vibe_portal_bff.clients.api_center_client import (
+from apic_client.exceptions import (
     ApiCenterAuthError,
-    ApiCenterClient,
     ApiCenterClientError,
     ApiCenterNotFoundError,
     ApiCenterUnavailableError,
 )
+
+from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient
 from tests.api_center_mocks import (
     MOCK_API_DEFINITIONS,
     MOCK_APIS,
@@ -25,19 +23,17 @@ from tests.api_center_mocks import (
 )
 
 
-def _make_client(mock_mgmt: MagicMock) -> ApiCenterClient:
-    """Return an ApiCenterClient whose _mgmt_client is pre-wired."""
+def _make_client(mock_dp: MagicMock) -> ApiCenterClient:
+    """Return an ApiCenterClient whose _dp_client is pre-wired."""
     client = ApiCenterClient(
-        subscription_id="sub-123",
-        resource_group="rg-test",
-        service_name="apic-test",
+        base_url="https://myapic.data.eastus.azure-apicenter.ms",
         credential=MagicMock(),
     )
-    client._mgmt_client = mock_mgmt
+    client._dp_client = mock_dp
     return client
 
 
-def _mock_mgmt() -> MagicMock:
+def _mock_dp() -> MagicMock:
     return MagicMock()
 
 
@@ -48,89 +44,72 @@ def _mock_mgmt() -> MagicMock:
 
 class TestListApis:
     def test_returns_list_of_apis(self) -> None:
-        mgmt = _mock_mgmt()
-        mgmt.apis.list.return_value = iter(MOCK_APIS)
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.list_apis.return_value = MOCK_APIS
+        client = _make_client(dp)
 
         result = client.list_apis()
 
         assert result == MOCK_APIS
-        mgmt.apis.list.assert_called_once_with(
-            resource_group_name="rg-test",
-            service_name="apic-test",
-            workspace_name="default",
-            filter=None,
-        )
+        dp.list_apis.assert_called_once()
 
-    def test_passes_filter_to_sdk(self) -> None:
-        mgmt = _mock_mgmt()
-        mgmt.apis.list.return_value = iter([])
-        client = _make_client(mgmt)
+    def test_passes_filter_str_is_accepted(self) -> None:
+        """filter_str is accepted for interface compat but ignored by data plane."""
+        dp = _mock_dp()
+        dp.list_apis.return_value = []
+        client = _make_client(dp)
 
         client.list_apis(filter_str="properties/kind eq 'rest'")
 
-        mgmt.apis.list.assert_called_once_with(
-            resource_group_name="rg-test",
-            service_name="apic-test",
-            workspace_name="default",
-            filter="properties/kind eq 'rest'",
-        )
+        dp.list_apis.assert_called_once()
 
     def test_not_found_raises_domain_error(self) -> None:
-        mgmt = _mock_mgmt()
-        mgmt.apis.list.side_effect = ResourceNotFoundError("not found")
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.list_apis.side_effect = ApiCenterNotFoundError("not found")
+        client = _make_client(dp)
 
         with pytest.raises(ApiCenterNotFoundError):
             client.list_apis()
 
     def test_auth_error_raises_domain_error(self) -> None:
-        mgmt = _mock_mgmt()
-        err = HttpResponseError(message="Unauthorized")
-        err.status_code = 401
-        mgmt.apis.list.side_effect = err
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.list_apis.side_effect = ApiCenterAuthError("Unauthorized")
+        client = _make_client(dp)
 
         with pytest.raises(ApiCenterAuthError):
             client.list_apis()
 
     def test_forbidden_raises_auth_error(self) -> None:
-        mgmt = _mock_mgmt()
-        err = HttpResponseError(message="Forbidden")
-        err.status_code = 403
-        mgmt.apis.list.side_effect = err
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.list_apis.side_effect = ApiCenterAuthError("Forbidden")
+        client = _make_client(dp)
 
         with pytest.raises(ApiCenterAuthError):
             client.list_apis()
 
     def test_service_unavailable_raises_domain_error(self) -> None:
-        mgmt = _mock_mgmt()
-        err = HttpResponseError(message="Service Unavailable")
-        err.status_code = 503
-        mgmt.apis.list.side_effect = err
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.list_apis.side_effect = ApiCenterUnavailableError("Service Unavailable")
+        client = _make_client(dp)
 
         with pytest.raises(ApiCenterUnavailableError):
             client.list_apis()
 
     def test_generic_http_error_raises_client_error(self) -> None:
-        mgmt = _mock_mgmt()
-        err = HttpResponseError(message="Bad Request")
-        err.status_code = 400
-        mgmt.apis.list.side_effect = err
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.list_apis.side_effect = ApiCenterClientError("Bad Request", status_code=400)
+        client = _make_client(dp)
 
         with pytest.raises(ApiCenterClientError) as exc_info:
             client.list_apis()
         assert exc_info.value.status_code == 400
 
-    def test_unexpected_error_raises_client_error(self) -> None:
-        mgmt = _mock_mgmt()
-        mgmt.apis.list.side_effect = RuntimeError("oops")
-        client = _make_client(mgmt)
+    def test_unexpected_error_propagates(self) -> None:
+        dp = _mock_dp()
+        dp.list_apis.side_effect = RuntimeError("oops")
+        client = _make_client(dp)
 
-        with pytest.raises(ApiCenterClientError):
+        with pytest.raises(RuntimeError):
             client.list_apis()
 
 
@@ -141,24 +120,19 @@ class TestListApis:
 
 class TestGetApi:
     def test_returns_single_api(self) -> None:
-        mgmt = _mock_mgmt()
-        mgmt.apis.get.return_value = MOCK_APIS[0]
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.get_api.return_value = MOCK_APIS[0]
+        client = _make_client(dp)
 
         result = client.get_api("petstore-api")
 
         assert result == MOCK_APIS[0]
-        mgmt.apis.get.assert_called_once_with(
-            resource_group_name="rg-test",
-            service_name="apic-test",
-            workspace_name="default",
-            api_name="petstore-api",
-        )
+        dp.get_api.assert_called_once_with("petstore-api")
 
     def test_not_found_raises_domain_error(self) -> None:
-        mgmt = _mock_mgmt()
-        mgmt.apis.get.side_effect = ResourceNotFoundError("not found")
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.get_api.side_effect = ApiCenterNotFoundError("missing-api")
+        client = _make_client(dp)
 
         with pytest.raises(ApiCenterNotFoundError):
             client.get_api("missing-api")
@@ -171,19 +145,19 @@ class TestGetApi:
 
 class TestListApiVersions:
     def test_returns_list(self) -> None:
-        mgmt = _mock_mgmt()
-        mgmt.api_versions.list.return_value = iter(MOCK_VERSIONS)
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.list_api_versions.return_value = MOCK_VERSIONS
+        client = _make_client(dp)
 
         result = client.list_api_versions("petstore-api")
 
         assert result == MOCK_VERSIONS
-        mgmt.api_versions.list.assert_called_once()
+        dp.list_api_versions.assert_called_once_with("petstore-api")
 
     def test_not_found_raises_domain_error(self) -> None:
-        mgmt = _mock_mgmt()
-        mgmt.api_versions.list.side_effect = ResourceNotFoundError("not found")
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.list_api_versions.side_effect = ApiCenterNotFoundError("missing-api")
+        client = _make_client(dp)
 
         with pytest.raises(ApiCenterNotFoundError):
             client.list_api_versions("missing-api")
@@ -196,20 +170,14 @@ class TestListApiVersions:
 
 class TestListApiDefinitions:
     def test_returns_list(self) -> None:
-        mgmt = _mock_mgmt()
-        mgmt.api_definitions.list.return_value = iter(MOCK_API_DEFINITIONS)
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.list_api_definitions.return_value = MOCK_API_DEFINITIONS
+        client = _make_client(dp)
 
         result = client.list_api_definitions("petstore-api", "v1")
 
         assert result == MOCK_API_DEFINITIONS
-        mgmt.api_definitions.list.assert_called_once_with(
-            resource_group_name="rg-test",
-            service_name="apic-test",
-            workspace_name="default",
-            api_name="petstore-api",
-            version_name="v1",
-        )
+        dp.list_api_definitions.assert_called_once_with("petstore-api", "v1")
 
 
 # ---------------------------------------------------------------------------
@@ -219,33 +187,18 @@ class TestListApiDefinitions:
 
 class TestExportApiSpecification:
     def test_returns_spec_content(self) -> None:
-        mgmt = _mock_mgmt()
-        poller = MagicMock()
-        poller.result.return_value = SimpleNamespace(value=MOCK_SPEC_CONTENT)
-        mgmt.api_definitions.begin_export_specification.return_value = poller
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.export_api_specification.return_value = MOCK_SPEC_CONTENT
+        client = _make_client(dp)
 
         result = client.export_api_specification("petstore-api", "v1", "openapi")
 
         assert result == MOCK_SPEC_CONTENT
 
     def test_returns_none_when_empty(self) -> None:
-        mgmt = _mock_mgmt()
-        poller = MagicMock()
-        poller.result.return_value = SimpleNamespace(value=None)
-        mgmt.api_definitions.begin_export_specification.return_value = poller
-        client = _make_client(mgmt)
-
-        result = client.export_api_specification("petstore-api", "v1", "openapi")
-
-        assert result is None
-
-    def test_returns_none_when_result_is_none(self) -> None:
-        mgmt = _mock_mgmt()
-        poller = MagicMock()
-        poller.result.return_value = None
-        mgmt.api_definitions.begin_export_specification.return_value = poller
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.export_api_specification.return_value = None
+        client = _make_client(dp)
 
         result = client.export_api_specification("petstore-api", "v1", "openapi")
 
@@ -259,23 +212,19 @@ class TestExportApiSpecification:
 
 class TestListEnvironments:
     def test_returns_list(self) -> None:
-        mgmt = _mock_mgmt()
-        mgmt.environments.list.return_value = iter(MOCK_ENVIRONMENTS)
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.list_environments.return_value = MOCK_ENVIRONMENTS
+        client = _make_client(dp)
 
         result = client.list_environments()
 
         assert result == MOCK_ENVIRONMENTS
-        mgmt.environments.list.assert_called_once_with(
-            resource_group_name="rg-test",
-            service_name="apic-test",
-            workspace_name="default",
-        )
+        dp.list_environments.assert_called_once()
 
     def test_not_found_raises_domain_error(self) -> None:
-        mgmt = _mock_mgmt()
-        mgmt.environments.list.side_effect = ResourceNotFoundError("not found")
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.list_environments.side_effect = ApiCenterNotFoundError("environments")
+        client = _make_client(dp)
 
         with pytest.raises(ApiCenterNotFoundError):
             client.list_environments()
@@ -288,19 +237,14 @@ class TestListEnvironments:
 
 class TestListDeployments:
     def test_returns_list(self) -> None:
-        mgmt = _mock_mgmt()
-        mgmt.deployments.list.return_value = iter(MOCK_DEPLOYMENTS)
-        client = _make_client(mgmt)
+        dp = _mock_dp()
+        dp.list_deployments.return_value = MOCK_DEPLOYMENTS
+        client = _make_client(dp)
 
         result = client.list_deployments("petstore-api")
 
         assert result == MOCK_DEPLOYMENTS
-        mgmt.deployments.list.assert_called_once_with(
-            resource_group_name="rg-test",
-            service_name="apic-test",
-            workspace_name="default",
-            api_name="petstore-api",
-        )
+        dp.list_deployments.assert_called_once_with("petstore-api")
 
 
 # ---------------------------------------------------------------------------
@@ -309,21 +253,18 @@ class TestListDeployments:
 
 
 class TestClose:
-    def test_close_clears_mgmt_client(self) -> None:
-        mgmt = _mock_mgmt()
-        client = _make_client(mgmt)
+    def test_close_delegates_to_dp_client(self) -> None:
+        dp = _mock_dp()
+        client = _make_client(dp)
 
         client.close()
 
-        mgmt.close.assert_called_once()
-        assert client._mgmt_client is None
+        dp.close.assert_called_once()
 
     def test_close_is_idempotent(self) -> None:
         client = ApiCenterClient(
-            subscription_id="sub",
-            resource_group="rg",
-            service_name="svc",
+            base_url="https://myapic.data.eastus.azure-apicenter.ms",
             credential=MagicMock(),
         )
-        client.close()  # No mgmt client created, should not raise
-        client.close()  # Second call also safe
+        client.close()
+        client.close()

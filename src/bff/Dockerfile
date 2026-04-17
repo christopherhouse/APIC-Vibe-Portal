@@ -1,5 +1,9 @@
 # ============================================================================
 # BFF Dockerfile - Multi-stage build for Python FastAPI application
+#
+# Build context MUST be the repository root so that the shared
+# ``src/apic_client`` package is accessible.
+#   docker build -t bff -f src/bff/Dockerfile .
 # ============================================================================
 
 # Build stage
@@ -10,14 +14,18 @@ WORKDIR /app
 # Install UV
 RUN pip install --no-cache-dir uv
 
-# Copy dependency files
-COPY pyproject.toml uv.lock ./
+# Copy the shared apic_client package first (rarely changes → caches well)
+COPY src/apic_client /apic_client
 
-# Install dependencies only (creates .venv, skip project install since source isn't copied yet)
+# Copy BFF dependency files
+COPY src/bff/pyproject.toml src/bff/uv.lock ./
+
+# Install the shared package into the venv, then BFF deps.
+# --no-install-project because source isn't copied yet.
 RUN uv sync --frozen --no-dev --no-install-project
 
-# Copy source code
-COPY . .
+# Copy BFF source code
+COPY src/bff/ .
 
 # Install the project itself now that source is available
 RUN uv sync --frozen --no-dev

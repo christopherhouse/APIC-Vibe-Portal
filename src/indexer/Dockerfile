@@ -1,5 +1,9 @@
 # ============================================================================
 # Indexer Dockerfile — Azure Container Job for AI Search reindexing
+#
+# Build context MUST be the repository root so that the shared
+# ``src/apic_client`` package is accessible.
+#   docker build -t indexer -f src/indexer/Dockerfile .
 # ============================================================================
 
 # Build stage
@@ -10,9 +14,11 @@ WORKDIR /app
 # Install UV
 RUN pip install --no-cache-dir uv
 
-# Copy dependency files — copy the lockfile alongside pyproject.toml so that
-# uv can install the exact locked versions (reproducible builds).
-COPY pyproject.toml uv.lock ./
+# Copy the shared apic_client package first (rarely changes → caches well)
+COPY src/apic_client /apic_client
+
+# Copy indexer dependency files
+COPY src/indexer/pyproject.toml src/indexer/uv.lock ./
 
 # Install locked runtime dependencies into a virtual environment.
 # --no-install-project: skip installing the project itself (source not yet
@@ -20,7 +26,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy source code
-COPY . .
+COPY src/indexer/ .
 
 # Compile Python files
 RUN .venv/bin/python -m compileall -b .
