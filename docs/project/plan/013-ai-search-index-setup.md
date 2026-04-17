@@ -119,10 +119,10 @@ Add to the AI Search Bicep module:
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
-| 2026-04-16 | ✅ Complete | @copilot | Implemented standalone container job indexer |
+| Date       | Status         | Author   | Notes                                        |
+| ---------- | -------------- | -------- | -------------------------------------------- |
+| —          | 🔲 Not Started | —        | Task created                                 |
+| 2026-04-16 | ✅ Complete    | @copilot | Implemented standalone container job indexer |
 
 ### Technical Decisions
 

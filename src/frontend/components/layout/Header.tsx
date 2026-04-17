@@ -13,47 +13,11 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
 import MenuIcon from '@mui/icons-material/Menu';
-import SearchIcon from '@mui/icons-material/Search';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
-import InputBase from '@mui/material/InputBase';
-import { alpha, styled } from '@mui/material/styles';
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth/use-auth';
-
-const Search = styled('div')(({ theme }) => ({
-  position: 'relative',
-  borderRadius: theme.shape.borderRadius,
-  backgroundColor: alpha(theme.palette.common.white, 0.15),
-  '&:hover': {
-    backgroundColor: alpha(theme.palette.common.white, 0.25),
-  },
-  marginRight: theme.spacing(2),
-  marginLeft: theme.spacing(3),
-  width: 'auto',
-  flexGrow: 1,
-  maxWidth: 480,
-}));
-
-const SearchIconWrapper = styled('div')(({ theme }) => ({
-  padding: theme.spacing(0, 2),
-  height: '100%',
-  position: 'absolute',
-  pointerEvents: 'none',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-}));
-
-const StyledInputBase = styled(InputBase)(({ theme }) => ({
-  color: 'inherit',
-  width: '100%',
-  '& .MuiInputBase-input': {
-    padding: theme.spacing(1, 1, 1, 0),
-    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-    width: '100%',
-  },
-}));
+import SearchBar from './SearchBar';
 
 function getInitials(name: string): string {
   return name
@@ -97,12 +61,7 @@ export default function Header() {
         <Typography variant="h6" noWrap component="div" sx={{ whiteSpace: 'nowrap' }}>
           APIC Vibe Portal
         </Typography>
-        <Search>
-          <SearchIconWrapper>
-            <SearchIcon />
-          </SearchIconWrapper>
-          <StyledInputBase placeholder="Search APIs…" inputProps={{ 'aria-label': 'search' }} />
-        </Search>
+        <SearchBar />
         <Box sx={{ flexGrow: 1 }} />
 
         {isLoading ? null : isAuthenticated && user ? (

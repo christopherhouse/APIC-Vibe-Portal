@@ -140,19 +140,19 @@ az account show --query tenantId -o tsv
 
 For each GitHub environment (dev, staging, prod), add environment-scoped variables (**Settings** > **Environments** > select environment > **Environment variables**):
 
-| Variable Name          | Value (dev)               | Value (staging)               | Value (prod)               | Description                              |
-| ---------------------- | ------------------------- | ----------------------------- | -------------------------- | ---------------------------------------- |
-| `AZURE_RESOURCE_GROUP` | `rg-apic-vibe-portal-dev` | `rg-apic-vibe-portal-staging` | `rg-apic-vibe-portal-prod` | Environment-specific resource group name |
-| `LOADTEST_CLIENT_ID`   | `<load-test-sp-client-id>`| `<load-test-sp-client-id>`    | `<load-test-sp-client-id>` | Service principal client ID for load tests |
-| `LOADTEST_TOKEN_SCOPE` | `api://<bff-client-id>/.default` | `api://<bff-client-id>/.default` | `api://<bff-client-id>/.default` | Token scope for BFF API |
+| Variable Name          | Value (dev)                      | Value (staging)                  | Value (prod)                     | Description                                |
+| ---------------------- | -------------------------------- | -------------------------------- | -------------------------------- | ------------------------------------------ |
+| `AZURE_RESOURCE_GROUP` | `rg-apic-vibe-portal-dev`        | `rg-apic-vibe-portal-staging`    | `rg-apic-vibe-portal-prod`       | Environment-specific resource group name   |
+| `LOADTEST_CLIENT_ID`   | `<load-test-sp-client-id>`       | `<load-test-sp-client-id>`       | `<load-test-sp-client-id>`       | Service principal client ID for load tests |
+| `LOADTEST_TOKEN_SCOPE` | `api://<bff-client-id>/.default` | `api://<bff-client-id>/.default` | `api://<bff-client-id>/.default` | Token scope for BFF API                    |
 
 ##### Environment Secrets
 
 For each GitHub environment, add environment-scoped secrets:
 
-| Secret Name              | Value                      | Description                              |
-| ------------------------ | -------------------------- | ---------------------------------------- |
-| `LOADTEST_CLIENT_SECRET` | `<load-test-sp-secret>`    | Client secret for load test service principal |
+| Secret Name              | Value                   | Description                                   |
+| ------------------------ | ----------------------- | --------------------------------------------- |
+| `LOADTEST_CLIENT_SECRET` | `<load-test-sp-secret>` | Client secret for load test service principal |
 
 This approach uses GitHub environment-scoped variables, which keeps the variable name consistent across environments while allowing environment-specific values.
 
