@@ -8,7 +8,9 @@ global.fetch = mockFetch;
 
 // Mock MSAL before importing AuthProvider
 const mockInitialize = jest.fn().mockResolvedValue(undefined);
+const mockHandleRedirectPromise = jest.fn().mockResolvedValue(null);
 const mockGetAllAccounts = jest.fn().mockReturnValue([]);
+const mockGetActiveAccount = jest.fn().mockReturnValue(null);
 const mockSetActiveAccount = jest.fn();
 const mockAddEventCallback = jest.fn();
 
@@ -16,7 +18,9 @@ jest.mock('@azure/msal-browser', () => {
   return {
     PublicClientApplication: jest.fn().mockImplementation(() => ({
       initialize: mockInitialize,
+      handleRedirectPromise: mockHandleRedirectPromise,
       getAllAccounts: mockGetAllAccounts,
+      getActiveAccount: mockGetActiveAccount,
       setActiveAccount: mockSetActiveAccount,
       addEventCallback: mockAddEventCallback,
     })),
@@ -103,6 +107,7 @@ describe('AuthProvider', () => {
   it('sets active account if accounts exist after initialization', async () => {
     const mockAccount = { localAccountId: '123', username: 'test@example.com' };
     mockGetAllAccounts.mockReturnValue([mockAccount]);
+    mockGetActiveAccount.mockReturnValue(null);
     mockInitialize.mockResolvedValue(undefined);
 
     await act(async () => {
@@ -114,6 +119,61 @@ describe('AuthProvider', () => {
     });
 
     expect(mockSetActiveAccount).toHaveBeenCalledWith(mockAccount);
+  });
+
+  it('calls handleRedirectPromise after initialization', async () => {
+    mockInitialize.mockResolvedValue(undefined);
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <div>Hello</div>
+        </AuthProvider>
+      );
+    });
+
+    expect(mockHandleRedirectPromise).toHaveBeenCalledTimes(1);
+    // handleRedirectPromise must be called after initialize
+    const initOrder = mockInitialize.mock.invocationCallOrder[0];
+    const redirectOrder = mockHandleRedirectPromise.mock.invocationCallOrder[0];
+    expect(redirectOrder).toBeGreaterThan(initOrder);
+  });
+
+  it('sets active account from redirect result when available', async () => {
+    const redirectAccount = { localAccountId: 'redirect-456', username: 'redirect@example.com' };
+    mockHandleRedirectPromise.mockResolvedValue({ account: redirectAccount });
+    mockInitialize.mockResolvedValue(undefined);
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <div>Hello</div>
+        </AuthProvider>
+      );
+    });
+
+    // Should set the account from the redirect result
+    expect(mockSetActiveAccount).toHaveBeenCalledWith(redirectAccount);
+  });
+
+  it('prefers redirect result account over cached accounts', async () => {
+    const cachedAccount = { localAccountId: 'cached-123', username: 'cached@example.com' };
+    const redirectAccount = { localAccountId: 'redirect-456', username: 'redirect@example.com' };
+    mockGetAllAccounts.mockReturnValue([cachedAccount]);
+    mockGetActiveAccount.mockReturnValue(null);
+    mockHandleRedirectPromise.mockResolvedValue({ account: redirectAccount });
+    mockInitialize.mockResolvedValue(undefined);
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <div>Hello</div>
+        </AuthProvider>
+      );
+    });
+
+    // setActiveAccount called with redirect account first; should not fall through to cached
+    expect(mockSetActiveAccount).toHaveBeenCalledWith(redirectAccount);
   });
 
   it('registers an event callback for LOGIN_SUCCESS', async () => {
