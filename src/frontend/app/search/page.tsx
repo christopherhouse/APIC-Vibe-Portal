@@ -46,7 +46,7 @@ export default function SearchPage() {
     ? (rawMode as SearchMode)
     : 'hybrid';
   const rawPage = Number(searchParams.get('page') ?? '1');
-  const page = Number.isFinite(rawPage) ? Math.max(1, Math.round(rawPage)) : 1;
+  const page = Number.isFinite(rawPage) && Number.isInteger(rawPage) ? Math.max(1, rawPage) : 1;
 
   // ---------------------------------------------------------------------------
   // Build filters for the hook

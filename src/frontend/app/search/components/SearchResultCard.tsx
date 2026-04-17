@@ -41,16 +41,45 @@ const KIND_LABEL_MAP: Record<string, string> = {
 };
 
 /**
- * Render a string that may contain `<em>` highlight tags.
- * We use dangerouslySetInnerHTML only on text returned by the controlled BFF.
+ * Render a string that may contain `<em>` highlight tags as React elements.
+ * Parses only `<em>` and `</em>` tags; all other content is treated as plain text.
+ * This avoids using dangerouslySetInnerHTML while still supporting search highlights.
  */
 function HighlightedText({ html, className }: { html: string; className?: string }) {
+  const parts: React.ReactNode[] = [];
+  const regex = /<em>(.*?)<\/em>/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = regex.exec(html)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(html.slice(lastIndex, match.index));
+    }
+    parts.push(
+      <Box
+        key={key++}
+        component="em"
+        sx={{
+          fontStyle: 'normal',
+          backgroundColor: 'warning.light',
+          borderRadius: '2px',
+          px: 0.25,
+        }}
+      >
+        {match[1]}
+      </Box>
+    );
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < html.length) {
+    parts.push(html.slice(lastIndex));
+  }
+
   return (
-    <span
-      className={className}
-      dangerouslySetInnerHTML={{ __html: html }}
-      data-testid="highlighted-text"
-    />
+    <span className={className} data-testid="highlighted-text">
+      {parts}
+    </span>
   );
 }
 
@@ -84,12 +113,6 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
         mb: 2,
         transition: 'box-shadow 0.2s',
         '&:hover': { boxShadow: 4 },
-        '& em': {
-          fontStyle: 'normal',
-          backgroundColor: 'warning.light',
-          borderRadius: '2px',
-          px: 0.25,
-        },
       }}
     >
       <CardActionArea onClick={() => router.push(`/catalog/${result.apiId}`)}>

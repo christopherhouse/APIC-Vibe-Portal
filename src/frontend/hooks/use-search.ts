@@ -62,7 +62,11 @@ export function useSearch({
   // Ref to the current AbortController so we can cancel inflight requests.
   const abortRef = useRef<AbortController | null>(null);
 
-  // Stable key so we only re-run when meaningful values change.
+  // Keep latest params in a ref so the stable `doSearch` always reads fresh values.
+  const paramsRef = useRef({ query, filters, page, pageSize, searchMode });
+  paramsRef.current = { query, filters, page, pageSize, searchMode };
+
+  // Stable key to trigger the effect and recreate `doSearch` when params change.
   const filtersKey = JSON.stringify(filters);
   const paramsKey = `${query}|${filtersKey}|${page}|${pageSize}|${searchMode}`;
 
@@ -74,9 +78,12 @@ export function useSearch({
 
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
+    // Read the latest params from the ref so this callback is always up-to-date.
+    const { query: q, filters: f, page: pg, pageSize: ps, searchMode: sm } = paramsRef.current;
+
     try {
       const data = await fetchSearch(
-        { query, filters, page, pageSize, searchMode },
+        { query: q, filters: f, page: pg, pageSize: ps, searchMode: sm },
         controller.signal
       );
       if (controller.signal.aborted) return;
@@ -98,7 +105,7 @@ export function useSearch({
         error: err instanceof Error ? err.message : 'Search failed',
       }));
     }
-  }, [paramsKey]);
+  }, [paramsKey]); // re-create whenever params change so the effect picks up the new version
 
   useEffect(() => {
     if (!enabled || query.trim() === '') {
