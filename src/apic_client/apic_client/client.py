@@ -128,7 +128,7 @@ class ApiCenterDataPlaneClient:
         """Follow ``nextLink`` pagination and return all items."""
         all_items: list[dict[str, Any]] = []
         current_url: str | None = path
-        query_params = {"api-version": _API_VERSION, **(params or {})}
+        query_params: dict[str, Any] | None = {"api-version": _API_VERSION, **(params or {})}
 
         while current_url is not None:
             logger.debug("api_center_data_plane.get_paged", url=current_url, context=context)
@@ -141,10 +141,10 @@ class ApiCenterDataPlaneClient:
             all_items.extend(data.get("value", []))
             next_link = data.get("nextLink")
             if next_link:
-                # nextLink is an absolute URL — use it directly
+                # nextLink is an absolute URL — use it directly.
+                # Keep api-version unless it's already present in the URL.
                 current_url = next_link
-                # Query params are embedded in nextLink, so clear ours
-                query_params = {}
+                query_params = None if "api-version" in next_link else {"api-version": _API_VERSION}
             else:
                 current_url = None
 
@@ -231,11 +231,17 @@ class ApiCenterDataPlaneClient:
 
     def _poll_operation(self, operation_url: str, context: str, max_polls: int = 30, delay: float = 1.0) -> str | None:
         """Poll an async operation URL until completion."""
+        # Include api-version unless it's already present in the operation URL
+        poll_params: dict[str, str] | None = None
+        if "api-version" not in operation_url:
+            poll_params = {"api-version": _API_VERSION}
+
         for _ in range(max_polls):
             time.sleep(delay)
             response = self._client().get(
                 operation_url,
                 headers=self._headers(),
+                params=poll_params,
             )
             if not response.is_success:
                 self._handle_response(response, context)

@@ -236,10 +236,19 @@ class IndexerService:
         created_at: datetime | None = None
         updated_at: datetime | None = None
         if last_updated_str:
+            # Normalize trailing "Z" (UTC) to "+00:00" for fromisoformat()
+            normalized_last_updated = (
+                last_updated_str[:-1] + "+00:00" if last_updated_str.endswith("Z") else last_updated_str
+            )
             try:
-                updated_at = datetime.fromisoformat(last_updated_str)
-            except (ValueError, TypeError):
-                pass
+                updated_at = datetime.fromisoformat(normalized_last_updated)
+            except (ValueError, TypeError) as exc:
+                logger.warning(
+                    "Failed to parse API lastUpdated timestamp",
+                    api_name=api_name,
+                    last_updated=last_updated_str,
+                    error=str(exc),
+                )
 
         # Embedding vector
         vector = self._embeddings.generate_embedding(title, description, spec_content)
