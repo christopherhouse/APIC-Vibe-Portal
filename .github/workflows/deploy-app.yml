@@ -144,10 +144,70 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  build-and-push-indexer:
+    name: Build and Push Indexer Image
+    runs-on: ubuntu-latest
+    environment: dev
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get ACR name
+        id: acr
+        run: |
+          DEPLOYMENT_NAME=$(az deployment group list \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
+            -o tsv)
+          if [ -z "$DEPLOYMENT_NAME" ]; then
+            echo "::error::No successful infrastructure deployment found in resource group ${{ vars.AZURE_RESOURCE_GROUP }}"
+            exit 1
+          fi
+          echo "Using infrastructure deployment: $DEPLOYMENT_NAME"
+          ACR_NAME=$(az deployment group show \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --name "$DEPLOYMENT_NAME" \
+            --query properties.outputs.acrName.value -o tsv)
+          echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
+          echo "login-server=${ACR_NAME}.azurecr.io" >> $GITHUB_OUTPUT
+
+      - name: Login to ACR
+        run: az acr login --name ${{ steps.acr.outputs.name }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.acr.outputs.login-server }}/indexer
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./src/indexer
+          file: ./src/indexer/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
   deploy-dev:
     name: Deploy to Dev
     runs-on: ubuntu-latest
-    needs: [build-and-push-frontend, build-and-push-bff]
+    needs: [build-and-push-frontend, build-and-push-bff, build-and-push-indexer]
     if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'dev'
     environment:
       name: dev
@@ -183,11 +243,16 @@ jobs:
           echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
           echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
           echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
+          echo "ai-search-endpoint=$(echo $DEPLOYMENT | jq -r '.aiSearchEndpoint.value')" >> $GITHUB_OUTPUT
+          echo "openai-endpoint=$(echo $DEPLOYMENT | jq -r '.openAiEndpoint.value')" >> $GITHUB_OUTPUT
+          echo "api-center-name=$(echo $DEPLOYMENT | jq -r '.apiCenterName.value')" >> $GITHUB_OUTPUT
 
           # Extract identity outputs from deployment
           FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
           BFF_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')
           BFF_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')
+          INDEXER_ID=$(echo $DEPLOYMENT | jq -r '.indexerIdentityResourceId.value')
+          INDEXER_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.indexerIdentityClientId.value')
 
           # Fallback: resolve identities directly from Azure if deployment outputs are missing
           # This handles the case where infra was deployed before identity outputs were added
@@ -207,11 +272,23 @@ jobs:
             BFF_CLIENT_ID=$(az identity list --resource-group "$RG" \
               --query "[?contains(name, '-id-bff-')].clientId | [0]" -o tsv)
           fi
+          if [ "$INDEXER_ID" = "null" ] || [ -z "$INDEXER_ID" ]; then
+            echo "::warning::Indexer identity not found in deployment outputs, resolving from resource group..."
+            INDEXER_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-indexer-')].id | [0]" -o tsv)
+          fi
+          if [ "$INDEXER_CLIENT_ID" = "null" ] || [ -z "$INDEXER_CLIENT_ID" ]; then
+            echo "::warning::Indexer identity client ID not found in deployment outputs, resolving from resource group..."
+            INDEXER_CLIENT_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-indexer-')].clientId | [0]" -o tsv)
+          fi
 
           IDENTITY_ERRORS=""
           if [ -z "$FRONTEND_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} frontend-identity-resource-id"; fi
           if [ -z "$BFF_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-resource-id"; fi
           if [ -z "$BFF_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-client-id"; fi
+          if [ -z "$INDEXER_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} indexer-identity-resource-id"; fi
+          if [ -z "$INDEXER_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} indexer-identity-client-id"; fi
           if [ -n "$IDENTITY_ERRORS" ]; then
             echo "::error::Could not resolve managed identities:${IDENTITY_ERRORS}. Ensure infrastructure is deployed with per-container UAMIs."
             exit 1
@@ -220,6 +297,8 @@ jobs:
           echo "frontend-identity-resource-id=$FRONTEND_ID" >> $GITHUB_OUTPUT
           echo "bff-identity-resource-id=$BFF_ID" >> $GITHUB_OUTPUT
           echo "bff-identity-client-id=$BFF_CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "indexer-identity-resource-id=$INDEXER_ID" >> $GITHUB_OUTPUT
+          echo "indexer-identity-client-id=$INDEXER_CLIENT_ID" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
         run: |
@@ -237,12 +316,16 @@ jobs:
             --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
-            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
+            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }} \
+            --indexer-image-tag ${{ needs.build-and-push-indexer.outputs.image-tag }} \
+            --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
+            --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
+            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }} API_CENTER_RESOURCE_GROUP=${{ vars.AZURE_RESOURCE_GROUP }} API_CENTER_SERVICE_NAME=${{ steps.infra.outputs.api-center-name }}"
 
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [build-and-push-frontend, build-and-push-bff]
+    needs: [build-and-push-frontend, build-and-push-bff, build-and-push-indexer]
     if: github.event.inputs.environment == 'staging'
     environment:
       name: staging
@@ -278,11 +361,16 @@ jobs:
           echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
           echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
           echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
+          echo "ai-search-endpoint=$(echo $DEPLOYMENT | jq -r '.aiSearchEndpoint.value')" >> $GITHUB_OUTPUT
+          echo "openai-endpoint=$(echo $DEPLOYMENT | jq -r '.openAiEndpoint.value')" >> $GITHUB_OUTPUT
+          echo "api-center-name=$(echo $DEPLOYMENT | jq -r '.apiCenterName.value')" >> $GITHUB_OUTPUT
 
           # Extract identity outputs from deployment
           FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
           BFF_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')
           BFF_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')
+          INDEXER_ID=$(echo $DEPLOYMENT | jq -r '.indexerIdentityResourceId.value')
+          INDEXER_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.indexerIdentityClientId.value')
 
           # Fallback: resolve identities directly from Azure if deployment outputs are missing
           # This handles the case where infra was deployed before identity outputs were added
@@ -302,11 +390,23 @@ jobs:
             BFF_CLIENT_ID=$(az identity list --resource-group "$RG" \
               --query "[?contains(name, '-id-bff-')].clientId | [0]" -o tsv)
           fi
+          if [ "$INDEXER_ID" = "null" ] || [ -z "$INDEXER_ID" ]; then
+            echo "::warning::Indexer identity not found in deployment outputs, resolving from resource group..."
+            INDEXER_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-indexer-')].id | [0]" -o tsv)
+          fi
+          if [ "$INDEXER_CLIENT_ID" = "null" ] || [ -z "$INDEXER_CLIENT_ID" ]; then
+            echo "::warning::Indexer identity client ID not found in deployment outputs, resolving from resource group..."
+            INDEXER_CLIENT_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-indexer-')].clientId | [0]" -o tsv)
+          fi
 
           IDENTITY_ERRORS=""
           if [ -z "$FRONTEND_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} frontend-identity-resource-id"; fi
           if [ -z "$BFF_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-resource-id"; fi
           if [ -z "$BFF_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-client-id"; fi
+          if [ -z "$INDEXER_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} indexer-identity-resource-id"; fi
+          if [ -z "$INDEXER_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} indexer-identity-client-id"; fi
           if [ -n "$IDENTITY_ERRORS" ]; then
             echo "::error::Could not resolve managed identities:${IDENTITY_ERRORS}. Ensure infrastructure is deployed with per-container UAMIs."
             exit 1
@@ -315,6 +415,8 @@ jobs:
           echo "frontend-identity-resource-id=$FRONTEND_ID" >> $GITHUB_OUTPUT
           echo "bff-identity-resource-id=$BFF_ID" >> $GITHUB_OUTPUT
           echo "bff-identity-client-id=$BFF_CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "indexer-identity-resource-id=$INDEXER_ID" >> $GITHUB_OUTPUT
+          echo "indexer-identity-client-id=$INDEXER_CLIENT_ID" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
         run: |
@@ -332,12 +434,16 @@ jobs:
             --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
-            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
+            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }} \
+            --indexer-image-tag ${{ needs.build-and-push-indexer.outputs.image-tag }} \
+            --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
+            --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
+            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }} API_CENTER_RESOURCE_GROUP=${{ vars.AZURE_RESOURCE_GROUP }} API_CENTER_SERVICE_NAME=${{ steps.infra.outputs.api-center-name }}"
 
   deploy-prod:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [build-and-push-frontend, build-and-push-bff]
+    needs: [build-and-push-frontend, build-and-push-bff, build-and-push-indexer]
     if: github.event.inputs.environment == 'prod'
     environment:
       name: prod
@@ -373,11 +479,16 @@ jobs:
           echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
           echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
           echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
+          echo "ai-search-endpoint=$(echo $DEPLOYMENT | jq -r '.aiSearchEndpoint.value')" >> $GITHUB_OUTPUT
+          echo "openai-endpoint=$(echo $DEPLOYMENT | jq -r '.openAiEndpoint.value')" >> $GITHUB_OUTPUT
+          echo "api-center-name=$(echo $DEPLOYMENT | jq -r '.apiCenterName.value')" >> $GITHUB_OUTPUT
 
           # Extract identity outputs from deployment
           FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
           BFF_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')
           BFF_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')
+          INDEXER_ID=$(echo $DEPLOYMENT | jq -r '.indexerIdentityResourceId.value')
+          INDEXER_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.indexerIdentityClientId.value')
 
           # Fallback: resolve identities directly from Azure if deployment outputs are missing
           # This handles the case where infra was deployed before identity outputs were added
@@ -397,11 +508,23 @@ jobs:
             BFF_CLIENT_ID=$(az identity list --resource-group "$RG" \
               --query "[?contains(name, '-id-bff-')].clientId | [0]" -o tsv)
           fi
+          if [ "$INDEXER_ID" = "null" ] || [ -z "$INDEXER_ID" ]; then
+            echo "::warning::Indexer identity not found in deployment outputs, resolving from resource group..."
+            INDEXER_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-indexer-')].id | [0]" -o tsv)
+          fi
+          if [ "$INDEXER_CLIENT_ID" = "null" ] || [ -z "$INDEXER_CLIENT_ID" ]; then
+            echo "::warning::Indexer identity client ID not found in deployment outputs, resolving from resource group..."
+            INDEXER_CLIENT_ID=$(az identity list --resource-group "$RG" \
+              --query "[?contains(name, '-id-indexer-')].clientId | [0]" -o tsv)
+          fi
 
           IDENTITY_ERRORS=""
           if [ -z "$FRONTEND_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} frontend-identity-resource-id"; fi
           if [ -z "$BFF_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-resource-id"; fi
           if [ -z "$BFF_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-client-id"; fi
+          if [ -z "$INDEXER_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} indexer-identity-resource-id"; fi
+          if [ -z "$INDEXER_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} indexer-identity-client-id"; fi
           if [ -n "$IDENTITY_ERRORS" ]; then
             echo "::error::Could not resolve managed identities:${IDENTITY_ERRORS}. Ensure infrastructure is deployed with per-container UAMIs."
             exit 1
@@ -410,6 +533,8 @@ jobs:
           echo "frontend-identity-resource-id=$FRONTEND_ID" >> $GITHUB_OUTPUT
           echo "bff-identity-resource-id=$BFF_ID" >> $GITHUB_OUTPUT
           echo "bff-identity-client-id=$BFF_CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "indexer-identity-resource-id=$INDEXER_ID" >> $GITHUB_OUTPUT
+          echo "indexer-identity-client-id=$INDEXER_CLIENT_ID" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
         run: |
@@ -427,4 +552,8 @@ jobs:
             --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
-            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }}
+            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }} \
+            --indexer-image-tag ${{ needs.build-and-push-indexer.outputs.image-tag }} \
+            --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
+            --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
+            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }} API_CENTER_RESOURCE_GROUP=${{ vars.AZURE_RESOURCE_GROUP }} API_CENTER_SERVICE_NAME=${{ steps.infra.outputs.api-center-name }}"
