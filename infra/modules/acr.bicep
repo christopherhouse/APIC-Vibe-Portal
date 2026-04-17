@@ -14,6 +14,9 @@ param frontendManagedIdentityPrincipalId string
 @description('BFF Managed Identity Principal ID for AcrPull RBAC')
 param bffManagedIdentityPrincipalId string
 
+@description('Indexer Container Job Managed Identity Principal ID for AcrPull RBAC')
+param indexerManagedIdentityPrincipalId string
+
 @description('Log Analytics Workspace ID for diagnostics')
 param logAnalyticsWorkspaceId string
 
@@ -62,6 +65,17 @@ resource acrPullRoleBff 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d') // AcrPull
     principalId: bffManagedIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// RBAC: Grant indexer managed identity "AcrPull" role
+resource acrPullRoleIndexer 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(containerRegistry.id, indexerManagedIdentityPrincipalId, 'AcrPull')
+  scope: containerRegistry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d') // AcrPull
+    principalId: indexerManagedIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
 }

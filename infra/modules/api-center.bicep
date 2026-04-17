@@ -11,6 +11,9 @@ param apiCenterName string
 @description('Managed Identity Principal ID for RBAC')
 param managedIdentityPrincipalId string
 
+@description('Indexer Container Job Managed Identity Principal ID for RBAC')
+param indexerManagedIdentityPrincipalId string
+
 @description('Resource tags')
 param tags object
 
@@ -94,6 +97,17 @@ resource apiCenterCatalogContributorAssignment 'Microsoft.Authorization/roleAssi
   properties: {
     roleDefinitionId: apiCenterCatalogContributorDef.id
     principalId: managedIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// RBAC: Grant indexer identity "Azure API Center Data Reader" — required to enumerate APIs for indexing
+resource apiCenterDataReaderRoleIndexer 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(apiCenter.id, indexerManagedIdentityPrincipalId, 'Azure API Center Data Reader')
+  scope: apiCenter
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'c7244dfb-f447-457d-b2ba-3999044d1706') // Azure API Center Data Reader
+    principalId: indexerManagedIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
 }
