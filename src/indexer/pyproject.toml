@@ -4,13 +4,16 @@ version = "0.0.0"
 description = "Azure Container Job — AI Search indexing pipeline for APIC Vibe Portal"
 requires-python = ">=3.14"
 dependencies = [
+    "apic-client",
     "azure-identity>=1.21.0",
-    "azure-mgmt-apicenter>=1.0.0",
     "azure-search-documents>=11.4.0",
     "openai>=1.84.0",
     "pydantic-settings>=2.13.1",
     "structlog>=25.5.0",
 ]
+
+[tool.uv.sources]
+apic-client = { path = "../apic_client", editable = true }
 
 [dependency-groups]
 dev = [

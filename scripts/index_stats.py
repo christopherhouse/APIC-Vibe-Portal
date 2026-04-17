@@ -50,9 +50,8 @@ def main() -> None:
         search_index_client=search_index_client,
         search_client=MagicMock(),
         embedding_service=MagicMock(),
-        resource_group=settings.api_center_resource_group,
-        service_name=settings.api_center_service_name,
         index_name=settings.ai_search_index_name,
+        workspace_name=settings.api_center_workspace_name,
     )
 
     stats = indexer.get_index_stats()

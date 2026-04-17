@@ -38,7 +38,10 @@ class Settings(BaseSettings):
     frontend_url: str = Field(default="http://localhost:3000", description="Frontend origin URL")
 
     # --- Azure services (required in production) -------------------------
-    api_center_endpoint: str = Field(default="", description="Azure API Center endpoint")
+    api_center_endpoint: str = Field(
+        default="",
+        description=("Azure API Center data-plane endpoint (e.g. https://myapic.data.eastus.azure-apicenter.ms)"),
+    )
     ai_search_endpoint: str = Field(default="", description="Azure AI Search endpoint")
     ai_search_index_name: str = Field(default="apic-apis", description="Azure AI Search index name")
     openai_endpoint: str = Field(default="", description="Azure OpenAI endpoint")
@@ -46,9 +49,6 @@ class Settings(BaseSettings):
     appinsights_connection_string: str = Field(default="", description="Application Insights connection string")
 
     # --- Azure API Center -----------------------------------------------
-    api_center_subscription_id: str = Field(default="", description="Azure subscription ID containing API Center")
-    api_center_resource_group: str = Field(default="", description="Resource group containing API Center")
-    api_center_service_name: str = Field(default="", description="API Center service name")
     api_center_workspace_name: str = Field(default="default", description="API Center workspace name")
     cache_ttl_seconds: int = Field(
         default=300, description="Default cache TTL in seconds (Redis and in-memory fallback)"

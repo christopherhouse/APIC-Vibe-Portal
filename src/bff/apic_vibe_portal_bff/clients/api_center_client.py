@@ -1,249 +1,168 @@
-"""Azure API Center SDK client wrapper.
+"""Azure API Center data-plane client wrapper.
 
-Wraps ``azure-mgmt-apicenter`` with error handling, structured logging, and
-a clean interface consumed by the service layer.  Authentication always uses
-``DefaultAzureCredential`` (managed identity in production, developer
-credential chain locally).
+Thin wrapper around the shared :class:`apic_client.ApiCenterDataPlaneClient`
+that provides the same public interface the BFF service layer and router
+expect.  Authentication uses ``DefaultAzureCredential`` (managed identity in
+production, developer credential chain locally).
+
+All domain exceptions are re-exported from the shared ``apic_client`` package
+so that existing imports continue to work.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import Any
 
-from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
-from azure.identity import DefaultAzureCredential
-
-if TYPE_CHECKING:
-    from azure.mgmt.apicenter import ApiCenterMgmtClient as _ApiCenterMgmtClientType
-    from azure.mgmt.apicenter.models import (
-        Api,
-        ApiDefinition,
-        ApiVersion,
-        Deployment,
-        Environment,
-    )
+from apic_client import ApiCenterDataPlaneClient
+from apic_client.exceptions import (
+    ApiCenterAuthError,
+    ApiCenterClientError,
+    ApiCenterNotFoundError,
+    ApiCenterUnavailableError,
+)
 
 logger = logging.getLogger(__name__)
 
-
-class ApiCenterClientError(Exception):
-    """Base error raised by :class:`ApiCenterClient`."""
-
-    def __init__(self, message: str, status_code: int | None = None) -> None:
-        super().__init__(message)
-        self.status_code = status_code
-
-
-class ApiCenterNotFoundError(ApiCenterClientError):
-    """Raised when the requested resource does not exist."""
-
-    def __init__(self, resource: str) -> None:
-        super().__init__(f"Resource not found: {resource}", status_code=404)
-
-
-class ApiCenterAuthError(ApiCenterClientError):
-    """Raised when authentication / authorization fails."""
-
-    def __init__(self, detail: str = "Unauthorized") -> None:
-        super().__init__(detail, status_code=401)
-
-
-class ApiCenterUnavailableError(ApiCenterClientError):
-    """Raised when the API Center service is unavailable."""
-
-    def __init__(self, detail: str = "Service unavailable") -> None:
-        super().__init__(detail, status_code=503)
+# Re-export exceptions so existing ``from …api_center_client import …``
+# statements keep working throughout the BFF.
+__all__ = [
+    "ApiCenterAuthError",
+    "ApiCenterClient",
+    "ApiCenterClientError",
+    "ApiCenterNotFoundError",
+    "ApiCenterUnavailableError",
+]
 
 
 class ApiCenterClient:
-    """Thin wrapper around the Azure API Center Management SDK.
+    """BFF-facing wrapper around the shared data-plane client.
 
     Parameters
     ----------
-    subscription_id:
-        Azure subscription ID that owns the API Center service.
-    resource_group:
-        Resource group name.
-    service_name:
-        API Center service name.
+    base_url:
+        The API Center data-plane endpoint, e.g.
+        ``https://myapic.data.eastus.azure-apicenter.ms``.
     credential:
-        An Azure credential object.  Defaults to ``DefaultAzureCredential``
-        which works for both managed identity (production) and developer
-        credential chains (local development).
+        An Azure credential object.  Defaults to ``DefaultAzureCredential``.
     workspace_name:
-        API Center workspace name.  Defaults to ``"default"`` which is the
-        standard workspace created by Azure API Center.
+        API Center workspace name.  Defaults to ``"default"``.
     """
 
     def __init__(
         self,
-        subscription_id: str,
-        resource_group: str,
-        service_name: str,
+        base_url: str,
         credential: object | None = None,
         workspace_name: str = "default",
     ) -> None:
-        self._subscription_id = subscription_id
-        self._resource_group = resource_group
-        self._service_name = service_name
-        self._workspace_name = workspace_name
-        self._credential = credential or DefaultAzureCredential()
-        self._mgmt_client: _ApiCenterMgmtClientType | None = None
+        self._dp_client = ApiCenterDataPlaneClient(
+            base_url=base_url,
+            workspace_name=workspace_name,
+            credential=credential,
+        )
 
     # ------------------------------------------------------------------
-    # Internal helpers
+    # API operations — delegate to the shared data-plane client
     # ------------------------------------------------------------------
 
-    def _client(self) -> _ApiCenterMgmtClientType:
-        """Lazily create and return the management client."""
-        if self._mgmt_client is None:
-            from azure.mgmt.apicenter import ApiCenterMgmtClient
-
-            self._mgmt_client = ApiCenterMgmtClient(
-                credential=self._credential,
-                subscription_id=self._subscription_id,
-            )
-        return self._mgmt_client
-
-    def _handle_error(self, exc: Exception, context: str) -> None:
-        """Translate Azure SDK exceptions into domain errors."""
-        if isinstance(exc, ResourceNotFoundError):
-            raise ApiCenterNotFoundError(context) from exc
-        if isinstance(exc, HttpResponseError):
-            status = exc.status_code
-            if status in (401, 403):
-                raise ApiCenterAuthError(str(exc)) from exc
-            if status is not None and status >= 500:
-                raise ApiCenterUnavailableError(str(exc)) from exc
-            raise ApiCenterClientError(str(exc), status_code=status) from exc
-        raise ApiCenterClientError(str(exc)) from exc
-
-    # ------------------------------------------------------------------
-    # API operations
-    # ------------------------------------------------------------------
-
-    def list_apis(self, filter_str: str | None = None) -> list[Api]:  # type: ignore[name-defined]
-        """Return all APIs in the service.
+    def list_apis(self, filter_str: str | None = None) -> list[dict[str, Any]]:
+        """Return all APIs in the workspace, optionally filtered.
 
         Parameters
         ----------
         filter_str:
-            OData filter expression (e.g. ``"properties/kind eq 'rest'"``).
+            OData-style filter expression (e.g.
+            ``"properties/lifecycleStage eq 'production'"``) that was
+            generated by the router.  Since the data-plane API does not
+            support OData ``$filter``, the filter is applied in-process
+            after fetching the full API list.
         """
         logger.debug(
             "ApiCenterClient.list_apis",
-            extra={"service": self._service_name, "filter": filter_str},
+            extra={"filter": filter_str},
         )
-        try:
-            pager = self._client().apis.list(
-                resource_group_name=self._resource_group,
-                service_name=self._service_name,
-                workspace_name=self._workspace_name,
-                filter=filter_str,
-            )
-            return list(pager)
-        except Exception as exc:
-            self._handle_error(exc, f"apis in {self._service_name}")
+        apis = self._dp_client.list_apis()
 
-    def get_api(self, api_name: str) -> Api:  # type: ignore[name-defined]
+        if filter_str:
+            apis = self._apply_filter(apis, filter_str)
+
+        return apis
+
+    @staticmethod
+    def _apply_filter(apis: list[dict[str, Any]], filter_str: str) -> list[dict[str, Any]]:
+        """Apply an OData-style filter expression in-process.
+
+        Supports simple equality clauses generated by the router:
+        ``properties/lifecycleStage eq 'value'`` and
+        ``properties/kind eq 'value'``, joined by `` and ``.
+        """
+        # Map OData paths to data-plane field names
+        field_map: dict[str, str] = {
+            "properties/lifecycleStage": "lifecycleStage",
+            "properties/kind": "kind",
+        }
+
+        conditions: list[tuple[str, str]] = []
+        for clause in filter_str.split(" and "):
+            clause = clause.strip()
+            if not clause:
+                continue
+            # Expected format: "properties/field eq 'value'"
+            parts = clause.split(" eq ", 1)
+            if len(parts) != 2:
+                logger.warning("Unsupported filter clause (skipping)", extra={"clause": clause})
+                continue
+            odata_path = parts[0].strip()
+            raw_value = parts[1].strip().strip("'\"")
+            field_name = field_map.get(odata_path)
+            if field_name is None:
+                logger.warning("Unknown filter field (skipping)", extra={"field": odata_path})
+                continue
+            conditions.append((field_name, raw_value))
+
+        if not conditions:
+            return apis
+
+        return [
+            api for api in apis if all(str(api.get(field, "")).lower() == value.lower() for field, value in conditions)
+        ]
+
+    def get_api(self, api_name: str) -> dict[str, Any]:
         """Return a single API by name."""
         logger.debug("ApiCenterClient.get_api", extra={"api": api_name})
-        try:
-            return self._client().apis.get(
-                resource_group_name=self._resource_group,
-                service_name=self._service_name,
-                workspace_name=self._workspace_name,
-                api_name=api_name,
-            )
-        except Exception as exc:
-            self._handle_error(exc, f"api/{api_name}")
+        return self._dp_client.get_api(api_name)
 
-    def list_api_versions(self, api_name: str) -> list[ApiVersion]:  # type: ignore[name-defined]
+    def list_api_versions(self, api_name: str) -> list[dict[str, Any]]:
         """Return all versions for a given API."""
         logger.debug("ApiCenterClient.list_api_versions", extra={"api": api_name})
-        try:
-            pager = self._client().api_versions.list(
-                resource_group_name=self._resource_group,
-                service_name=self._service_name,
-                workspace_name=self._workspace_name,
-                api_name=api_name,
-            )
-            return list(pager)
-        except Exception as exc:
-            self._handle_error(exc, f"api/{api_name}/versions")
+        return self._dp_client.list_api_versions(api_name)
 
-    def list_api_definitions(self, api_name: str, version_name: str) -> list[ApiDefinition]:  # type: ignore[name-defined]
+    def list_api_definitions(self, api_name: str, version_name: str) -> list[dict[str, Any]]:
         """Return all definitions (spec documents) for a given API version."""
         logger.debug(
             "ApiCenterClient.list_api_definitions",
             extra={"api": api_name, "version": version_name},
         )
-        try:
-            pager = self._client().api_definitions.list(
-                resource_group_name=self._resource_group,
-                service_name=self._service_name,
-                workspace_name=self._workspace_name,
-                api_name=api_name,
-                version_name=version_name,
-            )
-            return list(pager)
-        except Exception as exc:
-            self._handle_error(exc, f"api/{api_name}/versions/{version_name}/definitions")
+        return self._dp_client.list_api_definitions(api_name, version_name)
 
     def export_api_specification(self, api_name: str, version_name: str, definition_name: str) -> str | None:
-        """Export the raw specification content for a given definition.
-
-        Returns the specification as a string (JSON or YAML) or ``None`` if
-        the export returned no content.
-        """
+        """Export the raw specification content for a given definition."""
         logger.debug(
             "ApiCenterClient.export_api_specification",
             extra={"api": api_name, "version": version_name, "definition": definition_name},
         )
-        try:
-            poller = self._client().api_definitions.begin_export_specification(
-                resource_group_name=self._resource_group,
-                service_name=self._service_name,
-                workspace_name=self._workspace_name,
-                api_name=api_name,
-                version_name=version_name,
-                definition_name=definition_name,
-            )
-            result = poller.result()
-            return result.value if result and result.value else None
-        except Exception as exc:
-            self._handle_error(exc, f"api/{api_name}/versions/{version_name}/definitions/{definition_name}/export")
+        return self._dp_client.export_api_specification(api_name, version_name, definition_name)
 
-    def list_environments(self) -> list[Environment]:  # type: ignore[name-defined]
-        """Return all environments in the service."""
-        logger.debug("ApiCenterClient.list_environments", extra={"service": self._service_name})
-        try:
-            pager = self._client().environments.list(
-                resource_group_name=self._resource_group,
-                service_name=self._service_name,
-                workspace_name=self._workspace_name,
-            )
-            return list(pager)
-        except Exception as exc:
-            self._handle_error(exc, "environments")
+    def list_environments(self) -> list[dict[str, Any]]:
+        """Return all environments in the workspace."""
+        logger.debug("ApiCenterClient.list_environments")
+        return self._dp_client.list_environments()
 
-    def list_deployments(self, api_name: str) -> list[Deployment]:  # type: ignore[name-defined]
+    def list_deployments(self, api_name: str) -> list[dict[str, Any]]:
         """Return all deployments for a given API."""
         logger.debug("ApiCenterClient.list_deployments", extra={"api": api_name})
-        try:
-            pager = self._client().deployments.list(
-                resource_group_name=self._resource_group,
-                service_name=self._service_name,
-                workspace_name=self._workspace_name,
-                api_name=api_name,
-            )
-            return list(pager)
-        except Exception as exc:
-            self._handle_error(exc, f"api/{api_name}/deployments")
+        return self._dp_client.list_deployments(api_name)
 
     def close(self) -> None:
-        """Close the underlying management client session."""
-        if self._mgmt_client is not None:
-            self._mgmt_client.close()
-            self._mgmt_client = None
+        """Close the underlying HTTP client."""
+        self._dp_client.close()
