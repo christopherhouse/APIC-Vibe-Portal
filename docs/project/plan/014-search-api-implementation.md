@@ -145,16 +145,17 @@ Returns top-5 autocomplete suggestions based on API names and descriptions.
 
 ### Status History
 
-| Date       | Status         | Author   | Notes                                                                    |
-| ---------- | -------------- | -------- | ------------------------------------------------------------------------ |
-| —          | 🔲 Not Started | —        | Task created                                                             |
+| Date       | Status         | Author   | Notes                                                                   |
+| ---------- | -------------- | -------- | ----------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —        | Task created                                                            |
 | 2026-04-17 | ✅ Complete    | @copilot | Implemented AI Search client, search service, and FastAPI search routes |
 
 ### Technical Decisions
 
 - **`azure-search-documents` v11.6.0**: Used the official Azure AI Search Python SDK for all search and suggest operations. Authenticates with `DefaultAzureCredential` for production (managed identity) and developer credentials locally.
-- **Semantic query type by default**: All search requests use `query_type="semantic"` to leverage semantic ranking, extractive captions, and RRF fusion with vector results when available. The `apic-semantic-config` configuration name matches the indexer's schema.
-- **OData filter builder**: Filters are translated from the `SearchFilters` model (kind, lifecycleStage, tags) into OData expressions. Collection fields (tags) use `any()` lambda syntax.
+- **Semantic search (not vector)**: Search requests use `query_type="semantic"` to leverage semantic ranking and extractive captions. Vector search support is deferred — the client wrapper accepts a `vector` parameter but the service layer does not yet generate query embeddings. Full hybrid (keyword + semantic + vector with RRF) requires the Azure OpenAI embedding integration from task 017.
+- **OData filter builder with injection prevention**: Filters are translated from the `SearchFilters` model (kind, lifecycleStage, tags) into OData expressions. Single quotes are escaped (doubled per OData spec) and values are validated against a safe character pattern to prevent OData injection.
+- **Sort support**: `sortBy` / `sortOrder` request parameters are mapped to AI Search `order_by` clauses. Supported fields: `name` → `apiName`, `updatedAt`, `createdAt`. When `sortBy` is `relevance` (or omitted), results use default relevance scoring.
 - **Consistent error pattern**: Search routes follow the same structured error envelope pattern as the existing catalog routes (`{error: {code, message, details}}`), with a dedicated `SearchApiError` exception and handler registered in `app.py`.
 - **Lazy service instantiation**: The search service and client are created lazily on first request (same pattern as `ApiCatalogService`), with dependency injection for testability.
 - **Index name configurable**: Added `ai_search_index_name` to `Settings` (default: `"apic-apis"`) matching the indexer's `INDEX_NAME` constant.

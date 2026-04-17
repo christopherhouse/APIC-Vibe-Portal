@@ -1,13 +1,14 @@
 """Search service — business logic for API search operations.
 
 Orchestrates calls to :class:`AISearchClient`, transforms AI Search SDK
-results into Pydantic response models, and implements hybrid search
-(keyword + semantic + vector with RRF).
+results into Pydantic response models, and implements search with
+keyword + semantic ranking.
 """
 
 from __future__ import annotations
 
 import logging
+import re
 import time
 from typing import Any
 
@@ -22,6 +23,7 @@ from apic_vibe_portal_bff.models.search import (
     SearchRequest,
     SearchResponse,
     SearchResult,
+    SearchSortField,
     SuggestResponse,
     SuggestResult,
 )
@@ -30,15 +32,43 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+# Allowed filter value pattern — alphanumeric, hyphens, underscores, dots, spaces
+_SAFE_FILTER_VALUE = re.compile(r"^[\w\s.\-]+$")
+
+# Maps API-facing sort field names to AI Search index field names
+_SORT_FIELD_MAP: dict[SearchSortField, str] = {
+    "relevance": "",  # empty → use default relevance scoring
+    "name": "apiName",
+    "updatedAt": "updatedAt",
+    "createdAt": "createdAt",
+}
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _escape_odata_value(value: str) -> str:
+    """Escape a value for safe use in an OData filter string literal.
+
+    OData escapes single quotes by doubling them (``''``).  Values that
+    contain characters outside the expected set are rejected to prevent
+    injection-style filter manipulation.
+    """
+    if not _SAFE_FILTER_VALUE.match(value):
+        raise ValueError(f"Invalid filter value: {value!r}")
+    return value.replace("'", "''")
 
 
 def _build_odata_filter(filters: SearchFilters | None) -> str | None:
     """Build an OData filter expression from :class:`SearchFilters`.
 
     Each field supports multi-value OR filters.  Multiple fields are combined
-    with AND.
+    with AND.  Values are validated and escaped to prevent OData injection.
     """
     if filters is None:
         return None
@@ -46,16 +76,16 @@ def _build_odata_filter(filters: SearchFilters | None) -> str | None:
     parts: list[str] = []
 
     if filters.kind:
-        kind_clauses = " or ".join(f"kind eq '{v}'" for v in filters.kind)
+        kind_clauses = " or ".join(f"kind eq '{_escape_odata_value(v)}'" for v in filters.kind)
         parts.append(f"({kind_clauses})")
 
     if filters.lifecycle_stage:
-        lc_clauses = " or ".join(f"lifecycleStage eq '{v}'" for v in filters.lifecycle_stage)
+        lc_clauses = " or ".join(f"lifecycleStage eq '{_escape_odata_value(v)}'" for v in filters.lifecycle_stage)
         parts.append(f"({lc_clauses})")
 
     if filters.tags:
         # Collection fields use any()
-        tag_clauses = " or ".join(f"tags/any(t: t eq '{v}')" for v in filters.tags)
+        tag_clauses = " or ".join(f"tags/any(t: t eq '{_escape_odata_value(v)}')" for v in filters.tags)
         parts.append(f"({tag_clauses})")
 
     return " and ".join(parts) if parts else None
@@ -102,7 +132,7 @@ def _map_search_result(result: dict[str, Any]) -> SearchResult:
     return SearchResult(
         document=doc,
         score=result.get("@search.score", 0.0),
-        reranker_score=result.get("@search.reranker_score"),
+        reranker_score=result.get("@search.rerankerScore"),
         highlights=_extract_highlights(result),
         captions=_extract_captions(result),
     )
@@ -126,11 +156,10 @@ class SearchService:
         self._client = client
 
     def search(self, request: SearchRequest) -> SearchResponse:
-        """Execute a hybrid search and return a structured response.
+        """Execute a search and return a structured response.
 
-        Combines keyword search, semantic ranking, and (when a vector is
-        available) vector search.  Results are merged via Reciprocal Rank
-        Fusion (RRF) which is handled by the AI Search service.
+        Uses semantic ranking for natural-language understanding and
+        hit highlights.  Sort parameters are honoured when provided.
 
         Parameters
         ----------
@@ -148,9 +177,18 @@ class SearchService:
         # Determine query type — always use semantic for best results
         query_type = "semantic"
 
+        # Build order_by from sort params
+        order_by: list[str] | None = None
+        if request.sort_by and request.sort_by != "relevance":
+            index_field = _SORT_FIELD_MAP.get(request.sort_by, "")
+            if index_field:
+                direction = request.sort_order or "desc"
+                order_by = [f"{index_field} {direction}"]
+
         raw = self._client.search(
             search_text=request.query,
             filter_expression=filter_expr,
+            order_by=order_by,
             skip=skip,
             top=pagination.page_size,
             include_total_count=True,

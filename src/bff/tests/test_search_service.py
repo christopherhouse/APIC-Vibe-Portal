@@ -17,6 +17,7 @@ from apic_vibe_portal_bff.models.search import (
 from apic_vibe_portal_bff.services.search_service import (
     SearchService,
     _build_odata_filter,
+    _escape_odata_value,
     _extract_captions,
     _extract_highlights,
     _map_search_result,
@@ -108,6 +109,40 @@ class TestBuildOdataFilter:
         assert "lifecycleStage eq 'production'" in result
         assert "tags/any(t: t eq 'pets')" in result
         assert " and " in result
+
+    def test_rejects_value_with_single_quotes(self):
+        filters = SearchFilters(kind=["rest'; DROP TABLE--"])
+        with pytest.raises(ValueError, match="Invalid filter value"):
+            _build_odata_filter(filters)
+
+    def test_rejects_value_with_special_chars(self):
+        filters = SearchFilters(tags=["tag$(malicious)"])
+        with pytest.raises(ValueError, match="Invalid filter value"):
+            _build_odata_filter(filters)
+
+
+# ---------------------------------------------------------------------------
+# OData value escaping
+# ---------------------------------------------------------------------------
+
+
+class TestEscapeOdataValue:
+    def test_passes_safe_value(self):
+        assert _escape_odata_value("rest") == "rest"
+
+    def test_passes_value_with_hyphen_and_underscore(self):
+        assert _escape_odata_value("my-api_v2") == "my-api_v2"
+
+    def test_passes_value_with_spaces(self):
+        assert _escape_odata_value("my api") == "my api"
+
+    def test_rejects_injection_attempt(self):
+        with pytest.raises(ValueError):
+            _escape_odata_value("rest' or 1 eq 1 or kind eq '")
+
+    def test_rejects_semicolons(self):
+        with pytest.raises(ValueError):
+            _escape_odata_value("rest;evil")
 
 
 # ---------------------------------------------------------------------------
@@ -228,6 +263,12 @@ class TestMapSearchResult:
         result = _map_search_result(raw)
         assert result.captions == ["A caption"]
 
+    def test_maps_reranker_score_from_camel_case_key(self):
+        raw = _make_raw_result()
+        raw["@search.rerankerScore"] = 2.75
+        result = _map_search_result(raw)
+        assert result.reranker_score == 2.75
+
 
 # ---------------------------------------------------------------------------
 # SearchService.search
@@ -344,6 +385,58 @@ class TestSearchServiceSearch:
         call_kwargs = mock_client.search.call_args
         assert call_kwargs.kwargs["query_type"] == "semantic"
         assert call_kwargs.kwargs["semantic_query"] == "find user auth APIs"
+
+    def test_search_passes_sort_by_name(self, service, mock_client):
+        mock_client.search.return_value = {
+            "results": [],
+            "count": 0,
+            "facets": None,
+        }
+
+        request = SearchRequest(query="test", sortBy="name", sortOrder="asc")
+        service.search(request)
+
+        call_kwargs = mock_client.search.call_args
+        assert call_kwargs.kwargs["order_by"] == ["apiName asc"]
+
+    def test_search_passes_sort_by_updated_at(self, service, mock_client):
+        mock_client.search.return_value = {
+            "results": [],
+            "count": 0,
+            "facets": None,
+        }
+
+        request = SearchRequest(query="test", sortBy="updatedAt", sortOrder="desc")
+        service.search(request)
+
+        call_kwargs = mock_client.search.call_args
+        assert call_kwargs.kwargs["order_by"] == ["updatedAt desc"]
+
+    def test_search_no_order_by_for_relevance(self, service, mock_client):
+        mock_client.search.return_value = {
+            "results": [],
+            "count": 0,
+            "facets": None,
+        }
+
+        request = SearchRequest(query="test", sortBy="relevance")
+        service.search(request)
+
+        call_kwargs = mock_client.search.call_args
+        assert call_kwargs.kwargs["order_by"] is None
+
+    def test_search_no_order_by_when_sort_not_specified(self, service, mock_client):
+        mock_client.search.return_value = {
+            "results": [],
+            "count": 0,
+            "facets": None,
+        }
+
+        request = SearchRequest(query="test")
+        service.search(request)
+
+        call_kwargs = mock_client.search.call_args
+        assert call_kwargs.kwargs["order_by"] is None
 
 
 # ---------------------------------------------------------------------------

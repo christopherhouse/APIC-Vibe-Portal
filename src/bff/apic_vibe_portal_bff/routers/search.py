@@ -5,8 +5,9 @@ Exposes Azure AI Search capabilities to the frontend via REST endpoints:
 POST /api/search           — Full hybrid search with facets, highlights, captions
 GET  /api/search/suggest   — Autocomplete suggestions based on a prefix
 
-All responses align with the shared TypeScript DTOs defined in
-``src/shared/src/dto/search-request.ts`` and ``search-response.ts``.
+Request and response payloads are defined by the BFF Pydantic models used by
+these routes. Keep those models in sync with any shared/frontend DTOs before
+relying on wire-contract compatibility.
 """
 
 from __future__ import annotations
@@ -120,10 +121,10 @@ def search(
     request: SearchRequest,
     service: SearchService = Depends(_get_search_service),  # noqa: B008
 ) -> SearchResponse:
-    """Execute a hybrid search against the API catalog.
+    """Execute a search against the API catalog.
 
-    Combines keyword, semantic, and vector search with Reciprocal Rank
-    Fusion (RRF) for optimal results.
+    Delegates search execution to the backend search service and returns
+    results shaped to the shared search response DTO.
     """
     try:
         return service.search(request)
@@ -145,5 +146,5 @@ def suggest(
     try:
         return service.suggest(prefix=q)
     except AISearchClientError as exc:
-        logger.error("suggest failed", extra={"prefix": q, "error": str(exc)})
+        logger.error("suggest failed", extra={"error": str(exc)})
         _raise_error(exc.status_code or 500, "SEARCH_ERROR", str(exc))
