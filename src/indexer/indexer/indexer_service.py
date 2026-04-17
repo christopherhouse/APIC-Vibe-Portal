@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import structlog
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 
 logger = structlog.get_logger()
 
@@ -359,7 +360,12 @@ class IndexerService:
         return doc
 
     def _fetch_spec_content(self, api_name: str, versions: list[str]) -> str | None:
-        """Fetch the raw spec content for the first available definition."""
+        """Fetch the raw spec content for the first available definition.
+
+        Some API types (e.g. GraphQL) do not support spec download in Azure
+        API Center and will return a 404.  This is expected — the API is still
+        indexed but without spec content.
+        """
         for version_name in versions:
             try:
                 defs = list(
@@ -397,6 +403,21 @@ class IndexerService:
                 )
                 result = poller.result()
                 return result.value if result and result.value else None
+            except ResourceNotFoundError:
+                self._log_spec_not_available(api_name, version_name)
+                continue
+            except HttpResponseError as exc:
+                if exc.status_code == 404:
+                    self._log_spec_not_available(api_name, version_name)
+                else:
+                    logger.warning(
+                        "Failed to fetch spec content for API",
+                        api_name=api_name,
+                        version=version_name,
+                        error=str(exc),
+                        status_code=exc.status_code,
+                    )
+                continue
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
                     "Failed to fetch spec content for API",
@@ -406,6 +427,17 @@ class IndexerService:
                 )
                 continue
         return None
+
+    @staticmethod
+    def _log_spec_not_available(api_name: str, version_name: str) -> None:
+        """Log that a spec is not available — expected for some API types."""
+        logger.info(
+            "Spec not available for API — this is expected for "
+            "some API types (e.g. GraphQL). The API will be "
+            "indexed without spec content.",
+            api_name=api_name,
+            version=version_name,
+        )
 
     @staticmethod
     def _contact_to_str(contact: object) -> str:
