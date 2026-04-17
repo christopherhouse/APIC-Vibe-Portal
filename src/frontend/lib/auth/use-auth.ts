@@ -48,7 +48,7 @@ export function useAuth(): UseAuthReturn {
 
   // When MSAL is not configured (empty clientId), treat as authenticated so
   // data-fetching hooks (useCatalog, useApiDetail) are not blocked.
-  const authConfigured = Boolean(config.clientId);
+  const isMsalConfigured = Boolean(config.clientId);
 
   const user: AuthUser | null = (() => {
     const account = instance.getActiveAccount();
@@ -62,20 +62,20 @@ export function useAuth(): UseAuthReturn {
   })();
 
   const login = useCallback(async () => {
-    if (!authConfigured) return;
+    if (!isMsalConfigured) return;
     const loginRequest = buildLoginRequest(config);
     await instance.loginRedirect(loginRequest);
-  }, [instance, config, authConfigured]);
+  }, [instance, config, isMsalConfigured]);
 
   const logout = useCallback(async () => {
-    if (!authConfigured) return;
+    if (!isMsalConfigured) return;
     await instance.logoutRedirect({
       postLogoutRedirectUri: '/',
     });
-  }, [instance, authConfigured]);
+  }, [instance, isMsalConfigured]);
 
   const getToken = useCallback(async (): Promise<string | null> => {
-    if (!authConfigured) return null;
+    if (!isMsalConfigured) return null;
     const account = instance.getActiveAccount();
     if (!account) return null;
 
@@ -96,10 +96,10 @@ export function useAuth(): UseAuthReturn {
       console.error('Token acquisition failed:', error);
       return null;
     }
-  }, [instance, config, authConfigured]);
+  }, [instance, config, isMsalConfigured]);
 
   return {
-    isAuthenticated: authConfigured ? isAuthenticated : true,
+    isAuthenticated: isMsalConfigured ? isAuthenticated : true,
     user,
     login,
     logout,
