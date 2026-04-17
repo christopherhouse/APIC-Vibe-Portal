@@ -30,6 +30,22 @@ param privateEndpointSubnetId string
 @description('Disable local (key-based) authentication in favour of RBAC (recommended)')
 param disableLocalAuth bool = true
 
+@description('Embedding model deployment name — must match OPENAI_EMBEDDING_DEPLOYMENT in indexer config')
+param embeddingDeploymentName string = 'text-embedding-ada-002'
+
+@description('Embedding model name (Azure OpenAI model identifier)')
+param embeddingModelName string = 'text-embedding-ada-002'
+
+@description('Embedding model version')
+param embeddingModelVersion string = '2'
+
+@description('Embedding deployment SKU name')
+@allowed(['Standard', 'GlobalStandard', 'ProvisionedManaged'])
+param embeddingDeploymentSkuName string = 'Standard'
+
+@description('Embedding deployment capacity (in thousands of tokens per minute)')
+param embeddingDeploymentCapacity int = 30
+
 @description('Resource tags')
 param tags object
 
@@ -57,6 +73,23 @@ resource cognitiveService 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
       bypass: 'AzureServices'
     }
     disableLocalAuth: disableLocalAuth
+  }
+}
+
+// Embedding model deployment (text-embedding-ada-002)
+resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: cognitiveService
+  name: embeddingDeploymentName
+  sku: {
+    name: embeddingDeploymentSkuName
+    capacity: embeddingDeploymentCapacity
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: embeddingModelName
+      version: embeddingModelVersion
+    }
   }
 }
 
@@ -154,3 +187,6 @@ output name string = cognitiveService.name
 
 @description('Cognitive Services endpoint')
 output endpoint string = cognitiveService.properties.endpoint
+
+@description('Embedding model deployment name')
+output embeddingDeploymentName string = embeddingDeployment.name
