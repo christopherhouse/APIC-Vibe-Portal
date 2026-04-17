@@ -58,6 +58,7 @@ class TestListApis:
         mgmt.apis.list.assert_called_once_with(
             resource_group_name="rg-test",
             service_name="apic-test",
+            workspace_name="default",
             filter=None,
         )
 
@@ -71,6 +72,7 @@ class TestListApis:
         mgmt.apis.list.assert_called_once_with(
             resource_group_name="rg-test",
             service_name="apic-test",
+            workspace_name="default",
             filter="properties/kind eq 'rest'",
         )
 
@@ -149,6 +151,7 @@ class TestGetApi:
         mgmt.apis.get.assert_called_once_with(
             resource_group_name="rg-test",
             service_name="apic-test",
+            workspace_name="default",
             api_name="petstore-api",
         )
 
@@ -203,6 +206,7 @@ class TestListApiDefinitions:
         mgmt.api_definitions.list.assert_called_once_with(
             resource_group_name="rg-test",
             service_name="apic-test",
+            workspace_name="default",
             api_name="petstore-api",
             version_name="v1",
         )
@@ -216,7 +220,9 @@ class TestListApiDefinitions:
 class TestExportApiSpecification:
     def test_returns_spec_content(self) -> None:
         mgmt = _mock_mgmt()
-        mgmt.api_definitions.export_specification.return_value = SimpleNamespace(value=MOCK_SPEC_CONTENT)
+        poller = MagicMock()
+        poller.result.return_value = SimpleNamespace(value=MOCK_SPEC_CONTENT)
+        mgmt.api_definitions.begin_export_specification.return_value = poller
         client = _make_client(mgmt)
 
         result = client.export_api_specification("petstore-api", "v1", "openapi")
@@ -225,7 +231,9 @@ class TestExportApiSpecification:
 
     def test_returns_none_when_empty(self) -> None:
         mgmt = _mock_mgmt()
-        mgmt.api_definitions.export_specification.return_value = SimpleNamespace(value=None)
+        poller = MagicMock()
+        poller.result.return_value = SimpleNamespace(value=None)
+        mgmt.api_definitions.begin_export_specification.return_value = poller
         client = _make_client(mgmt)
 
         result = client.export_api_specification("petstore-api", "v1", "openapi")
@@ -234,7 +242,9 @@ class TestExportApiSpecification:
 
     def test_returns_none_when_result_is_none(self) -> None:
         mgmt = _mock_mgmt()
-        mgmt.api_definitions.export_specification.return_value = None
+        poller = MagicMock()
+        poller.result.return_value = None
+        mgmt.api_definitions.begin_export_specification.return_value = poller
         client = _make_client(mgmt)
 
         result = client.export_api_specification("petstore-api", "v1", "openapi")
@@ -259,6 +269,7 @@ class TestListEnvironments:
         mgmt.environments.list.assert_called_once_with(
             resource_group_name="rg-test",
             service_name="apic-test",
+            workspace_name="default",
         )
 
     def test_not_found_raises_domain_error(self) -> None:
@@ -287,6 +298,7 @@ class TestListDeployments:
         mgmt.deployments.list.assert_called_once_with(
             resource_group_name="rg-test",
             service_name="apic-test",
+            workspace_name="default",
             api_name="petstore-api",
         )
 

@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     api_center_subscription_id: str = Field(default="", description="Azure subscription ID containing API Center")
     api_center_resource_group: str = Field(default="", description="Resource group containing API Center")
     api_center_service_name: str = Field(default="", description="API Center service name")
+    api_center_workspace_name: str = Field(default="default", description="API Center workspace name")
     cache_ttl_seconds: int = Field(
         default=300, description="Default cache TTL in seconds (Redis and in-memory fallback)"
     )
