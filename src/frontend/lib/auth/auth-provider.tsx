@@ -58,10 +58,21 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         // Initialize MSAL
         await msalInstance.initialize();
 
-        // Set the first account as the active account if there is one after redirect
-        const accounts = msalInstance.getAllAccounts();
-        if (accounts.length > 0) {
-          msalInstance.setActiveAccount(accounts[0]);
+        // Process any pending login redirect BEFORE rendering children.
+        // Without this, children may fire API requests before the new
+        // tokens from the redirect are cached, resulting in missing
+        // Authorization headers.
+        const redirectResult = await msalInstance.handleRedirectPromise();
+        if (redirectResult?.account) {
+          msalInstance.setActiveAccount(redirectResult.account);
+        }
+
+        // If no redirect result, set the first cached account as active
+        if (!msalInstance.getActiveAccount()) {
+          const accounts = msalInstance.getAllAccounts();
+          if (accounts.length > 0) {
+            msalInstance.setActiveAccount(accounts[0]);
+          }
         }
 
         // Listen for login success to set the active account
