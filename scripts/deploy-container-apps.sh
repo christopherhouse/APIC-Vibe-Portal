@@ -2,8 +2,8 @@
 # ============================================================================
 # Container Apps Deployment Script
 # ============================================================================
-# This script deploys or updates Container Apps after infrastructure is
-# provisioned and container images are pushed to ACR.
+# This script deploys or updates Container Apps and Container Apps Jobs after
+# infrastructure is provisioned and container images are pushed to ACR.
 #
 # Usage:
 #   ./deploy-container-apps.sh \
@@ -18,23 +18,31 @@
 #     --frontend-image-tag <frontend-tag> \
 #     --bff-image-tag <bff-tag> \
 #     --redis-host <redis-hostname> \
+#     --indexer-image-tag <indexer-tag> \
+#     --indexer-identity-resource-id <indexer-uami-resource-id> \
+#     --indexer-identity-client-id <indexer-uami-client-id> \
 #     --bff-env-vars "KEY1=val1 KEY2=val2 ..." \
-#     --frontend-env-vars "KEY1=val1 KEY2=val2 ..."
+#     --frontend-env-vars "KEY1=val1 KEY2=val2 ..." \
+#     --indexer-env-vars "KEY1=val1 KEY2=val2 ..."
 #
 # Each Container App uses its own User-Assigned Managed Identity (UAMI) for
 # ACR image pull and Azure service access.  The --*-identity-resource-id flags
 # accept full ARM resource IDs required by `az containerapp create`.
 #
-# The --bff-env-vars and --frontend-env-vars flags accept space-separated lists
-# of KEY=VALUE pairs that are passed as environment variables to the respective
-# Container Apps. This keeps the script generic — add new env vars in the
-# workflow without modifying this script.
+# The --*-env-vars flags accept space-separated lists of KEY=VALUE pairs that
+# are passed as environment variables to the respective Container Apps / Jobs.
+# This keeps the script generic — add new env vars in the workflow without
+# modifying this script.
 # ============================================================================
 
 set -euo pipefail
 
 BFF_ENV_VARS=""
 FRONTEND_ENV_VARS=""
+INDEXER_ENV_VARS=""
+INDEXER_IMAGE_TAG=""
+INDEXER_IDENTITY_RESOURCE_ID=""
+INDEXER_IDENTITY_CLIENT_ID=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -91,6 +99,22 @@ while [[ $# -gt 0 ]]; do
       FRONTEND_ENV_VARS="$2"
       shift 2
       ;;
+    --indexer-image-tag)
+      INDEXER_IMAGE_TAG="$2"
+      shift 2
+      ;;
+    --indexer-identity-resource-id)
+      INDEXER_IDENTITY_RESOURCE_ID="$2"
+      shift 2
+      ;;
+    --indexer-identity-client-id)
+      INDEXER_IDENTITY_CLIENT_ID="$2"
+      shift 2
+      ;;
+    --indexer-env-vars)
+      INDEXER_ENV_VARS="$2"
+      shift 2
+      ;;
     *)
       echo "Unknown argument: $1"
       exit 1
@@ -110,7 +134,9 @@ for arg in "${required_args[@]}"; do
          "--frontend-identity-resource-id <id> --bff-identity-resource-id <id>" \
          "--bff-identity-client-id <id> --frontend-image-tag <tag>" \
          "--bff-image-tag <tag> --redis-host <hostname>" \
-         "[--bff-env-vars \"KEY=val ...\"]"
+         "[--bff-env-vars \"KEY=val ...\"]" \
+         "[--indexer-image-tag <tag> --indexer-identity-resource-id <id>" \
+         " --indexer-identity-client-id <id>]"
     exit 1
   fi
 done
@@ -131,6 +157,22 @@ done
 if [[ "$BFF_IDENTITY_CLIENT_ID" == "null" ]]; then
   echo "Error: BFF_IDENTITY_CLIENT_ID is 'null'. Re-run the deploy-infra workflow first."
   exit 1
+fi
+
+# Validate indexer identity arguments when indexer deployment is requested
+if [[ -n "$INDEXER_IMAGE_TAG" ]]; then
+  if [[ -z "$INDEXER_IDENTITY_RESOURCE_ID" || "$INDEXER_IDENTITY_RESOURCE_ID" == "null" ]]; then
+    echo "Error: INDEXER_IDENTITY_RESOURCE_ID is missing or 'null'. Re-run the deploy-infra workflow first."
+    exit 1
+  fi
+  if [[ ! "$INDEXER_IDENTITY_RESOURCE_ID" =~ ^/subscriptions/ ]]; then
+    echo "Error: INDEXER_IDENTITY_RESOURCE_ID does not look like a valid ARM resource ID: '$INDEXER_IDENTITY_RESOURCE_ID'"
+    exit 1
+  fi
+  if [[ -z "$INDEXER_IDENTITY_CLIENT_ID" || "$INDEXER_IDENTITY_CLIENT_ID" == "null" ]]; then
+    echo "Error: INDEXER_IDENTITY_CLIENT_ID is missing or 'null'. Re-run the deploy-infra workflow first."
+    exit 1
+  fi
 fi
 
 # Build the array of BFF env vars (always includes core infra vars)
@@ -161,6 +203,11 @@ echo "BFF Image: ${ACR_SERVER}/bff:${BFF_IMAGE_TAG}"
 echo "Redis Host: $REDIS_HOST"
 echo "BFF Env Vars: ${BFF_CORE_ENV_VARS[*]}"
 echo "Frontend Env Vars (pre-deploy): ${FRONTEND_ENV_VARS:-<none>}"
+if [[ -n "$INDEXER_IMAGE_TAG" ]]; then
+  echo "Indexer Image: ${ACR_SERVER}/indexer:${INDEXER_IMAGE_TAG}"
+  echo "Indexer Identity: $INDEXER_IDENTITY_RESOURCE_ID"
+  echo "Indexer Env Vars: ${INDEXER_ENV_VARS:-<none>}"
+fi
 echo "============================================================================"
 
 # Deploy BFF Container App first (its URL is needed by the frontend)
@@ -260,10 +307,70 @@ FRONTEND_URL=$(az containerapp show \
   --query properties.configuration.ingress.fqdn -o tsv)
 echo "Frontend URL: https://${FRONTEND_URL}"
 
+# ============================================================================
+# Deploy Indexer Container Apps Job (cron-based, runs to completion)
+# ============================================================================
+if [[ -n "$INDEXER_IMAGE_TAG" ]]; then
+  echo ""
+  echo "Deploying Indexer Container Apps Job..."
+
+  # Derive the job name from the BFF app name pattern (replace -bff- with -indexer-)
+  INDEXER_JOB_NAME="${BFF_APP_NAME/bff/indexer}"
+
+  # Build indexer env vars
+  INDEXER_CORE_ENV_VARS=(
+    "AZURE_CLIENT_ID=${INDEXER_IDENTITY_CLIENT_ID}"
+  )
+
+  if [[ -n "$INDEXER_ENV_VARS" ]]; then
+    read -ra EXTRA_INDEXER_ENV_VARS <<< "$INDEXER_ENV_VARS"
+    INDEXER_CORE_ENV_VARS+=("${EXTRA_INDEXER_ENV_VARS[@]}")
+  fi
+
+  echo "Indexer Job Name: $INDEXER_JOB_NAME"
+  echo "Indexer Image: ${ACR_SERVER}/indexer:${INDEXER_IMAGE_TAG}"
+  echo "Indexer Env Vars (${#INDEXER_CORE_ENV_VARS[@]} vars): ${INDEXER_CORE_ENV_VARS[*]}"
+
+  if az containerapp job show --name "$INDEXER_JOB_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+    echo "Updating existing Indexer Container Apps Job..."
+    az containerapp job update \
+      --name "$INDEXER_JOB_NAME" \
+      --resource-group "$RESOURCE_GROUP" \
+      --image "${ACR_SERVER}/indexer:${INDEXER_IMAGE_TAG}" \
+      --cpu 0.5 \
+      --memory 1Gi \
+      --set-env-vars "${INDEXER_CORE_ENV_VARS[@]}"
+  else
+    echo "Creating new Indexer Container Apps Job..."
+    az containerapp job create \
+      --name "$INDEXER_JOB_NAME" \
+      --resource-group "$RESOURCE_GROUP" \
+      --environment "$ENVIRONMENT_ID" \
+      --image "${ACR_SERVER}/indexer:${INDEXER_IMAGE_TAG}" \
+      --cpu 0.5 \
+      --memory 1Gi \
+      --trigger-type Schedule \
+      --cron-expression "*/5 * * * *" \
+      --replica-timeout 600 \
+      --replica-retry-limit 1 \
+      --parallelism 1 \
+      --replica-completion-count 1 \
+      --registry-server "$ACR_SERVER" \
+      --mi-user-assigned "$INDEXER_IDENTITY_RESOURCE_ID" \
+      --registry-identity "$INDEXER_IDENTITY_RESOURCE_ID" \
+      --env-vars "${INDEXER_CORE_ENV_VARS[@]}"
+  fi
+
+  echo "Indexer Job: $INDEXER_JOB_NAME (cron: */5 * * * *)"
+fi
+
 echo ""
 echo "============================================================================"
 echo "Deployment Complete"
 echo "============================================================================"
 echo "Frontend: https://${FRONTEND_URL}"
 echo "BFF: https://${BFF_URL}"
+if [[ -n "$INDEXER_IMAGE_TAG" ]]; then
+  echo "Indexer Job: ${INDEXER_JOB_NAME}"
+fi
 echo "============================================================================"
