@@ -38,17 +38,16 @@ class Settings(BaseSettings):
     frontend_url: str = Field(default="http://localhost:3000", description="Frontend origin URL")
 
     # --- Azure services (required in production) -------------------------
-    api_center_endpoint: str = Field(default="", description="Azure API Center endpoint")
+    api_center_endpoint: str = Field(
+        default="",
+        description=("Azure API Center data-plane endpoint (e.g. https://myapic.data.eastus.azure-apicenter.ms)"),
+    )
     ai_search_endpoint: str = Field(default="", description="Azure AI Search endpoint")
     openai_endpoint: str = Field(default="", description="Azure OpenAI endpoint")
     key_vault_url: str = Field(default="", description="Azure Key Vault URL")
     appinsights_connection_string: str = Field(default="", description="Application Insights connection string")
 
     # --- Azure API Center -----------------------------------------------
-    api_center_endpoint: str = Field(
-        default="",
-        description=("Azure API Center data-plane endpoint (e.g. https://myapic.data.eastus.azure-apicenter.ms)"),
-    )
     api_center_workspace_name: str = Field(default="default", description="API Center workspace name")
     cache_ttl_seconds: int = Field(
         default=300, description="Default cache TTL in seconds (Redis and in-memory fallback)"
