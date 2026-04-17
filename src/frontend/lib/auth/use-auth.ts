@@ -36,11 +36,19 @@ export interface UseAuthReturn {
 
 /**
  * Hook that provides authentication state and actions.
+ *
+ * When MSAL is not configured (no `clientId`), the hook treats the session as
+ * authenticated so that data-fetching hooks gated by `isAuthenticated` still
+ * work in development and testing environments where Entra ID is not set up.
  */
 export function useAuth(): UseAuthReturn {
   const { instance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
   const config = useMsalConfig();
+
+  // When MSAL is not configured (empty clientId), treat as authenticated so
+  // data-fetching hooks (useCatalog, useApiDetail) are not blocked.
+  const isMsalConfigured = Boolean(config.clientId);
 
   const user: AuthUser | null = (() => {
     const account = instance.getActiveAccount();
@@ -54,17 +62,20 @@ export function useAuth(): UseAuthReturn {
   })();
 
   const login = useCallback(async () => {
+    if (!isMsalConfigured) return;
     const loginRequest = buildLoginRequest(config);
     await instance.loginRedirect(loginRequest);
-  }, [instance, config]);
+  }, [instance, config, isMsalConfigured]);
 
   const logout = useCallback(async () => {
+    if (!isMsalConfigured) return;
     await instance.logoutRedirect({
       postLogoutRedirectUri: '/',
     });
-  }, [instance]);
+  }, [instance, isMsalConfigured]);
 
   const getToken = useCallback(async (): Promise<string | null> => {
+    if (!isMsalConfigured) return null;
     const account = instance.getActiveAccount();
     if (!account) return null;
 
@@ -85,10 +96,10 @@ export function useAuth(): UseAuthReturn {
       console.error('Token acquisition failed:', error);
       return null;
     }
-  }, [instance, config]);
+  }, [instance, config, isMsalConfigured]);
 
   return {
-    isAuthenticated,
+    isAuthenticated: isMsalConfigured ? isAuthenticated : true,
     user,
     login,
     logout,

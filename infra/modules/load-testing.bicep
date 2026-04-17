@@ -45,15 +45,17 @@ resource loadTest 'Microsoft.LoadTestService/loadTests@2022-12-01' = {
   }
 }
 
-// Diagnostic settings — send metrics to Log Analytics
+// Diagnostic settings — send logs to Log Analytics
+// Note: Microsoft.LoadTestService/loadTests does NOT support metric export;
+// only the OperationLogs log category is available.
 resource loadTestDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'diag-${loadTestName}'
   scope: loadTest
   properties: {
     workspaceId: logAnalyticsWorkspaceId
-    metrics: [
+    logs: [
       {
-        category: 'AllMetrics'
+        category: 'OperationLogs'
         enabled: true
         retentionPolicy: {
           enabled: false

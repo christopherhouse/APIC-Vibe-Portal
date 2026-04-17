@@ -124,4 +124,30 @@ describe('useAuth', () => {
     render(<TestComponent />, { wrapper: TestWrapper });
     expect(screen.getByTestId('loading')).toHaveTextContent('false');
   });
+
+  describe('when MSAL is not configured (empty clientId)', () => {
+    const emptyConfig: MsalConfig = {
+      clientId: '',
+      authority: 'https://login.microsoftonline.com/common',
+      redirectUri: '',
+      bffApiScope: '',
+    };
+
+    function NoAuthWrapper({ children }: { children: React.ReactNode }) {
+      return <MsalConfigProvider config={emptyConfig}>{children}</MsalConfigProvider>;
+    }
+
+    it('returns isAuthenticated=true even when MSAL reports unauthenticated', () => {
+      mockUseIsAuthenticated.mockReturnValue(false);
+      render(<TestComponent />, { wrapper: NoAuthWrapper });
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
+    });
+
+    it('returns user=null when MSAL is not configured', () => {
+      mockUseIsAuthenticated.mockReturnValue(false);
+      mockGetActiveAccount.mockReturnValue(null);
+      render(<TestComponent />, { wrapper: NoAuthWrapper });
+      expect(screen.getByTestId('user-name')).toHaveTextContent('none');
+    });
+  });
 });
