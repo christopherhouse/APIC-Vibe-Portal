@@ -71,6 +71,7 @@ def _get_service() -> ApiCatalogService:
             subscription_id=settings.api_center_subscription_id,
             resource_group=settings.api_center_resource_group,
             service_name=settings.api_center_service_name,
+            workspace_name=settings.api_center_workspace_name,
         )
 
         cache: CacheBackend | None = None

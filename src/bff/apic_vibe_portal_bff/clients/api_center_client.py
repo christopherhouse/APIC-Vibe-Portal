@@ -71,6 +71,9 @@ class ApiCenterClient:
         An Azure credential object.  Defaults to ``DefaultAzureCredential``
         which works for both managed identity (production) and developer
         credential chains (local development).
+    workspace_name:
+        API Center workspace name.  Defaults to ``"default"`` which is the
+        standard workspace created by Azure API Center.
     """
 
     def __init__(
@@ -79,10 +82,12 @@ class ApiCenterClient:
         resource_group: str,
         service_name: str,
         credential: object | None = None,
+        workspace_name: str = "default",
     ) -> None:
         self._subscription_id = subscription_id
         self._resource_group = resource_group
         self._service_name = service_name
+        self._workspace_name = workspace_name
         self._credential = credential or DefaultAzureCredential()
         self._mgmt_client: _ApiCenterMgmtClientType | None = None
 
@@ -134,6 +139,7 @@ class ApiCenterClient:
             pager = self._client().apis.list(
                 resource_group_name=self._resource_group,
                 service_name=self._service_name,
+                workspace_name=self._workspace_name,
                 filter=filter_str,
             )
             return list(pager)
@@ -147,6 +153,7 @@ class ApiCenterClient:
             return self._client().apis.get(
                 resource_group_name=self._resource_group,
                 service_name=self._service_name,
+                workspace_name=self._workspace_name,
                 api_name=api_name,
             )
         except Exception as exc:
@@ -159,6 +166,7 @@ class ApiCenterClient:
             pager = self._client().api_versions.list(
                 resource_group_name=self._resource_group,
                 service_name=self._service_name,
+                workspace_name=self._workspace_name,
                 api_name=api_name,
             )
             return list(pager)
@@ -175,6 +183,7 @@ class ApiCenterClient:
             pager = self._client().api_definitions.list(
                 resource_group_name=self._resource_group,
                 service_name=self._service_name,
+                workspace_name=self._workspace_name,
                 api_name=api_name,
                 version_name=version_name,
             )
@@ -193,13 +202,15 @@ class ApiCenterClient:
             extra={"api": api_name, "version": version_name, "definition": definition_name},
         )
         try:
-            result = self._client().api_definitions.export_specification(
+            poller = self._client().api_definitions.begin_export_specification(
                 resource_group_name=self._resource_group,
                 service_name=self._service_name,
+                workspace_name=self._workspace_name,
                 api_name=api_name,
                 version_name=version_name,
                 definition_name=definition_name,
             )
+            result = poller.result()
             return result.value if result and result.value else None
         except Exception as exc:
             self._handle_error(exc, f"api/{api_name}/versions/{version_name}/definitions/{definition_name}/export")
@@ -211,6 +222,7 @@ class ApiCenterClient:
             pager = self._client().environments.list(
                 resource_group_name=self._resource_group,
                 service_name=self._service_name,
+                workspace_name=self._workspace_name,
             )
             return list(pager)
         except Exception as exc:
@@ -223,6 +235,7 @@ class ApiCenterClient:
             pager = self._client().deployments.list(
                 resource_group_name=self._resource_group,
                 service_name=self._service_name,
+                workspace_name=self._workspace_name,
                 api_name=api_name,
             )
             return list(pager)
