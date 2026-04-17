@@ -15,6 +15,9 @@ param sku string
 @description('Managed Identity Principal ID for RBAC')
 param managedIdentityPrincipalId string
 
+@description('Indexer Container Job Managed Identity Principal ID for RBAC')
+param indexerManagedIdentityPrincipalId string
+
 @description('Log Analytics Workspace ID for diagnostics')
 param logAnalyticsWorkspaceId string
 
@@ -64,6 +67,17 @@ resource openAiUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd') // Cognitive Services OpenAI User
     principalId: managedIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// RBAC: Grant indexer identity "Cognitive Services OpenAI User" — required for embedding generation
+resource openAiUserRoleIndexer 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(cognitiveService.id, indexerManagedIdentityPrincipalId, 'Cognitive Services OpenAI User')
+  scope: cognitiveService
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd') // Cognitive Services OpenAI User
+    principalId: indexerManagedIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
 }

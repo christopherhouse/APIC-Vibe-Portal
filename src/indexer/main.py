@@ -54,7 +54,13 @@ def run() -> None:
         cron_schedule=settings.reindex_cron_schedule,
     )
 
-    credential = DefaultAzureCredential()
+    # Pin to the UAMI client ID when running in Azure so that the credential does
+    # not accidentally resolve a different managed identity on the host.  In local
+    # development (AZURE_CLIENT_ID is empty) the full DefaultAzureCredential chain
+    # is used (Azure CLI, VS Code, etc.).
+    credential = DefaultAzureCredential(
+        managed_identity_client_id=settings.azure_client_id or None,
+    )
 
     # --- Azure API Center client -----------------------------------------
     apic_client = ApiCenterMgmtClient(

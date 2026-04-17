@@ -94,6 +94,7 @@ var resourceNames = {
   managedIdentity: '${namePrefix}-id-${environmentName}-${uniqueSuffix}'
   frontendIdentity: '${namePrefix}-id-frontend-${environmentName}-${uniqueSuffix}'
   bffIdentity: '${namePrefix}-id-bff-${environmentName}-${uniqueSuffix}'
+  indexerIdentity: '${namePrefix}-id-indexer-${environmentName}-${uniqueSuffix}'
   keyVault: '${kvPrefix}${kvSuffix}' // Max 24 chars: 10 (prefix) + 13 (suffix) = 23
   containerRegistry: '${namePrefix}acr${environmentName}${uniqueSuffix}'
   containerAppsEnv: '${namePrefix}-cae-${environmentName}-${uniqueSuffix}'
@@ -157,6 +158,16 @@ module bffIdentity 'modules/managed-identity.bicep' = {
   }
 }
 
+// Indexer Container Apps Job identity (AcrPull + AI Search write + OpenAI + API Center read)
+module indexerIdentity 'modules/managed-identity.bicep' = {
+  name: 'indexer-identity-${deployment().name}'
+  params: {
+    location: location
+    managedIdentityName: resourceNames.indexerIdentity
+    tags: tags
+  }
+}
+
 // ============================================================================
 // MODULE 3: Key Vault
 // ============================================================================
@@ -187,6 +198,7 @@ module containerRegistry 'modules/acr.bicep' = {
     acrName: resourceNames.containerRegistry
     frontendManagedIdentityPrincipalId: frontendIdentity.outputs.principalId
     bffManagedIdentityPrincipalId: bffIdentity.outputs.principalId
+    indexerManagedIdentityPrincipalId: indexerIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
@@ -219,6 +231,7 @@ module apiCenter 'modules/api-center.bicep' = {
     location: location
     apiCenterName: resourceNames.apiCenter
     managedIdentityPrincipalId: bffIdentity.outputs.principalId
+    indexerManagedIdentityPrincipalId: indexerIdentity.outputs.principalId
     tags: tags
   }
 }
@@ -234,6 +247,7 @@ module aiSearch 'modules/ai-search.bicep' = {
     searchServiceName: resourceNames.aiSearch
     sku: aiSearchSku
     managedIdentityPrincipalId: bffIdentity.outputs.principalId
+    indexerManagedIdentityPrincipalId: indexerIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
@@ -252,6 +266,7 @@ module openAi 'modules/openai.bicep' = {
     openAiName: resourceNames.openAi
     sku: openAiSku
     managedIdentityPrincipalId: bffIdentity.outputs.principalId
+    indexerManagedIdentityPrincipalId: indexerIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
@@ -361,6 +376,12 @@ output bffIdentityResourceId string = bffIdentity.outputs.id
 
 @description('BFF Container App Managed Identity Client ID')
 output bffIdentityClientId string = bffIdentity.outputs.clientId
+
+@description('Indexer Container Apps Job Managed Identity resource ID')
+output indexerIdentityResourceId string = indexerIdentity.outputs.id
+
+@description('Indexer Container Apps Job Managed Identity Client ID')
+output indexerIdentityClientId string = indexerIdentity.outputs.clientId
 
 @description('Log Analytics Workspace ID')
 output logAnalyticsWorkspaceId string = monitoring.outputs.logAnalyticsWorkspaceId

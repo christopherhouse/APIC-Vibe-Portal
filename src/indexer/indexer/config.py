@@ -23,6 +23,17 @@ class IndexerSettings(BaseSettings):
         extra="ignore",
     )
 
+    # --- Azure identity --------------------------------------------------
+    azure_client_id: str = Field(
+        default="",
+        description=(
+            "Client ID of the User-Assigned Managed Identity (UAMI) assigned to the "
+            "Container Apps Job.  When set, ``DefaultAzureCredential`` is pinned to this "
+            "specific identity, avoiding ambiguity on hosts with multiple assigned identities. "
+            "Leave empty for local development (the full DefaultAzureCredential chain is used)."
+        ),
+    )
+
     # --- Runtime ---------------------------------------------------------
     log_level: str = Field(default="INFO", description="Logging level")
 

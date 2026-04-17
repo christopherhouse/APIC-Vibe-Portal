@@ -15,6 +15,9 @@ param sku string
 @description('Managed Identity Principal ID for RBAC')
 param managedIdentityPrincipalId string
 
+@description('Indexer Container Job Managed Identity Principal ID for RBAC')
+param indexerManagedIdentityPrincipalId string
+
 @description('Log Analytics Workspace ID for diagnostics')
 param logAnalyticsWorkspaceId string
 
@@ -71,6 +74,28 @@ resource searchServiceContributorRole 'Microsoft.Authorization/roleAssignments@2
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0') // Search Service Contributor
     principalId: managedIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// RBAC: Grant indexer identity "Search Index Data Contributor" — required to upsert documents
+resource searchIndexDataContributorRoleIndexer 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(searchService.id, indexerManagedIdentityPrincipalId, 'Search Index Data Contributor')
+  scope: searchService
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7') // Search Index Data Contributor
+    principalId: indexerManagedIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// RBAC: Grant indexer identity "Search Service Contributor" — required to create/update index schema
+resource searchServiceContributorRoleIndexer 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(searchService.id, indexerManagedIdentityPrincipalId, 'Search Service Contributor')
+  scope: searchService
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0') // Search Service Contributor
+    principalId: indexerManagedIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
 }
