@@ -52,7 +52,20 @@ class ApiCenterDataPlaneClient:
         workspace_name: str = "default",
         credential: object | None = None,
     ) -> None:
-        self._base_url = base_url.rstrip("/")
+        if not base_url or not base_url.strip():
+            raise ValueError(
+                "API Center base_url is required. Set the API_CENTER_ENDPOINT "
+                "environment variable to the data-plane endpoint "
+                "(e.g. https://myapic.data.eastus.azure-apicenter.ms)."
+            )
+        base_url = base_url.strip().rstrip("/")
+        if not base_url.startswith(("http://", "https://")):
+            raise ValueError(
+                f"API Center base_url must start with 'http://' or 'https://', "
+                f"got: '{base_url}'. Set the API_CENTER_ENDPOINT environment "
+                f"variable to the full data-plane endpoint URL."
+            )
+        self._base_url = base_url
         self._workspace_name = workspace_name
         self._credential = credential or DefaultAzureCredential()
         self._http: httpx.Client | None = None
