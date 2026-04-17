@@ -102,6 +102,7 @@ def run() -> None:
         resource_group=settings.api_center_resource_group,
         service_name=settings.api_center_service_name,
         index_name=settings.ai_search_index_name,
+        workspace_name=settings.api_center_workspace_name,
     )
 
     # --- Ensure index schema is up to date --------------------------------

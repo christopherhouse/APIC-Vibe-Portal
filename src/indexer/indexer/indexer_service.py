@@ -44,6 +44,8 @@ class IndexerService:
         Azure resource group containing the API Center service.
     service_name:
         API Center service name.
+    workspace_name:
+        API Center workspace name (default: ``"default"``).
     index_name:
         Target AI Search index name.
     """
@@ -57,6 +59,7 @@ class IndexerService:
         resource_group: str,
         service_name: str,
         index_name: str,
+        workspace_name: str = "default",
     ) -> None:
         self._apic = apic_client
         self._index_client = search_index_client
@@ -64,6 +67,7 @@ class IndexerService:
         self._embeddings = embedding_service
         self._resource_group = resource_group
         self._service_name = service_name
+        self._workspace_name = workspace_name
         self._index_name = index_name
 
     # ------------------------------------------------------------------
@@ -98,6 +102,7 @@ class IndexerService:
             self._apic.apis.list(
                 resource_group_name=self._resource_group,
                 service_name=self._service_name,
+                workspace_name=self._workspace_name,
             )
         )
         logger.info("Fetched APIs from API Center", extra={"count": len(apis)})
@@ -131,6 +136,7 @@ class IndexerService:
         api = self._apic.apis.get(
             resource_group_name=self._resource_group,
             service_name=self._service_name,
+            workspace_name=self._workspace_name,
             api_name=api_name,
         )
         doc = self._build_document(api)
@@ -193,6 +199,7 @@ class IndexerService:
                 self._apic.api_versions.list(
                     resource_group_name=self._resource_group,
                     service_name=self._service_name,
+                    workspace_name=self._workspace_name,
                     api_name=api_name,
                 )
             )
@@ -252,6 +259,7 @@ class IndexerService:
                     self._apic.api_definitions.list(
                         resource_group_name=self._resource_group,
                         service_name=self._service_name,
+                        workspace_name=self._workspace_name,
                         api_name=api_name,
                         version_name=version_name,
                     )
@@ -264,6 +272,7 @@ class IndexerService:
                 result = self._apic.api_definitions.export_specification(
                     resource_group_name=self._resource_group,
                     service_name=self._service_name,
+                    workspace_name=self._workspace_name,
                     api_name=api_name,
                     version_name=version_name,
                     definition_name=def_name,

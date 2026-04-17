@@ -229,6 +229,7 @@ class TestIncrementalIndex:
         apic_client.apis.get.assert_called_once_with(
             resource_group_name="rg-test",
             service_name="apic-test",
+            workspace_name="default",
             api_name="petstore-api",
         )
 
