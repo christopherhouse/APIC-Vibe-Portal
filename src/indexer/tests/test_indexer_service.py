@@ -188,6 +188,26 @@ class TestFullReindex:
 
         assert count == 1
 
+    def test_versions_fallback_to_empty_and_logs_warning_on_error(self) -> None:
+        """Version list errors degrade gracefully and emit a warning."""
+        from unittest.mock import patch
+
+        service, apic_client, _, search_client, _ = _make_service()
+
+        api = make_api(name="bad-api")
+        apic_client.apis.list.return_value = iter([api])
+        apic_client.api_versions.list.side_effect = RuntimeError("network error")
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            service.full_reindex()
+            mock_logger.warning.assert_called_once()
+            call_args_str = str(mock_logger.warning.call_args)
+            assert "bad-api" in call_args_str
+
+        # Document is still uploaded even when version fetch fails
+        search_client.upload_documents.assert_called_once()
+
 
 # ---------------------------------------------------------------------------
 # incremental_index
@@ -314,3 +334,82 @@ class TestContactToStr:
         contact = _ns(name="", email=None)
         result = IndexerService._contact_to_str(contact)
         assert result == ""
+
+
+# ---------------------------------------------------------------------------
+# datetime timezone normalisation
+# ---------------------------------------------------------------------------
+
+
+class TestDatetimeTimezone:
+    def test_naive_datetime_is_normalised_to_utc(self) -> None:
+        """Naive datetimes (no tzinfo) are assigned UTC before indexing."""
+        service, apic_client, _, search_client, _ = _make_service()
+
+        naive_created = datetime.datetime(2024, 1, 15, 10, 0, 0)  # no tzinfo
+        naive_updated = datetime.datetime(2024, 3, 20, 14, 30, 0)
+        assert naive_created.tzinfo is None
+
+        api = make_api(name="tz-api")
+        api.system_data = _ns(created_at=naive_created, last_modified_at=naive_updated)
+        apic_client.apis.list.return_value = iter([api])
+        apic_client.api_versions.list.return_value = iter([])
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        service.full_reindex()
+
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        doc = uploaded[0]
+        assert doc["createdAt"].tzinfo is not None
+        assert doc["updatedAt"].tzinfo is not None
+
+    def test_aware_datetime_is_preserved(self) -> None:
+        """Timezone-aware datetimes are passed through unchanged."""
+        service, apic_client, _, search_client, _ = _make_service()
+
+        aware_created = datetime.datetime(2024, 1, 15, 10, 0, 0, tzinfo=datetime.UTC)
+        aware_updated = datetime.datetime(2024, 3, 20, 14, 30, 0, tzinfo=datetime.UTC)
+
+        api = make_api(name="aware-api")
+        api.system_data = _ns(created_at=aware_created, last_modified_at=aware_updated)
+        apic_client.apis.list.return_value = iter([api])
+        apic_client.api_versions.list.return_value = iter([])
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        service.full_reindex()
+
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        doc = uploaded[0]
+        assert doc["createdAt"] == aware_created
+        assert doc["updatedAt"] == aware_updated
+
+
+# ---------------------------------------------------------------------------
+# _fetch_spec_content — warning logging
+# ---------------------------------------------------------------------------
+
+
+class TestFetchSpecContent:
+    def test_logs_warning_on_spec_fetch_failure(self) -> None:
+        """Spec export errors are logged as warnings (not silently swallowed)."""
+        from unittest.mock import patch
+
+        service, apic_client, _, search_client, _ = _make_service()
+
+        api = make_api(name="spec-fail-api")
+        apic_client.apis.list.return_value = iter([api])
+        apic_client.api_versions.list.return_value = iter([_ns(name="v1")])
+        apic_client.api_definitions.list.return_value = iter([_ns(name="openapi")])
+        apic_client.api_definitions.export_specification.side_effect = RuntimeError("export failed")
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            service.full_reindex()
+            mock_logger.warning.assert_called_once()
+            call_args_str = str(mock_logger.warning.call_args)
+            assert "spec-fail-api" in call_args_str
+
+        # Document is still indexed even without spec content
+        search_client.upload_documents.assert_called_once()
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        assert uploaded[0]["specContent"] == ""

@@ -130,7 +130,7 @@ Add to the AI Search Bicep module:
 - **Cron schedule via env var**: `REINDEX_CRON_SCHEDULE` (default `*/5 * * * *`) is read by infrastructure tooling when deploying the Container Apps Job; the container itself simply runs once and exits.
 - **`openai` SDK** (v1+) configured with `AzureOpenAI` client for embedding generation. `azure_ad_token_provider` is used so the container job authenticates with `DefaultAzureCredential` (managed identity in production, developer credential chain locally).
 - **Chunking strategy**: spec content is split into `EMBEDDING_CHUNK_SIZE`-character chunks (default 8 000 chars ≈ 2 000 tokens); chunk embeddings are averaged into a single vector. Title + description are prepended to each chunk.
-- **Python 3.12** used for the indexer (instead of 3.14 used by BFF) because the `azure-search-documents` SDK uses `\W` regex patterns that trigger `SyntaxWarning` on 3.14 (third-party issue, not ours).
+- **Python 3.14** used for the indexer, matching the BFF's `pyproject.toml` requirement, lockfile, and Docker image — ensuring consistency across all backend components.
 - **`hatchling` build backend** with explicit `packages = ["indexer"]` to match the `indexer/` source directory.
 
 ### Deviations from Plan

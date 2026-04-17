@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -196,16 +197,23 @@ class IndexerService:
                 )
             )
             versions: list[str] = [getattr(v, "name", "") or "" for v in raw_versions]
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Failed to list versions for API '%s': %s",
+                api_name,
+                exc,
+                exc_info=True,
+            )
             versions = []
 
         # Spec content from first available version/definition
         spec_content: str | None = self._fetch_spec_content(api_name, versions)
 
-        # Timestamps from system_data
+        # Timestamps from system_data — normalize to UTC-aware datetimes so
+        # that the AI Search SDK serialises them as proper DateTimeOffset values.
         system_data = getattr(api, "system_data", None)
-        created_at = getattr(system_data, "created_at", None)
-        updated_at = getattr(system_data, "last_modified_at", None)
+        created_at: datetime | None = getattr(system_data, "created_at", None)
+        updated_at: datetime | None = getattr(system_data, "last_modified_at", None)
 
         # Embedding vector
         vector = self._embeddings.generate_embedding(title, description, spec_content)
@@ -225,9 +233,14 @@ class IndexerService:
             "contentVector": vector,
         }
         if created_at is not None:
-            doc["createdAt"] = created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at)
+            # Ensure timezone-aware so the SDK serialises as DateTimeOffset
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=UTC)
+            doc["createdAt"] = created_at
         if updated_at is not None:
-            doc["updatedAt"] = updated_at.isoformat() if hasattr(updated_at, "isoformat") else str(updated_at)
+            if updated_at.tzinfo is None:
+                updated_at = updated_at.replace(tzinfo=UTC)
+            doc["updatedAt"] = updated_at
 
         return doc
 
@@ -256,7 +269,14 @@ class IndexerService:
                     definition_name=def_name,
                 )
                 return result.value if result and result.value else None
-            except Exception:
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "Failed to fetch spec content for api '%s', version '%s': %s",
+                    api_name,
+                    version_name,
+                    exc,
+                    exc_info=True,
+                )
                 continue
         return None
 

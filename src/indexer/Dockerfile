@@ -10,18 +10,14 @@ WORKDIR /app
 # Install UV
 RUN pip install --no-cache-dir uv
 
-# Copy dependency files
-COPY pyproject.toml ./
+# Copy dependency files — copy the lockfile alongside pyproject.toml so that
+# uv can install the exact locked versions (reproducible builds).
+COPY pyproject.toml uv.lock ./
 
-# Install dependencies into a virtual environment
-RUN uv venv .venv && \
-    uv pip install --python .venv/bin/python \
-        azure-identity \
-        azure-mgmt-apicenter \
-        "azure-search-documents>=11.4.0" \
-        "openai>=1.84.0" \
-        "pydantic-settings>=2.13.1" \
-        structlog
+# Install locked runtime dependencies into a virtual environment.
+# --no-install-project: skip installing the project itself (source not yet
+#   copied); this layer is cached as long as the lockfile is unchanged.
+RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy source code
 COPY . .
