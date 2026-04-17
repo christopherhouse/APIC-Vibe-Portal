@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from indexer.indexer_service import IndexerService, IndexStats
 
@@ -199,8 +199,6 @@ class TestFullReindex:
 
     def test_versions_fallback_to_empty_and_logs_warning_on_error(self) -> None:
         """Version list errors degrade gracefully and emit a warning."""
-        from unittest.mock import patch
-
         service, apic_client, _, search_client, _ = _make_service()
 
         api = make_api(name="bad-api")
@@ -242,8 +240,6 @@ class TestFullReindex:
 class TestVerifyWorkspace:
     def test_logs_error_when_workspace_not_found(self) -> None:
         """When the configured workspace doesn't exist, an error is logged."""
-        from unittest.mock import patch
-
         service, apic_client, _, _, _ = _make_service()
         apic_client.workspaces.list.return_value = iter([_ns(name="other-ws")])
 
@@ -255,8 +251,6 @@ class TestVerifyWorkspace:
 
     def test_logs_info_when_workspace_found(self) -> None:
         """When the configured workspace exists, only info is logged."""
-        from unittest.mock import patch
-
         service, apic_client, _, _, _ = _make_service()
         apic_client.workspaces.list.return_value = iter([_ns(name="default")])
 
@@ -268,8 +262,6 @@ class TestVerifyWorkspace:
     def test_workspace_list_failure_is_non_fatal(self) -> None:
         """If workspace listing itself fails, the error is logged as a
         warning and does not propagate."""
-        from unittest.mock import patch
-
         service, apic_client, _, _, _ = _make_service()
         apic_client.workspaces.list.side_effect = RuntimeError("authz denied")
 
@@ -496,8 +488,6 @@ class TestDatetimeTimezone:
 class TestFetchSpecContent:
     def test_logs_warning_on_spec_fetch_failure(self) -> None:
         """Spec export errors are logged as warnings (not silently swallowed)."""
-        from unittest.mock import patch
-
         service, apic_client, _, search_client, _ = _make_service()
 
         api = make_api(name="spec-fail-api")
