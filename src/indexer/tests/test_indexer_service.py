@@ -486,6 +486,29 @@ class TestDatetimeTimezone:
 
 
 class TestFetchSpecContent:
+    def test_spec_content_fetched_via_lro_poller(self) -> None:
+        """Spec export uses begin_export_specification (LRO) and extracts .value."""
+        service, apic_client, _, search_client, _ = _make_service()
+
+        api = make_api(name="spec-api")
+        apic_client.apis.list.return_value = iter([api])
+        apic_client.api_versions.list.return_value = iter([_ns(name="v1")])
+        apic_client.api_definitions.list.return_value = iter([_ns(name="openapi")])
+
+        # Simulate the LRO poller pattern: begin_export_specification returns a
+        # poller whose .result() yields an object with a .value attribute.
+        poller = MagicMock()
+        poller.result.return_value = _ns(value='{"openapi": "3.0.0"}')
+        apic_client.api_definitions.begin_export_specification.return_value = poller
+
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        service.full_reindex()
+
+        apic_client.api_definitions.begin_export_specification.assert_called_once()
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        assert uploaded[0]["specContent"] == '{"openapi": "3.0.0"}'
+
     def test_logs_warning_on_spec_fetch_failure(self) -> None:
         """Spec export errors are logged as warnings (not silently swallowed)."""
         service, apic_client, _, search_client, _ = _make_service()
@@ -494,7 +517,7 @@ class TestFetchSpecContent:
         apic_client.apis.list.return_value = iter([api])
         apic_client.api_versions.list.return_value = iter([_ns(name="v1")])
         apic_client.api_definitions.list.return_value = iter([_ns(name="openapi")])
-        apic_client.api_definitions.export_specification.side_effect = RuntimeError("export failed")
+        apic_client.api_definitions.begin_export_specification.side_effect = RuntimeError("export failed")
         search_client.upload_documents.return_value = [make_upload_result(True)]
 
         with patch("indexer.indexer_service.logger") as mock_logger:
@@ -504,6 +527,31 @@ class TestFetchSpecContent:
             assert "spec-fail-api" in call_args_str
 
         # Document is still indexed even without spec content
+        search_client.upload_documents.assert_called_once()
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        assert uploaded[0]["specContent"] == ""
+
+    def test_logs_warning_on_poller_result_failure(self) -> None:
+        """When the LRO poller.result() raises, warning is logged and doc still indexed."""
+        service, apic_client, _, search_client, _ = _make_service()
+
+        api = make_api(name="poller-fail-api")
+        apic_client.apis.list.return_value = iter([api])
+        apic_client.api_versions.list.return_value = iter([_ns(name="v1")])
+        apic_client.api_definitions.list.return_value = iter([_ns(name="openapi")])
+
+        poller = MagicMock()
+        poller.result.side_effect = RuntimeError("LRO polling failed")
+        apic_client.api_definitions.begin_export_specification.return_value = poller
+
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            service.full_reindex()
+            assert mock_logger.warning.call_count >= 1
+            call_args_str = str(mock_logger.warning.call_args_list)
+            assert "poller-fail-api" in call_args_str
+
         search_client.upload_documents.assert_called_once()
         uploaded = search_client.upload_documents.call_args.kwargs["documents"]
         assert uploaded[0]["specContent"] == ""

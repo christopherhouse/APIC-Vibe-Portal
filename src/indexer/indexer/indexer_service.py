@@ -387,7 +387,7 @@ class IndexerService:
                     version=version_name,
                     definition=def_name,
                 )
-                result = self._apic.api_definitions.export_specification(
+                poller = self._apic.api_definitions.begin_export_specification(
                     resource_group_name=self._resource_group,
                     service_name=self._service_name,
                     workspace_name=self._workspace_name,
@@ -395,6 +395,7 @@ class IndexerService:
                     version_name=version_name,
                     definition_name=def_name,
                 )
+                result = poller.result()
                 return result.value if result and result.value else None
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
