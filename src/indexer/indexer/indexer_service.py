@@ -3,6 +3,13 @@
 Orchestrates the full and incremental indexing pipelines: fetches API
 metadata from Azure API Center, generates embeddings via Azure OpenAI, and
 upserts/deletes documents in the Azure AI Search index.
+
+The Azure ``Api`` SDK model follows the ARM resource pattern: most user-facing
+fields (``title``, ``description``, ``kind``, etc.) live under
+``api.properties``, **not** directly on the ``Api`` object.  Only ARM envelope
+fields (``name``, ``id``, ``type``, ``system_data``) are top-level.  The
+helper :meth:`_props` centralises this access pattern so callers never need
+to worry about the nesting.
 """
 
 from __future__ import annotations
@@ -104,6 +111,9 @@ class IndexerService:
             workspace=self._workspace_name,
         )
 
+        # Verify the configured workspace exists before listing APIs.
+        self._verify_workspace()
+
         apis = list(
             self._apic.apis.list(
                 resource_group_name=self._resource_group,
@@ -128,7 +138,8 @@ class IndexerService:
         documents = []
         for i, api in enumerate(apis, start=1):
             api_name = getattr(api, "name", "<unknown>") or "<unknown>"
-            api_title = getattr(api, "title", "") or ""
+            props = self._props(api)
+            api_title = getattr(props, "title", "") or ""
             logger.info(
                 "Processing API",
                 progress=f"{i}/{len(apis)}",
@@ -165,7 +176,7 @@ class IndexerService:
 
         Returns ``True`` if the document was successfully indexed.
         """
-        logger.info("Incremental index", extra={"api": api_name})
+        logger.info("Incremental index", api=api_name)
 
         api = self._apic.apis.get(
             resource_group_name=self._resource_group,
@@ -176,7 +187,7 @@ class IndexerService:
         doc = self._build_document(api)
         result = self._search_client.upload_documents(documents=[doc])
         succeeded = result[0].succeeded if result else False
-        logger.info("Incremental index result", extra={"api": api_name, "succeeded": succeeded})
+        logger.info("Incremental index result", api=api_name, succeeded=succeeded)
         return bool(succeeded)
 
     def delete_from_index(self, api_id: str) -> bool:
@@ -189,10 +200,10 @@ class IndexerService:
 
         Returns ``True`` if the deletion was acknowledged.
         """
-        logger.info("Deleting document from index", extra={"id": api_id})
+        logger.info("Deleting document from index", id=api_id)
         result = self._search_client.delete_documents(documents=[{"id": api_id}])
         succeeded = result[0].succeeded if result else False
-        logger.info("Delete result", extra={"id": api_id, "succeeded": succeeded})
+        logger.info("Delete result", id=api_id, succeeded=succeeded)
         return bool(succeeded)
 
     def get_index_stats(self) -> IndexStats:
@@ -204,8 +215,61 @@ class IndexerService:
         )
 
     # ------------------------------------------------------------------
+    # Workspace verification
+    # ------------------------------------------------------------------
+
+    def _verify_workspace(self) -> None:
+        """List available workspaces and warn if the configured one is missing."""
+        try:
+            workspaces = list(
+                self._apic.workspaces.list(
+                    resource_group_name=self._resource_group,
+                    service_name=self._service_name,
+                )
+            )
+            workspace_names = [getattr(w, "name", "<unknown>") for w in workspaces]
+            logger.info(
+                "Available API Center workspaces",
+                workspaces=workspace_names,
+                configured_workspace=self._workspace_name,
+            )
+            if self._workspace_name not in workspace_names:
+                logger.error(
+                    "Configured workspace does not exist in API Center. "
+                    "The indexer will not find any APIs. Update the "
+                    "API_CENTER_WORKSPACE_NAME setting to one of the "
+                    "available workspaces.",
+                    configured_workspace=self._workspace_name,
+                    available_workspaces=workspace_names,
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Unable to list API Center workspaces — workspace "
+                "verification skipped. This may indicate a permissions "
+                "issue with the indexer identity.",
+                error=str(exc),
+            )
+
+    # ------------------------------------------------------------------
     # Document construction
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _props(api: object) -> object:
+        """Return the ``properties`` sub-object of an ARM API resource.
+
+        The Azure ``Api`` SDK model places user-facing fields (``title``,
+        ``description``, ``kind``, ``contacts``, etc.) under
+        ``api.properties``.  Only ARM envelope fields (``name``, ``id``,
+        ``type``, ``system_data``) are directly on the ``Api`` object.
+
+        If the object does *not* have a ``properties`` attribute (e.g. in
+        tests using plain ``SimpleNamespace`` objects) the object itself
+        is returned so that the legacy ``getattr(api, "title", …)`` style
+        continues to work.
+        """
+        props = getattr(api, "properties", None)
+        return props if props is not None else api
 
     def _build_document(self, api: object) -> dict[str, object]:
         """Convert an API Center API object into an AI Search document.
@@ -213,18 +277,22 @@ class IndexerService:
         Generates an embedding vector by combining the title, description,
         and (if available) the first version's spec content.
         """
+        # ARM envelope field — lives directly on the Api object.
         api_name: str = getattr(api, "name", "") or ""
-        title: str = getattr(api, "title", "") or ""
-        description: str = getattr(api, "description", "") or ""
-        kind: str = str(getattr(api, "kind", "") or "")
-        lifecycle_stage: str = str(getattr(api, "lifecycle_stage", "") or "")
+
+        # All other fields live under api.properties in the real SDK.
+        props = self._props(api)
+        title: str = getattr(props, "title", "") or ""
+        description: str = getattr(props, "description", "") or ""
+        kind: str = str(getattr(props, "kind", "") or "")
+        lifecycle_stage: str = str(getattr(props, "lifecycle_stage", "") or "")
 
         # Contacts as serialisable strings
-        raw_contacts = getattr(api, "contacts", None) or []
+        raw_contacts = getattr(props, "contacts", None) or []
         contacts: list[str] = [self._contact_to_str(c) for c in raw_contacts]
 
         # Tags (custom_properties keys used as a tag proxy if no tags field)
-        custom_props: dict[str, object] = getattr(api, "custom_properties", None) or {}
+        custom_props: dict[str, object] = getattr(props, "custom_properties", None) or {}
         tags: list[str] = list(custom_props.keys()) if custom_props else []
 
         # Versions (names only)
@@ -238,17 +306,22 @@ class IndexerService:
                 )
             )
             versions: list[str] = [getattr(v, "name", "") or "" for v in raw_versions]
+            logger.debug("Fetched versions", api_name=api_name, versions=versions)
         except Exception as exc:  # noqa: BLE001
             logger.warning(
-                "Failed to list versions for API '%s': %s",
-                api_name,
-                exc,
-                exc_info=True,
+                "Failed to list versions for API",
+                api_name=api_name,
+                error=str(exc),
             )
             versions = []
 
         # Spec content from first available version/definition
         spec_content: str | None = self._fetch_spec_content(api_name, versions)
+        logger.debug(
+            "Spec content lookup",
+            api_name=api_name,
+            spec_found=spec_content is not None,
+        )
 
         # Timestamps from system_data — normalize to UTC-aware datetimes so
         # that the AI Search SDK serialises them as proper DateTimeOffset values.
@@ -299,10 +372,21 @@ class IndexerService:
                     )
                 )
                 if not defs:
+                    logger.debug(
+                        "No definitions found for version",
+                        api_name=api_name,
+                        version=version_name,
+                    )
                     continue
                 def_name = getattr(defs[0], "name", None)
                 if def_name is None:
                     continue
+                logger.debug(
+                    "Exporting spec content",
+                    api_name=api_name,
+                    version=version_name,
+                    definition=def_name,
+                )
                 result = self._apic.api_definitions.export_specification(
                     resource_group_name=self._resource_group,
                     service_name=self._service_name,
@@ -314,11 +398,10 @@ class IndexerService:
                 return result.value if result and result.value else None
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
-                    "Failed to fetch spec content for api '%s', version '%s': %s",
-                    api_name,
-                    version_name,
-                    exc,
-                    exc_info=True,
+                    "Failed to fetch spec content for API",
+                    api_name=api_name,
+                    version=version_name,
+                    error=str(exc),
                 )
                 continue
         return None
