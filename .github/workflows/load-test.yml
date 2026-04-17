@@ -90,14 +90,19 @@ jobs:
       - name: Build load test parameters
         id: lt-params
         run: |
-          # Use jq to construct JSON so that any control characters in
-          # variable values are properly escaped (the previous inline
-          # approach broke JSON.parse() inside azure/load-testing@v1).
+          # Sanitize inputs: strip stray \r / \n that may be embedded in
+          # GitHub variables (e.g. TOKEN_SCOPE pasted with Windows line
+          # endings).  These break the Entra ID token request.
+          CLEAN_HOST=$(printf '%s' "${{ steps.infra.outputs.bff-host }}" | tr -d '\r\n')
+          CLEAN_TENANT=$(printf '%s' "${{ vars.AZURE_TENANT_ID }}" | tr -d '\r\n')
+          CLEAN_CLIENT=$(printf '%s' "${{ vars.LOADTEST_CLIENT_ID }}" | tr -d '\r\n')
+          CLEAN_SCOPE=$(printf '%s' "${{ vars.LOADTEST_TOKEN_SCOPE }}" | tr -d '\r\n')
+
           ENV_JSON=$(jq -c -n \
-            --arg host  "${{ steps.infra.outputs.bff-host }}" \
-            --arg tenant "${{ vars.AZURE_TENANT_ID }}" \
-            --arg client "${{ vars.LOADTEST_CLIENT_ID }}" \
-            --arg scope  "${{ vars.LOADTEST_TOKEN_SCOPE }}" \
+            --arg host   "$CLEAN_HOST" \
+            --arg tenant "$CLEAN_TENANT" \
+            --arg client "$CLEAN_CLIENT" \
+            --arg scope  "$CLEAN_SCOPE" \
             '[
               {"name":"TARGET_HOST",      "value":$host},
               {"name":"TARGET_PORT",      "value":"443"},
@@ -111,8 +116,9 @@ jobs:
             ]')
           echo "env-json=$ENV_JSON" >> "$GITHUB_OUTPUT"
 
+          CLEAN_SECRET=$(printf '%s' "${{ secrets.LOADTEST_CLIENT_SECRET }}" | tr -d '\r\n')
           SECRETS_JSON=$(jq -c -n \
-            --arg secret "${{ secrets.LOADTEST_CLIENT_SECRET }}" \
+            --arg secret "$CLEAN_SECRET" \
             '[{"name":"TOKEN_CLIENT_SECRET","value":$secret}]')
           echo "secrets-json=$SECRETS_JSON" >> "$GITHUB_OUTPUT"
 
