@@ -239,12 +239,12 @@ test.describe('Catalog Sorting', () => {
     // Click to open dropdown
     await sortSelect.click();
 
-    // Select Name A-Z sort
-    await page.getByRole('option', { name: /Name \(A–Z\)/i }).click();
+    // Select "Last Updated (newest)" sort — differs from the default (Name A–Z)
+    await page.getByRole('option', { name: /Last Updated \(newest\)/i }).click();
 
     // URL should update with sort params
-    await expect(page).toHaveURL(/sort=name/);
-    await expect(page).toHaveURL(/direction=asc/);
+    await expect(page).toHaveURL(/sort=updatedAt/);
+    await expect(page).toHaveURL(/direction=desc/);
   });
 });
 
