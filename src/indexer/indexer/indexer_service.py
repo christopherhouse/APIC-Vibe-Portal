@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import structlog
+from apic_client.exceptions import ApiCenterNotFoundError
 
 logger = structlog.get_logger()
 
@@ -279,7 +280,12 @@ class IndexerService:
         return doc
 
     def _fetch_spec_content(self, api_name: str, versions: list[str]) -> str | None:
-        """Fetch the raw spec content for the first available definition."""
+        """Fetch the raw spec content for the first available definition.
+
+        Some API types (e.g. GraphQL) do not support spec download in Azure
+        API Center and will return a 404.  This is expected — the API is still
+        indexed but without spec content.
+        """
         for version_name in versions:
             try:
                 defs: list[dict[str, Any]] = self._apic.list_api_definitions(api_name, version_name)
@@ -301,6 +307,9 @@ class IndexerService:
                 )
                 content = self._apic.export_api_specification(api_name, version_name, def_name)
                 return content if content else None
+            except ApiCenterNotFoundError:
+                self._log_spec_not_available(api_name, version_name)
+                continue
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
                     "Failed to fetch spec content for API",
@@ -310,6 +319,17 @@ class IndexerService:
                 )
                 continue
         return None
+
+    @staticmethod
+    def _log_spec_not_available(api_name: str, version_name: str) -> None:
+        """Log that a spec is not available — expected for some API types."""
+        logger.info(
+            "Spec not available for API — this is expected for "
+            "some API types (e.g. GraphQL). The API will be "
+            "indexed without spec content.",
+            api_name=api_name,
+            version=version_name,
+        )
 
     @staticmethod
     def _contact_to_str(contact: dict[str, str] | object) -> str:

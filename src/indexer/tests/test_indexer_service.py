@@ -5,6 +5,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from apic_client.exceptions import ApiCenterNotFoundError
+
 from indexer.indexer_service import IndexerService, IndexStats
 
 # ---------------------------------------------------------------------------
@@ -440,3 +442,47 @@ class TestFetchSpecContent:
         search_client.upload_documents.assert_called_once()
         uploaded = search_client.upload_documents.call_args.kwargs["documents"]
         assert uploaded[0]["specContent"] == ""
+
+    def test_not_found_error_logs_info_not_warning(self) -> None:
+        """An ApiCenterNotFoundError (404) is logged at info, not warning, since
+        some API types (e.g. GraphQL) simply don't have downloadable specs.
+        """
+        service, apic_client, _, search_client, _ = _make_service()
+
+        api = make_api(name="graphql-api")
+        apic_client.list_apis.return_value = [api]
+        apic_client.list_api_versions.return_value = [{"name": "v1"}]
+        apic_client.list_api_definitions.return_value = [{"name": "graphql-def"}]
+        apic_client.export_api_specification.side_effect = ApiCenterNotFoundError("Spec not found")
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            count = service.full_reindex()
+            # Should log at info (expected), NOT at warning
+            info_str = str(mock_logger.info.call_args_list)
+            assert "graphql-api" in info_str
+            assert "Spec not available" in info_str
+            # No warning should mention spec failure for this API
+            warning_str = str(mock_logger.warning.call_args_list)
+            assert "graphql-api" not in warning_str
+
+        assert count == 1
+        search_client.upload_documents.assert_called_once()
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        assert uploaded[0]["specContent"] == ""
+
+    def test_non_404_error_still_logs_warning(self) -> None:
+        """Non-404 errors should still be logged as warnings."""
+        service, apic_client, _, search_client, _ = _make_service()
+
+        api = make_api(name="server-error-api")
+        apic_client.list_apis.return_value = [api]
+        apic_client.list_api_versions.return_value = [{"name": "v1"}]
+        apic_client.list_api_definitions.return_value = [{"name": "def1"}]
+        apic_client.export_api_specification.side_effect = RuntimeError("Internal Server Error")
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            service.full_reindex()
+            warning_str = str(mock_logger.warning.call_args_list)
+            assert "server-error-api" in warning_str
