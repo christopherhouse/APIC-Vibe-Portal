@@ -15,8 +15,9 @@ from apic_vibe_portal_bff.config.settings import get_settings
 from apic_vibe_portal_bff.middleware.auth import AuthMiddleware
 from apic_vibe_portal_bff.middleware.error_handler import ErrorHandlerMiddleware
 from apic_vibe_portal_bff.middleware.request_logger import RequestLoggerMiddleware
-from apic_vibe_portal_bff.routers import api_catalog, health
+from apic_vibe_portal_bff.routers import api_catalog, health, search
 from apic_vibe_portal_bff.routers.api_catalog import CatalogApiError, catalog_api_error_handler
+from apic_vibe_portal_bff.routers.search import SearchApiError, search_api_error_handler
 from apic_vibe_portal_bff.utils.logger import configure_logging
 
 
@@ -41,8 +42,10 @@ def create_app() -> FastAPI:
     # --- Routers -----------------------------------------------------------
     app.include_router(health.router)
     app.include_router(api_catalog.router)
+    app.include_router(search.router)
 
     # --- Exception handlers ------------------------------------------------
     app.add_exception_handler(CatalogApiError, catalog_api_error_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(SearchApiError, search_api_error_handler)  # type: ignore[arg-type]
 
     return app

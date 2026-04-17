@@ -430,6 +430,9 @@ output openAiEndpoint string = openAi.outputs.endpoint
 @description('Azure OpenAI Name')
 output openAiName string = openAi.outputs.name
 
+@description('Azure OpenAI Embedding Deployment Name')
+output openAiEmbeddingDeploymentName string = openAi.outputs.embeddingDeploymentName
+
 @description('Cosmos DB Endpoint')
 output cosmosDbEndpoint string = cosmosDb.outputs.endpoint
 
