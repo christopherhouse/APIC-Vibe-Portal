@@ -32,9 +32,9 @@ failureCriteria:
   # 95th percentile response time must stay below 5 seconds
   - p95(response_time_ms) > 5000
   # Health Check must respond in under 500ms on average
-  - "Health Check: avg(response_time_ms) > 500"
+  - Health Check: avg(response_time_ms) > 500
   # List APIs must respond in under 3 seconds on average
-  - "List APIs: avg(response_time_ms) > 3000"
+  - List APIs: avg(response_time_ms) > 3000
 
 # ---------------------------------------------------------------------------
 # Auto-stop – stop the test early if error rate is extreme
