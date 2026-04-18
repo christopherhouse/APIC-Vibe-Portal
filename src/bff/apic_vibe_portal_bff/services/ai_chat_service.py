@@ -1,14 +1,16 @@
-"""RAG-powered AI chat service.
+"""RAG-powered AI chat service using Microsoft Agent Framework (MAF).
 
-Implements the Retrieve→Augment→Generate pipeline:
+Uses the MAF ``Agent`` class with a custom ``@tool``-decorated search
+function so the LLM can decide when and how to retrieve API documentation.
+
+The pipeline:
 1. Receive user question
-2. Retrieve relevant API documents from AI Search
-3. Augment the prompt with retrieved context
-4. Generate response using Azure OpenAI with grounding data
-5. Return response with citations to source APIs
+2. MAF Agent invokes the ``search_api_catalog`` tool when grounding is needed
+3. LLM generates a response grounded in retrieved API documentation
+4. Return response with citations to source APIs
 
-Includes conversation session management (in-memory for MVP),
-tiktoken-based token estimation, and OTel metric emission.
+Includes conversation session management (MAF ``InMemoryHistoryProvider``
+for MVP), tiktoken-based token estimation, and OTel metric emission.
 """
 
 from __future__ import annotations
@@ -52,6 +54,10 @@ SYSTEM_PROMPT = (
     "6. **Acknowledge limitations**. If the provided context does not "
     "contain enough information to answer a question, say so rather "
     "than guessing.\n\n"
+    "## Tools\n\n"
+    "You have access to a ``search_api_catalog`` tool. Use it to search "
+    "for relevant APIs when the user asks about APIs, capabilities, or "
+    "integrations. Always search before answering API-related questions.\n\n"
     "## Response Format\n\n"
     "- Use markdown formatting for readability.\n"
     "- When referencing APIs, mention them by name.\n"
@@ -241,17 +247,83 @@ class SessionManager:
 
 
 # ---------------------------------------------------------------------------
+# MAF search tool factory
+# ---------------------------------------------------------------------------
+
+
+def _create_search_tool(search_client: AISearchClient, model: str) -> Any:
+    """Create a MAF-compatible search tool using the ``@tool`` decorator.
+
+    Returns the tool function that the MAF Agent will invoke via function
+    calling when it needs to ground its answers.
+    """
+    from agent_framework import tool
+
+    @tool(
+        name="search_api_catalog",
+        description=(
+            "Search the enterprise API catalog for APIs matching a query. "
+            "Returns API names, descriptions, types, and lifecycle stages. "
+            "Use this tool to find relevant APIs before answering questions."
+        ),
+    )
+    def search_api_catalog(query: str) -> str:
+        """Search the API catalog and return formatted results."""
+        try:
+            raw = search_client.search(
+                search_text=query,
+                top=_RAG_TOP_K,
+                query_type="semantic",
+                semantic_query=query,
+            )
+            results = raw.get("results", [])
+        except AISearchClientError:
+            logger.warning("AI Search retrieval failed — returning empty results")
+            return "No API documentation found. The search service is currently unavailable."
+
+        if not results:
+            return "No APIs found matching your query."
+
+        context_parts: list[str] = []
+        total_tokens = 0
+
+        for result in results:
+            api_name = result.get("apiName", "Unknown API")
+            title = result.get("title", "")
+            description = result.get("description", "")
+            kind = result.get("kind", "")
+            lifecycle = result.get("lifecycleStage", "")
+
+            entry = (
+                f"## {api_name}: {title}\n"
+                f"- Kind: {kind}\n"
+                f"- Lifecycle: {lifecycle}\n"
+                f"- Description: {description}\n"
+            )
+
+            entry_tokens = estimate_tokens(entry, model)
+            if total_tokens + entry_tokens > _MAX_CONTEXT_TOKENS:
+                break
+            total_tokens += entry_tokens
+            context_parts.append(entry)
+
+        return "\n".join(context_parts) if context_parts else "No APIs found."
+
+    return search_api_catalog
+
+
+# ---------------------------------------------------------------------------
 # Chat service
 # ---------------------------------------------------------------------------
 
 
 class AIChatService:
-    """RAG-powered chat service.
+    """RAG-powered chat service using Microsoft Agent Framework.
 
     Parameters
     ----------
     openai_client:
-        :class:`OpenAIClient` instance for generating responses.
+        :class:`OpenAIClient` instance providing the MAF ``OpenAIChatClient``.
     search_client:
         :class:`AISearchClient` instance for retrieving API context.
     model:
@@ -278,13 +350,16 @@ class AIChatService:
         self._completion_price = completion_price_per_1k
         self._sessions = SessionManager()
 
+        # Create the MAF search tool
+        self._search_tool = _create_search_tool(search_client, model)
+
     @property
     def session_manager(self) -> SessionManager:
         """Expose session manager for route handlers."""
         return self._sessions
 
     # ------------------------------------------------------------------
-    # RAG retrieval
+    # RAG retrieval (direct, for non-agent path and citations)
     # ------------------------------------------------------------------
 
     def _retrieve_context(self, query: str) -> tuple[str, list[Citation]]:
@@ -318,7 +393,12 @@ class AIChatService:
             kind = result.get("kind", "")
             lifecycle = result.get("lifecycleStage", "")
 
-            entry = f"## {api_name}: {title}\n- Kind: {kind}\n- Lifecycle: {lifecycle}\n- Description: {description}\n"
+            entry = (
+                f"## {api_name}: {title}\n"
+                f"- Kind: {kind}\n"
+                f"- Lifecycle: {lifecycle}\n"
+                f"- Description: {description}\n"
+            )
 
             entry_tokens = estimate_tokens(entry, self._model)
             if total_tokens + entry_tokens > _MAX_CONTEXT_TOKENS:

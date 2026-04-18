@@ -1,14 +1,15 @@
-"""Azure OpenAI client wrapper.
+"""Azure OpenAI client wrapper powered by Microsoft Agent Framework (MAF).
 
-Wraps the ``openai`` Python package with Azure-specific configuration,
-DefaultAzureCredential authentication, and error handling consistent
-with the existing BFF client patterns.
+Uses the ``agent-framework`` package to create an AI agent backed by Azure
+OpenAI.  The agent uses ``DefaultAzureCredential`` for authentication and
+exposes both synchronous-style and streaming chat interfaces.
+
+Error handling is consistent with the existing BFF client patterns.
 """
 
 from __future__ import annotations
 
 import logging
-from collections.abc import Generator
 from typing import Any
 
 from azure.identity import DefaultAzureCredential
@@ -52,7 +53,7 @@ class OpenAIUnavailableError(OpenAIClientError):
 
 
 class OpenAIClient:
-    """Thin wrapper around the Azure OpenAI Python SDK.
+    """Thin wrapper around the Azure OpenAI Python SDK via MAF.
 
     Parameters
     ----------
@@ -80,15 +81,15 @@ class OpenAIClient:
         self._client: Any | None = None
 
     def _get_client(self) -> Any:
-        """Lazily create and return the AzureOpenAI client."""
+        """Lazily create and return the MAF ``OpenAIChatClient``."""
         if self._client is None:
-            from openai import AzureOpenAI
+            from agent_framework.openai import OpenAIChatClient
 
-            self._client = AzureOpenAI(
+            self._client = OpenAIChatClient(
+                model=self._deployment,
                 azure_endpoint=self._endpoint,
-                azure_deployment=self._deployment,
                 api_version=self._api_version,
-                azure_ad_token_provider=self._get_token,
+                credential=self._credential,
             )
         return self._client
 
@@ -118,7 +119,7 @@ class OpenAIClient:
         raise OpenAIClientError(str(exc)) from exc
 
     # ------------------------------------------------------------------
-    # Chat completion
+    # Chat completion (sync wrapper for backward compat)
     # ------------------------------------------------------------------
 
     def chat_completion(
@@ -134,7 +135,7 @@ class OpenAIClient:
         """
         try:
             client = self._get_client()
-            response = client.chat.completions.create(
+            response = client.client.chat.completions.create(
                 model=self._deployment,
                 messages=messages,
                 temperature=temperature,
@@ -151,6 +152,8 @@ class OpenAIClient:
                     "total_tokens": usage.total_tokens if usage else 0,
                 },
             }
+        except (OpenAIClientError, OpenAIRateLimitError, OpenAIUnavailableError):
+            raise
         except Exception as exc:
             self._handle_error(exc, "chat_completion")
             return {}  # unreachable
@@ -161,7 +164,7 @@ class OpenAIClient:
         *,
         temperature: float = 0.3,
         max_tokens: int = 1024,
-    ) -> Generator[dict[str, Any]]:
+    ) -> Any:
         """Stream a chat completion and yield chunks.
 
         Each yielded dict has keys: ``content`` (str), ``finish_reason`` (str | None).
@@ -169,7 +172,7 @@ class OpenAIClient:
         """
         try:
             client = self._get_client()
-            stream = client.chat.completions.create(
+            stream = client.client.chat.completions.create(
                 model=self._deployment,
                 messages=messages,
                 temperature=temperature,
@@ -196,8 +199,18 @@ class OpenAIClient:
                     "content": delta.content or "",
                     "finish_reason": chunk.choices[0].finish_reason,
                 }
+        except (OpenAIClientError, OpenAIRateLimitError, OpenAIUnavailableError):
+            raise
         except Exception as exc:
             self._handle_error(exc, "chat_completion_stream")
+
+    # ------------------------------------------------------------------
+    # MAF Agent access
+    # ------------------------------------------------------------------
+
+    def get_maf_client(self) -> Any:
+        """Return the underlying MAF ``OpenAIChatClient`` for Agent usage."""
+        return self._get_client()
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -206,5 +219,4 @@ class OpenAIClient:
     def close(self) -> None:
         """Close the underlying client."""
         if self._client is not None:
-            self._client.close()
             self._client = None
