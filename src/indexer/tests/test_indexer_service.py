@@ -361,10 +361,16 @@ class TestIncrementalIndex:
 
             assert result is False
             assert mock_logger.warning.call_count >= 1
-            call_args_str = str(mock_logger.warning.call_args_list)
-            assert "bad-api" in call_args_str
-            assert "400" in call_args_str
-            assert "Document is malformed" in call_args_str
+            # Find the warning call with the failure details
+            found = False
+            for call in mock_logger.warning.call_args_list:
+                kwargs = call.kwargs if call.kwargs else {}
+                if kwargs.get("key") == "bad-api":
+                    assert kwargs["status_code"] == 400
+                    assert kwargs["error_message"] == "Document is malformed"
+                    found = True
+                    break
+            assert found, "Expected a warning with per-document failure details"
 
     def test_uploads_single_document(self) -> None:
         service, apic_client, _, search_client, _ = _make_service()
