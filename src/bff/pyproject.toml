@@ -5,6 +5,7 @@ description = "Backend-for-Frontend API for APIC Vibe Portal"
 requires-python = ">=3.14"
 dependencies = [
     "apic-client",
+    "azure-cosmos>=4.9.0",
     "azure-identity>=1.21.0",
     "azure-search-documents>=11.6.0",
     "cryptography>=46.0.7",

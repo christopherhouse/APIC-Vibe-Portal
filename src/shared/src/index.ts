@@ -16,6 +16,14 @@ export type {
   SearchFacetValue,
 } from './models/search-result.js';
 export type { ChatMessage, ChatSession, Citation, ChatRole } from './models/chat-message.js';
+export type {
+  PersistenceMetadata,
+  ChatMessageDocument,
+  ChatSessionDocument,
+  GovernanceFindingDocument,
+  GovernanceSnapshotDocument,
+  AnalyticsEventDocument,
+} from './models/data-models.js';
 export type { User } from './models/user.js';
 export type { PaginationParams, PaginationMeta, PaginatedResponse } from './models/pagination.js';
 

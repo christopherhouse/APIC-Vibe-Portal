@@ -447,8 +447,20 @@ class TestSearchServiceSearch:
 class TestSearchServiceSuggest:
     def test_suggest_returns_suggestions(self, service, mock_client):
         mock_client.suggest.return_value = [
-            {"apiName": "petstore", "title": "Petstore API", "description": "Manages pets", "kind": "rest", "@search.text": "Petstore API"},
-            {"apiName": "pets-v2", "title": "Pets v2 API", "description": "Pets v2", "kind": "graphql", "@search.text": "Pets v2 API"},
+            {
+                "apiName": "petstore",
+                "title": "Petstore API",
+                "description": "Manages pets",
+                "kind": "rest",
+                "@search.text": "Petstore API",
+            },
+            {
+                "apiName": "pets-v2",
+                "title": "Pets v2 API",
+                "description": "Pets v2",
+                "kind": "graphql",
+                "@search.text": "Pets v2 API",
+            },
         ]
 
         response = service.suggest("pet")

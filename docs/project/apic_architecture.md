@@ -86,3 +86,13 @@ The BFF uses **Azure Cache for Redis** (`Microsoft.Cache/redis`) as a response c
 - Azure Container Apps (each with a dedicated UAMI)
 - ACR (image pull via per-container UAMI `--registry-identity` using ARM resource IDs)
 - Key Vault
+
+## Data Architecture
+
+See the detailed data governance documentation:
+
+- [Storage Strategy](../../docs/architecture/storage-strategy.md) — Storage decisions by data class (chat sessions, governance snapshots, analytics)
+- [Data Retention Policy](../../docs/architecture/data-retention-policy.md) — Retention periods, soft-delete, and GDPR erasure
+- [PII Handling](../../docs/architecture/pii-handling.md) — PII field identification, masking, and redaction rules
+- [Cosmos DB Indexing](../../docs/architecture/cosmos-db-indexing.md) — Partitioning, indexing policies, and query optimization
+- [Schema Versioning](../../docs/architecture/schema-versioning.md) — Schema evolution and lazy migration patterns

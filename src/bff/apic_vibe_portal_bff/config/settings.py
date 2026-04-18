@@ -67,6 +67,28 @@ class Settings(BaseSettings):
         description="Azure Cache for Redis SSL port (default 6380).",
     )
 
+    # --- Cosmos DB -------------------------------------------------------
+    cosmos_db_endpoint: str = Field(
+        default="",
+        description="Azure Cosmos DB account endpoint (e.g. https://myaccount.documents.azure.com:443/)",
+    )
+    cosmos_db_database_name: str = Field(
+        default="apic-vibe-portal",
+        description="Cosmos DB database name",
+    )
+    cosmos_db_chat_container: str = Field(
+        default="chat-sessions",
+        description="Cosmos DB container name for chat sessions",
+    )
+    cosmos_db_governance_container: str = Field(
+        default="governance-snapshots",
+        description="Cosmos DB container name for governance snapshots",
+    )
+    cosmos_db_analytics_container: str = Field(
+        default="analytics-events",
+        description="Cosmos DB container name for analytics events",
+    )
+
     # --- Entra ID (authentication) ---------------------------------------
     bff_entra_tenant_id: str = Field(default="", description="Entra ID (Azure AD) tenant ID")
     bff_entra_client_id: str = Field(default="", description="Entra ID client (audience) ID for the BFF API")
