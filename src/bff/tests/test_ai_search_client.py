@@ -302,8 +302,7 @@ class TestAISearchClientErrorHandling:
         error.error.message = "The field 'kind' is not valid in this context."
         error.response = MagicMock()
         error.response.text.return_value = (
-            '{"error":{"code":"InvalidRequestParameter",'
-            '"message":"The field \'kind\' is not valid in this context."}}'
+            '{"error":{"code":"InvalidRequestParameter","message":"The field \'kind\' is not valid in this context."}}'
         )
 
         with pytest.raises(AISearchClientError) as exc_info:

@@ -27,13 +27,10 @@ from apic_vibe_portal_bff.models.search import (
     SuggestResponse,
 )
 from apic_vibe_portal_bff.services.search_service import SearchService
+from apic_vibe_portal_bff.utils.logger import sanitize_for_log
 
 logger = logging.getLogger(__name__)
 
-
-def _sanitize_for_log(value: str) -> str:
-    """Return a log-safe string by neutralizing line-break characters."""
-    return value.replace("\r", "").replace("\n", "")
 
 # ---------------------------------------------------------------------------
 # Service dependency — lazily created once per process
@@ -162,7 +159,7 @@ def suggest(
     try:
         return service.suggest(prefix=q)
     except AISearchClientError as exc:
-        safe_q = _sanitize_for_log(q)
+        safe_q = sanitize_for_log(q)
         logger.error(
             "suggest failed — status=%s prefix=%s error=%s",
             exc.status_code,
