@@ -88,6 +88,109 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-12-01
   }
 }
 
+// ============================================================================
+// CONTAINERS (partition keys and indexing defined in task 016)
+// ============================================================================
+
+// Chat sessions container — partitioned by userId
+resource chatSessionsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-12-01-preview' = {
+  parent: database
+  name: 'chat-sessions'
+  properties: {
+    resource: {
+      id: 'chat-sessions'
+      partitionKey: {
+        paths: ['/userId']
+        kind: 'Hash'
+        version: 2
+      }
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+        includedPaths: [
+          { path: '/*' }
+        ]
+        excludedPaths: [
+          { path: '/messages/*' }
+          { path: '/"_etag"/?' }
+        ]
+        compositeIndexes: [
+          [
+            { path: '/userId', order: 'ascending' }
+            { path: '/createdAt', order: 'descending' }
+          ]
+        ]
+      }
+    }
+  }
+}
+
+// Governance snapshots container — partitioned by apiId
+resource governanceSnapshotsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-12-01-preview' = {
+  parent: database
+  name: 'governance-snapshots'
+  properties: {
+    resource: {
+      id: 'governance-snapshots'
+      partitionKey: {
+        paths: ['/apiId']
+        kind: 'Hash'
+        version: 2
+      }
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+        includedPaths: [
+          { path: '/*' }
+        ]
+        excludedPaths: [
+          { path: '/findings/*' }
+          { path: '/"_etag"/?' }
+        ]
+        compositeIndexes: [
+          [
+            { path: '/apiId', order: 'ascending' }
+            { path: '/timestamp', order: 'descending' }
+          ]
+        ]
+      }
+    }
+  }
+}
+
+// Analytics events container — partitioned by eventType
+resource analyticsEventsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-12-01-preview' = {
+  parent: database
+  name: 'analytics-events'
+  properties: {
+    resource: {
+      id: 'analytics-events'
+      partitionKey: {
+        paths: ['/eventType']
+        kind: 'Hash'
+        version: 2
+      }
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+        includedPaths: [
+          { path: '/*' }
+        ]
+        excludedPaths: [
+          { path: '/metadata/*' }
+          { path: '/"_etag"/?' }
+        ]
+        compositeIndexes: [
+          [
+            { path: '/eventType', order: 'ascending' }
+            { path: '/timestamp', order: 'descending' }
+          ]
+        ]
+      }
+    }
+  }
+}
+
 // RBAC: Grant managed identity "Cosmos DB Built-in Data Contributor" role
 resource cosmosDbDataContributorRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-12-01-preview' = {
   name: guid(cosmosDbAccount.id, managedIdentityPrincipalId, 'Cosmos DB Built-in Data Contributor')
