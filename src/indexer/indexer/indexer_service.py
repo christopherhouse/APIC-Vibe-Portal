@@ -13,6 +13,7 @@ directly on the object — there is no ARM envelope ``properties`` sub-object.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -21,6 +22,19 @@ import structlog
 from apic_client.exceptions import ApiCenterNotFoundError
 
 logger = structlog.get_logger()
+
+# Azure AI Search (Lucene) maximum term size in bytes.  Individual tokens
+# in a ``searchable`` field that exceed this limit cause a 400 error on
+# document upload.  We use a slightly lower value to leave room for any
+# UTF-8 multi-byte characters.
+_MAX_TERM_BYTES = 32_000
+
+# Maximum characters per spec-content chunk stored in a single search
+# document.  Large specs are split across multiple documents so that
+# full-text search and vector search work well at any spec size.
+# ~50 KB per chunk keeps documents small enough for good search relevance
+# and avoids Lucene term-size issues even in pathological inputs.
+_CHUNK_SIZE_CHARS = 50_000
 
 
 @dataclass
@@ -141,6 +155,11 @@ class IndexerService:
     def full_reindex(self) -> int:
         """Fetch all APIs from API Center, generate embeddings, and upsert.
 
+        Large API specs are split into multiple search documents (chunks),
+        each containing a portion of the spec content and its own embedding.
+        Before uploading, any orphan chunk documents from a previous
+        indexing cycle are cleaned up.
+
         Returns the number of documents indexed.
         """
         logger.info(
@@ -161,7 +180,8 @@ class IndexerService:
             )
             return 0
 
-        documents = []
+        documents: list[dict[str, object]] = []
+        api_names: list[str] = []
         for i, api in enumerate(apis, start=1):
             api_name = api.get("name", "<unknown>") or "<unknown>"
             api_title = api.get("title", "") or ""
@@ -171,8 +191,14 @@ class IndexerService:
                 api_name=api_name,
                 title=api_title,
             )
-            doc = self._build_document(api)
-            documents.append(doc)
+            api_names.append(api_name)
+            docs = self._build_documents(api)
+            documents.extend(docs)
+
+        # Clean up orphan chunk documents from previous reindex cycles
+        # before uploading the new set.
+        for name in api_names:
+            self._cleanup_api_chunks(name)
 
         result = self._search_client.upload_documents(documents=documents)
         succeeded = sum(1 for r in result if r.succeeded)
@@ -204,43 +230,68 @@ class IndexerService:
     def incremental_index(self, api_name: str) -> bool:
         """Fetch and reindex a single API by name.
 
+        Cleans up any stale chunk documents from a prior indexing cycle
+        before uploading the new document set.
+
         Parameters
         ----------
         api_name:
             The API Center API name (resource name, not display title).
 
-        Returns ``True`` if the document was successfully indexed.
+        Returns ``True`` if **all** documents were successfully indexed.
         """
         logger.info("Incremental index", api=api_name)
 
         api: dict[str, Any] = self._apic.get_api(api_name)
-        doc = self._build_document(api)
-        result = self._search_client.upload_documents(documents=[doc])
-        succeeded = result[0].succeeded if result else False
+
+        # Remove stale chunks before uploading updated documents.
+        self._cleanup_api_chunks(api_name)
+
+        docs = self._build_documents(api)
+        result = self._search_client.upload_documents(documents=docs)
+        succeeded = all(r.succeeded for r in result) if result else False
         if succeeded:
-            logger.info("Incremental index result", api=api_name, succeeded=succeeded)
-        else:
-            upload_result = result[0] if result else None
-            logger.warning(
-                "Incremental index failed to upload document",
+            logger.info(
+                "Incremental index result",
                 api=api_name,
-                key=getattr(upload_result, "key", None),
-                status_code=getattr(upload_result, "status_code", None),
-                error_message=getattr(upload_result, "error_message", None),
+                succeeded=succeeded,
+                documents=len(docs),
+            )
+        else:
+            failed_details = [
+                {
+                    "key": getattr(r, "key", None),
+                    "status_code": getattr(r, "status_code", None),
+                    "error_message": getattr(r, "error_message", None),
+                }
+                for r in result
+                if not r.succeeded
+            ]
+            logger.warning(
+                "Incremental index failed to upload document(s)",
+                api=api_name,
+                failed_documents=failed_details,
             )
         return bool(succeeded)
 
     def delete_from_index(self, api_id: str) -> bool:
-        """Remove a document from the search index by its ID.
+        """Remove all documents for an API from the search index.
+
+        Deletes the parent document **and** any chunk documents that were
+        created for the API during indexing.
 
         Parameters
         ----------
         api_id:
-            The ``id`` field value used when the document was indexed.
+            The ``id`` field value used when the document was indexed
+            (the API name).
 
-        Returns ``True`` if the deletion was acknowledged.
+        Returns ``True`` if the parent deletion was acknowledged.
         """
         logger.info("Deleting document from index", id=api_id)
+        # Clean up chunk documents first.
+        self._cleanup_api_chunks(api_id)
+        # Delete the parent document.
         result = self._search_client.delete_documents(documents=[{"id": api_id}])
         succeeded = result[0].succeeded if result else False
         logger.info("Delete result", id=api_id, succeeded=succeeded)
@@ -258,11 +309,16 @@ class IndexerService:
     # Document construction
     # ------------------------------------------------------------------
 
-    def _build_document(self, api: dict[str, Any]) -> dict[str, object]:
-        """Convert an API Center data-plane API dict into an AI Search document.
+    def _build_documents(self, api: dict[str, Any]) -> list[dict[str, object]]:
+        """Convert an API Center data-plane API dict into one or more AI Search documents.
 
-        Generates an embedding vector by combining the title, description,
-        and (if available) the first version's spec content.
+        Small specs produce a single document.  Specs larger than
+        :data:`_CHUNK_SIZE_CHARS` are split into multiple documents —
+        a *parent* (``chunkIndex == 0``) that carries all metadata plus
+        the first chunk, and one or more *child* documents
+        (``chunkIndex > 0``) that carry subsequent chunks.  Every
+        document receives its own embedding vector so that vector search
+        can match the most relevant portion of the spec directly.
         """
         api_name: str = api.get("name", "") or ""
         title: str = api.get("title", "") or ""
@@ -299,12 +355,15 @@ class IndexerService:
             spec_found=spec_content is not None,
         )
 
+        # Sanitize all spec formats: pretty-print JSON where possible,
+        # and truncate any oversized tokens for Lucene compatibility.
+        sanitized_spec = self._sanitize_spec_content(spec_content or "", api_name)
+
         # Timestamps — data-plane uses ``lastUpdated`` (ISO 8601 string)
         last_updated_str: str | None = api.get("lastUpdated")
         created_at: datetime | None = None
         updated_at: datetime | None = None
         if last_updated_str:
-            # Normalize trailing "Z" (UTC) to "+00:00" for fromisoformat()
             normalized_last_updated = (
                 last_updated_str[:-1] + "+00:00" if last_updated_str.endswith("Z") else last_updated_str
             )
@@ -318,11 +377,9 @@ class IndexerService:
                     error=str(exc),
                 )
 
-        # Embedding vector
-        vector = self._embeddings.generate_embedding(title, description, spec_content)
-
-        doc: dict[str, object] = {
-            "id": api_name,
+        # Shared metadata dict — identical across parent and chunk documents
+        # so that every search hit carries the full API context.
+        metadata: dict[str, object] = {
             "apiName": api_name,
             "title": title,
             "description": description,
@@ -332,19 +389,100 @@ class IndexerService:
             "contacts": contacts,
             "tags": tags,
             "customProperties": json.dumps(custom_props) if custom_props else "",
-            "specContent": spec_content or "",
-            "contentVector": vector,
         }
-        if created_at is not None:
-            if created_at.tzinfo is None:
-                created_at = created_at.replace(tzinfo=UTC)
-            doc["createdAt"] = created_at
-        if updated_at is not None:
-            if updated_at.tzinfo is None:
-                updated_at = updated_at.replace(tzinfo=UTC)
-            doc["updatedAt"] = updated_at
 
-        return doc
+        # Split spec content into chunks
+        chunks = self._split_into_chunks(sanitized_spec)
+
+        documents: list[dict[str, object]] = []
+        for i, chunk in enumerate(chunks):
+            is_parent = i == 0
+            doc_id = api_name if is_parent else f"{api_name}__chunk_{i}"
+
+            # Each chunk gets its own embedding so vector search can
+            # match the most relevant portion of a large spec.
+            vector = self._embeddings.generate_embedding(
+                title,
+                description,
+                chunk if chunk else None,
+            )
+
+            doc: dict[str, object] = {
+                "id": doc_id,
+                **metadata,
+                "specContent": chunk,
+                "contentVector": vector,
+                "parentApiId": "" if is_parent else api_name,
+                "chunkIndex": i,
+            }
+
+            # Timestamps only on the parent document.
+            if is_parent:
+                if created_at is not None:
+                    if created_at.tzinfo is None:
+                        created_at = created_at.replace(tzinfo=UTC)
+                    doc["createdAt"] = created_at
+                if updated_at is not None:
+                    if updated_at.tzinfo is None:
+                        updated_at = updated_at.replace(tzinfo=UTC)
+                    doc["updatedAt"] = updated_at
+
+            documents.append(doc)
+
+        if len(documents) > 1:
+            logger.info(
+                "Split API spec into chunks for indexing",
+                api_name=api_name,
+                chunks=len(documents),
+                total_chars=len(sanitized_spec),
+            )
+
+        return documents
+
+    # ------------------------------------------------------------------
+    # Chunk helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _split_into_chunks(text: str) -> list[str]:
+        """Split *text* into chunks of at most :data:`_CHUNK_SIZE_CHARS`.
+
+        Returns a list with at least one element (which may be empty if
+        *text* is empty).
+        """
+        if not text or len(text) <= _CHUNK_SIZE_CHARS:
+            return [text]
+        return [text[i : i + _CHUNK_SIZE_CHARS] for i in range(0, len(text), _CHUNK_SIZE_CHARS)]
+
+    def _cleanup_api_chunks(self, api_name: str) -> None:
+        """Delete any existing chunk documents for an API.
+
+        Searches the index for documents whose ``parentApiId`` matches
+        *api_name* and deletes them.  This prevents orphan chunks from
+        accumulating when a spec shrinks or is removed.  Errors are
+        logged but do not propagate — a failed cleanup is non-fatal.
+        """
+        try:
+            results = self._search_client.search(
+                search_text="*",
+                filter=f"parentApiId eq '{api_name}'",
+                select=["id"],
+                top=1000,
+            )
+            chunk_ids = [{"id": doc["id"]} for doc in results]
+            if chunk_ids:
+                self._search_client.delete_documents(documents=chunk_ids)
+                logger.debug(
+                    "Cleaned up old chunk documents",
+                    api_name=api_name,
+                    chunks_deleted=len(chunk_ids),
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Failed to clean up chunk documents — will proceed with upload",
+                api_name=api_name,
+                error=str(exc),
+            )
 
     def _fetch_spec_content(self, api_name: str, versions: list[str]) -> str | None:
         """Fetch the raw spec content for the first available definition.
@@ -386,6 +524,71 @@ class IndexerService:
                 )
                 continue
         return None
+
+    @staticmethod
+    def _sanitize_spec_content(spec_content: str, api_name: str = "") -> str:
+        """Prepare raw spec content for Azure AI Search indexing.
+
+        Works on **all** spec formats (OpenAPI JSON, OpenAPI YAML, GraphQL
+        SDL, etc.).  Azure AI Search (Lucene) rejects documents whose
+        ``searchable`` fields contain individual terms longer than 32 766
+        UTF-8 bytes.  Minified JSON specs are the most common offender,
+        but any format can contain oversized tokens (e.g. embedded
+        base-64 blobs, extremely long URLs in YAML).
+
+        This method applies two transformations in order:
+
+        1. **Pretty-print JSON** — if the content is valid JSON, it is
+           re-serialised with indentation so that every key, value, and
+           structural character is separated by whitespace.  This lets the
+           analyser split the text into short, meaningful tokens.  Non-JSON
+           formats (YAML, GraphQL SDL, etc.) already contain whitespace
+           and skip this step — they still benefit from step 2.
+        2. **Truncate oversized tokens** — *regardless of format*, any
+           whitespace-delimited token whose UTF-8 byte length still
+           exceeds the Lucene limit is truncated to fit.  This handles
+           edge-cases in any spec format.
+        """
+        if not spec_content:
+            return spec_content
+
+        text = spec_content
+
+        # Step 1: Pretty-print JSON to introduce whitespace for tokenisation.
+        try:
+            parsed = json.loads(text)
+            text = json.dumps(parsed, indent=2, ensure_ascii=False)
+            logger.debug(
+                "Pretty-printed JSON spec content for indexing",
+                api_name=api_name,
+            )
+        except json.JSONDecodeError, TypeError, ValueError:
+            # Not JSON (e.g. YAML, GraphQL SDL) — skip pretty-printing.
+            # Token truncation in step 2 still applies to all formats.
+            pass
+
+        # Step 2: Truncate any individual tokens that still exceed the
+        # Lucene per-term byte limit.
+        def _truncate_token(match: re.Match[str]) -> str:
+            token = match.group(0)
+            if len(token.encode("utf-8")) <= _MAX_TERM_BYTES:
+                return token
+            # Truncate character-by-character until byte length fits.
+            while len(token.encode("utf-8")) > _MAX_TERM_BYTES:
+                token = token[: len(token) - 1]
+            return token
+
+        sanitized = re.sub(r"\S+", _truncate_token, text)
+
+        if sanitized != spec_content:
+            logger.info(
+                "Sanitized spec content for AI Search indexing",
+                api_name=api_name,
+                original_len=len(spec_content),
+                sanitized_len=len(sanitized),
+            )
+
+        return sanitized
 
     @staticmethod
     def _log_spec_not_available(api_name: str, version_name: str) -> None:

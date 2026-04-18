@@ -42,6 +42,8 @@ class SearchDocument(BaseModel):
     tags: list[str] = Field(default_factory=list)
     custom_properties: str = Field(default="", alias="customProperties")
     spec_content: str = Field(default="", alias="specContent")
+    parent_api_id: str = Field(default="", alias="parentApiId")
+    chunk_index: int = Field(default=0, alias="chunkIndex")
     created_at: str | None = Field(default=None, alias="createdAt")
     updated_at: str | None = Field(default=None, alias="updatedAt")
 
