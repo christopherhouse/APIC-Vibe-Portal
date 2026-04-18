@@ -313,6 +313,65 @@ class TestExportApiSpecification:
             with pytest.raises(ApiCenterClientError, match="Export failed"):
                 client.export_api_specification("petstore-api", "v1", "openapi")
 
+    def test_returns_spec_content_from_link_format_sync_200(self) -> None:
+        """When format is 'link', the value is a URL; the spec must be fetched from it."""
+        client = _make_client()
+        spec_url = "https://storage.example.com/specs/petstore.json?sas=token"
+        post_resp = _mock_response(
+            status_code=200,
+            json_data={
+                "status": "Succeeded",
+                "result": {"value": spec_url, "format": "link"},
+            },
+        )
+        link_resp = httpx.Response(
+            status_code=200,
+            content=b'{"openapi": "3.0.1"}',
+            headers={"content-type": "application/json"},
+            request=httpx.Request("GET", spec_url),
+        )
+        with (
+            patch.object(client, "_client") as mock_http,
+            patch("apic_client.client.httpx.get", return_value=link_resp) as mock_get,
+        ):
+            mock_http.return_value.post.return_value = post_resp
+            result = client.export_api_specification("petstore-api", "v1", "openapi")
+        mock_get.assert_called_once_with(spec_url, timeout=30.0)
+        assert result == '{"openapi": "3.0.1"}'
+
+    def test_returns_spec_content_from_link_format_async_202(self) -> None:
+        """link format works correctly in the async (202) polling path."""
+        client = _make_client()
+        spec_url = "https://storage.example.com/specs/petstore.json?sas=token"
+        accept_resp = _mock_response(
+            status_code=202,
+            json_data={},
+            headers={"Operation-Location": f"{_BASE_URL}/operations/op-456"},
+        )
+        poll_resp = _mock_response(
+            status_code=200,
+            json_data={
+                "status": "Succeeded",
+                "result": {"value": spec_url, "format": "link"},
+            },
+        )
+        link_resp = httpx.Response(
+            status_code=200,
+            content=b'{"openapi": "3.0.1"}',
+            headers={"content-type": "application/json"},
+            request=httpx.Request("GET", spec_url),
+        )
+        with (
+            patch.object(client, "_client") as mock_http,
+            patch("apic_client.client.time.sleep"),
+            patch("apic_client.client.httpx.get", return_value=link_resp) as mock_get,
+        ):
+            mock_http.return_value.post.return_value = accept_resp
+            mock_http.return_value.get.return_value = poll_resp
+            result = client.export_api_specification("petstore-api", "v1", "openapi")
+        mock_get.assert_called_once_with(spec_url, timeout=30.0)
+        assert result == '{"openapi": "3.0.1"}'
+
 
 # ---------------------------------------------------------------------------
 # list_environments

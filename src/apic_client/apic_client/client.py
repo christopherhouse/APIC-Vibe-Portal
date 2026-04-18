@@ -204,7 +204,11 @@ class ApiCenterDataPlaneClient:
         The data-plane export is an async operation:
         1. POST ``:exportSpecification`` → 202 with ``Operation-Location``
         2. Poll the operation URL until status is ``Succeeded``
-        3. Return ``result.value`` (the raw spec content)
+        3. Return the raw spec content.
+
+        The result may be delivered in two formats:
+        - ``"inline"``: ``result.value`` contains the spec content directly.
+        - ``"link"``:   ``result.value`` is a URL; the spec is fetched from it.
 
         Returns ``None`` if the export yields no content.
         """
@@ -228,7 +232,7 @@ class ApiCenterDataPlaneClient:
         if response.status_code == 200:
             data = response.json()
             result = data.get("result", data)
-            return result.get("value") if result else None
+            return self._resolve_spec_result(result)
 
         if response.status_code != 202:
             self._handle_response(response, context)
@@ -238,9 +242,32 @@ class ApiCenterDataPlaneClient:
         if not operation_url:
             body = response.json() if response.content else {}
             result = body.get("result", body)
-            return result.get("value") if result else None
+            return self._resolve_spec_result(result)
 
         return self._poll_operation(operation_url, context)
+
+    def _resolve_spec_result(self, result: dict[str, Any] | None) -> str | None:
+        """Return the spec content from an export result dict.
+
+        Azure API Center can return the specification in two formats:
+        - ``"inline"``: the ``value`` field contains the raw spec text.
+        - ``"link"``:   the ``value`` field is a URL; the spec must be fetched
+          from that URL (e.g. a short-lived blob storage SAS URL).
+
+        Any other or missing format falls back to returning ``value`` as-is.
+        """
+        if not result:
+            return None
+        value = result.get("value")
+        if not value:
+            return None
+        fmt = str(result.get("format", "inline")).lower()
+        if fmt == "link":
+            logger.debug("api_center_data_plane.fetch_spec_link", url=value)
+            link_response = httpx.get(value, timeout=30.0)
+            link_response.raise_for_status()
+            return link_response.text
+        return value
 
     def _poll_operation(self, operation_url: str, context: str, max_polls: int = 30, delay: float = 1.0) -> str | None:
         """Poll an async operation URL until completion."""
@@ -264,7 +291,7 @@ class ApiCenterDataPlaneClient:
             status = data.get("status", "").lower()
             if status == "succeeded":
                 result = data.get("result", {})
-                return result.get("value") if result else None
+                return self._resolve_spec_result(result)
             if status in ("failed", "canceled", "cancelled"):
                 error_msg = data.get("error", {}).get("message", f"Operation {status}")
                 raise ApiCenterClientError(f"{context}: {error_msg}")
