@@ -78,7 +78,7 @@ def _make_suggest_response() -> SuggestResponse:
     """Create a test SuggestResponse."""
     return SuggestResponse(
         suggestions=[
-            SuggestResult(text="Petstore API", apiName="petstore"),
+            SuggestResult(apiId="petstore", title="Petstore API", description="Manages pets", kind="rest"),
         ],
         query_prefix="pet",
     )
@@ -278,8 +278,8 @@ class TestSuggestEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert len(data["suggestions"]) == 1
-        assert data["suggestions"][0]["text"] == "Petstore API"
-        assert data["suggestions"][0]["apiName"] == "petstore"
+        assert data["suggestions"][0]["title"] == "Petstore API"
+        assert data["suggestions"][0]["apiId"] == "petstore"
 
     @patch("apic_vibe_portal_bff.middleware.auth.validate_token")
     async def test_suggest_service_error(self, mock_validate, client, mock_service):

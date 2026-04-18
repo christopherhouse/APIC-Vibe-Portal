@@ -228,8 +228,10 @@ class SearchService:
 
         suggestions: list[SuggestResult] = []
         for item in raw_suggestions:
-            text = item.get("@search.text", item.get("title", ""))
-            api_name = item.get("apiName", "")
-            suggestions.append(SuggestResult(text=text, apiName=api_name))
+            api_id = item.get("apiName", "")
+            title = item.get("title", "")
+            description = item.get("description", "")
+            kind = item.get("kind", "")
+            suggestions.append(SuggestResult(apiId=api_id, title=title, description=description, kind=kind))
 
         return SuggestResponse(suggestions=suggestions, query_prefix=prefix)
