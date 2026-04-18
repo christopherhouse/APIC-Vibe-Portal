@@ -104,6 +104,9 @@ def build_index_schema(index_name: str = INDEX_NAME, embedding_dimensions: int =
             name="specContent",
             type=SearchFieldDataType.String,
             searchable=True,
+            filterable=False,
+            sortable=False,
+            facetable=False,
         ),
         SearchField(
             name="createdAt",

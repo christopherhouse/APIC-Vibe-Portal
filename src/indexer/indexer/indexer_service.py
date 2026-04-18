@@ -13,6 +13,7 @@ directly on the object — there is no ARM envelope ``properties`` sub-object.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -21,6 +22,12 @@ import structlog
 from apic_client.exceptions import ApiCenterNotFoundError
 
 logger = structlog.get_logger()
+
+# Azure AI Search (Lucene) maximum term size in bytes.  Individual tokens
+# in a ``searchable`` field that exceed this limit cause a 400 error on
+# document upload.  We use a slightly lower value to leave room for any
+# UTF-8 multi-byte characters.
+_MAX_TERM_BYTES = 32_000
 
 
 @dataclass
@@ -332,7 +339,7 @@ class IndexerService:
             "contacts": contacts,
             "tags": tags,
             "customProperties": json.dumps(custom_props) if custom_props else "",
-            "specContent": spec_content or "",
+            "specContent": self._sanitize_spec_content(spec_content or "", api_name),
             "contentVector": vector,
         }
         if created_at is not None:
@@ -386,6 +393,68 @@ class IndexerService:
                 )
                 continue
         return None
+
+    @staticmethod
+    def _sanitize_spec_content(spec_content: str, api_name: str = "") -> str:
+        """Prepare raw spec content for Azure AI Search indexing.
+
+        Azure AI Search (Lucene) rejects documents whose ``searchable``
+        fields contain individual terms longer than 32 766 UTF-8 bytes.
+        OpenAPI specs stored as compact/minified JSON can easily exceed
+        this limit because the standard text analyser tokenises on
+        whitespace and punctuation — a minified JSON blob may consist of
+        only a handful of extremely long tokens.
+
+        This method applies two transformations in order:
+
+        1. **Pretty-print JSON** — if the content is valid JSON, it is
+           re-serialised with indentation so that every key, value, and
+           structural character is separated by whitespace.  This lets the
+           analyser split the text into short, meaningful tokens.
+        2. **Truncate oversized tokens** — any remaining whitespace-
+           delimited token whose UTF-8 byte length still exceeds the
+           Lucene limit is truncated to fit.  This handles edge-cases
+           like embedded base-64 blobs or extremely long URLs.
+        """
+        if not spec_content:
+            return spec_content
+
+        text = spec_content
+
+        # Step 1: Pretty-print JSON to introduce whitespace for tokenisation.
+        try:
+            parsed = json.loads(text)
+            text = json.dumps(parsed, indent=2, ensure_ascii=False)
+            logger.debug(
+                "Pretty-printed JSON spec content for indexing",
+                api_name=api_name,
+            )
+        except (json.JSONDecodeError, TypeError, ValueError):
+            # Not JSON (e.g. YAML, GraphQL SDL) — leave as-is.
+            pass
+
+        # Step 2: Truncate any individual tokens that still exceed the
+        # Lucene per-term byte limit.
+        def _truncate_token(match: re.Match[str]) -> str:
+            token = match.group(0)
+            if len(token.encode("utf-8")) <= _MAX_TERM_BYTES:
+                return token
+            # Truncate character-by-character until byte length fits.
+            while len(token.encode("utf-8")) > _MAX_TERM_BYTES:
+                token = token[: len(token) - 1]
+            return token
+
+        sanitized = re.sub(r"\S+", _truncate_token, text)
+
+        if sanitized != spec_content:
+            logger.info(
+                "Sanitized spec content for AI Search indexing",
+                api_name=api_name,
+                original_len=len(spec_content),
+                sanitized_len=len(sanitized),
+            )
+
+        return sanitized
 
     @staticmethod
     def _log_spec_not_available(api_name: str, version_name: str) -> None:

@@ -631,3 +631,124 @@ class TestFetchSpecContent:
             service.full_reindex()
             warning_str = str(mock_logger.warning.call_args_list)
             assert "server-error-api" in warning_str
+
+
+# ---------------------------------------------------------------------------
+# _sanitize_spec_content
+# ---------------------------------------------------------------------------
+
+
+class TestSanitizeSpecContent:
+    def test_empty_string_returned_unchanged(self) -> None:
+        result = IndexerService._sanitize_spec_content("")
+        assert result == ""
+
+    def test_none_like_empty_returns_as_is(self) -> None:
+        """Falsy values are returned immediately."""
+        result = IndexerService._sanitize_spec_content("")
+        assert result == ""
+
+    def test_json_is_pretty_printed(self) -> None:
+        compact = '{"openapi":"3.0.0","info":{"title":"Test"}}'
+        result = IndexerService._sanitize_spec_content(compact)
+        # Pretty-printed JSON has newlines and indentation
+        assert "\n" in result
+        assert "  " in result
+        # Content is preserved
+        assert '"openapi"' in result
+        assert '"3.0.0"' in result
+
+    def test_yaml_content_passes_through(self) -> None:
+        yaml_spec = "openapi: 3.0.0\ninfo:\n  title: Test\n"
+        result = IndexerService._sanitize_spec_content(yaml_spec)
+        # YAML is not JSON so pretty-print is skipped; content unchanged
+        assert result == yaml_spec
+
+    def test_short_content_returned_unchanged_semantically(self) -> None:
+        """Short JSON is pretty-printed but contains the same data."""
+        import json
+
+        original = '{"a":"b"}'
+        result = IndexerService._sanitize_spec_content(original)
+        assert json.loads(result) == json.loads(original)
+
+    def test_long_token_is_truncated(self) -> None:
+        """A single token exceeding 32 000 bytes is truncated."""
+        long_token = "x" * 40_000
+        result = IndexerService._sanitize_spec_content(long_token)
+        # Every whitespace-delimited token must be <= _MAX_TERM_BYTES
+        from indexer.indexer_service import _MAX_TERM_BYTES
+
+        for token in result.split():
+            assert len(token.encode("utf-8")) <= _MAX_TERM_BYTES
+
+    def test_mixed_content_with_long_token(self) -> None:
+        """Normal words around a long token — only the long one is truncated."""
+        long_token = "A" * 40_000
+        text = f"short {long_token} words"
+        result = IndexerService._sanitize_spec_content(text)
+        parts = result.split()
+        assert parts[0] == "short"
+        assert parts[-1] == "words"
+        from indexer.indexer_service import _MAX_TERM_BYTES
+
+        assert len(parts[1].encode("utf-8")) <= _MAX_TERM_BYTES
+
+    def test_multibyte_utf8_token_truncated_correctly(self) -> None:
+        """Tokens with multi-byte UTF-8 characters are truncated by byte count."""
+        # Each emoji is 4 bytes in UTF-8
+        long_token = "\U0001f600" * 10_000  # 40 000 bytes
+        result = IndexerService._sanitize_spec_content(long_token)
+        from indexer.indexer_service import _MAX_TERM_BYTES
+
+        for token in result.split():
+            assert len(token.encode("utf-8")) <= _MAX_TERM_BYTES
+
+    def test_json_with_base64_blob_truncated(self) -> None:
+        """Simulates an OpenAPI spec with an embedded base64 example."""
+        import json as json_mod
+
+        from indexer.indexer_service import _MAX_TERM_BYTES
+
+        spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "Test"},
+            "paths": {
+                "/upload": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/octet-stream": {
+                                    "example": "x" * 40_000,
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+        }
+        compact = json_mod.dumps(spec)
+        result = IndexerService._sanitize_spec_content(compact)
+        for token in result.split():
+            assert len(token.encode("utf-8")) <= _MAX_TERM_BYTES
+
+    def test_sanitize_called_during_build_document(self) -> None:
+        """_build_document applies sanitization to specContent."""
+        service, apic_client, _, search_client, _ = _make_service()
+
+        long_spec = '{"data":"' + "x" * 40_000 + '"}'
+        api = make_api(name="big-spec-api")
+        apic_client.list_apis.return_value = [api]
+        apic_client.list_api_versions.return_value = [{"name": "v1"}]
+        apic_client.list_api_definitions.return_value = [{"name": "openapi"}]
+        apic_client.export_api_specification.return_value = long_spec
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        service.full_reindex()
+
+        from indexer.indexer_service import _MAX_TERM_BYTES
+
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        spec = uploaded[0]["specContent"]
+        for token in spec.split():
+            assert len(token.encode("utf-8")) <= _MAX_TERM_BYTES
