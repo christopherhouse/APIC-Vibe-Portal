@@ -12,6 +12,7 @@ from azure.search.documents.indexes.models import (
     SearchField,
     SearchFieldDataType,
     SearchIndex,
+    SearchSuggester,
     SemanticConfiguration,
     SemanticField,
     SemanticPrioritizedFields,
@@ -29,6 +30,7 @@ INDEX_NAME = "apic-apis"
 _VECTOR_PROFILE_NAME = "apic-hnsw-profile"
 _VECTOR_ALGORITHM_NAME = "apic-hnsw"
 _SEMANTIC_CONFIG_NAME = "apic-semantic-config"
+_SUGGESTER_NAME = "sg"
 
 
 def build_index_schema(index_name: str = INDEX_NAME, embedding_dimensions: int = 1536) -> SearchIndex:
@@ -155,9 +157,17 @@ def build_index_schema(index_name: str = INDEX_NAME, embedding_dimensions: int =
         ],
     )
 
+    suggesters: list[SearchSuggester] = [
+        SearchSuggester(
+            name=_SUGGESTER_NAME,
+            source_fields=["apiName", "title", "description"],
+        ),
+    ]
+
     return SearchIndex(
         name=index_name,
         fields=fields,
         vector_search=vector_search,
         semantic_search=semantic_search,
+        suggesters=suggesters,
     )
