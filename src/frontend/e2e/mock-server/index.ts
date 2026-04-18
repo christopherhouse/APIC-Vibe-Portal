@@ -162,6 +162,18 @@ export function generateMockSpec(apiName: string, version: string): string {
 }
 
 /**
+ * Check whether an API definition matches a search query.
+ * Compares against title, description, and name (case-insensitive).
+ */
+function matchesQuery(api: MockApiDefinition, query: string): boolean {
+  return (
+    api.title.toLowerCase().includes(query) ||
+    api.description.toLowerCase().includes(query) ||
+    api.name.toLowerCase().includes(query)
+  );
+}
+
+/**
  * Create and start a mock BFF server on the specified port.
  * Returns a cleanup function to close the server.
  */
@@ -315,12 +327,7 @@ export function startMockServer(
           const pageSize = parsed.pagination?.pageSize ?? 10;
 
           // Filter APIs by query text (searches title + description)
-          let matched = apis.filter(
-            (a) =>
-              a.title.toLowerCase().includes(query) ||
-              a.description.toLowerCase().includes(query) ||
-              a.name.toLowerCase().includes(query)
-          );
+          let matched = apis.filter((a) => matchesQuery(a, query));
 
           // Apply kind filter
           if (filterKind && filterKind.length > 0) {
@@ -333,12 +340,7 @@ export function startMockServer(
           }
 
           // Build facets from the unfiltered query-matched set for accurate counts
-          const queryMatched = apis.filter(
-            (a) =>
-              a.title.toLowerCase().includes(query) ||
-              a.description.toLowerCase().includes(query) ||
-              a.name.toLowerCase().includes(query)
-          );
+          const queryMatched = apis.filter((a) => matchesQuery(a, query));
           const kindCounts = new Map<string, number>();
           const lifecycleCounts = new Map<string, number>();
           for (const a of queryMatched) {
@@ -394,12 +396,7 @@ export function startMockServer(
         const q = (url.searchParams.get('q') ?? '').toLowerCase();
 
         const suggestions = apis
-          .filter(
-            (a) =>
-              a.title.toLowerCase().includes(q) ||
-              a.name.toLowerCase().includes(q) ||
-              a.description.toLowerCase().includes(q)
-          )
+          .filter((a) => matchesQuery(a, q))
           .slice(0, 5)
           .map((a) => ({
             apiId: a.id,
