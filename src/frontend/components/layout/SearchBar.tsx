@@ -212,6 +212,7 @@ export default function SearchBar() {
             zIndex: (theme) => theme.zIndex.modal,
             mt: 0.5,
             overflow: 'hidden',
+            color: 'text.primary',
           }}
         >
           <List id={listId} role="listbox" aria-label="search suggestions" dense sx={{ py: 0 }}>
