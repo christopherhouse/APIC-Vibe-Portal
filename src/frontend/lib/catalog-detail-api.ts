@@ -43,15 +43,25 @@ export async function fetchApiVersions(apiId: string): Promise<ApiVersion[]> {
   return response.data;
 }
 
+/** BFF response shape for an API specification document. */
+export interface ApiSpecificationData {
+  id: string;
+  name: string;
+  title: string;
+  specificationType?: string | null;
+  specificationVersion?: string | null;
+  content: string | null;
+}
+
 /**
  * Fetch the API definition/spec for a specific version.
  * Returns the raw spec content as a string.
  */
-export async function fetchApiDefinition(apiId: string, versionId: string): Promise<string> {
-  const response = await apiClient.get<{ data: string }>(
+export async function fetchApiDefinition(apiId: string, versionId: string): Promise<string | null> {
+  const response = await apiClient.get<{ data: ApiSpecificationData }>(
     `/api/catalog/${encodeURIComponent(apiId)}/versions/${encodeURIComponent(versionId)}/definition`
   );
-  return response.data;
+  return response.data.content;
 }
 
 /**

@@ -65,13 +65,36 @@ describe('catalog-detail-api', () => {
   });
 
   describe('fetchApiDefinition', () => {
-    it('fetches definition for a version', async () => {
-      const mockSpec = '{"openapi": "3.0.0"}';
-      mockGet.mockResolvedValue({ data: mockSpec });
+    it('fetches definition for a version and extracts content', async () => {
+      const mockSpecContent = '{"openapi": "3.0.0"}';
+      mockGet.mockResolvedValue({
+        data: {
+          id: 'def-1',
+          name: 'openapi',
+          title: 'OpenAPI',
+          specificationType: 'openapi',
+          specificationVersion: '3.0.0',
+          content: mockSpecContent,
+        },
+      });
 
       const result = await fetchApiDefinition('api-1', 'v1');
       expect(mockGet).toHaveBeenCalledWith('/api/catalog/api-1/versions/v1/definition');
-      expect(result).toEqual(mockSpec);
+      expect(result).toEqual(mockSpecContent);
+    });
+
+    it('returns null when content is null', async () => {
+      mockGet.mockResolvedValue({
+        data: {
+          id: 'def-1',
+          name: 'openapi',
+          title: 'OpenAPI',
+          content: null,
+        },
+      });
+
+      const result = await fetchApiDefinition('api-1', 'v1');
+      expect(result).toBeNull();
     });
   });
 });
