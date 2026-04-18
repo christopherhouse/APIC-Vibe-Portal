@@ -44,6 +44,12 @@ logger = logging.getLogger(__name__)
 # before including them in log ``extra`` dicts prevents forged log lines.
 _LOG_UNSAFE_CHARS = str.maketrans({"\n": " ", "\r": " ", "\t": " ", "\x00": ""})
 
+
+def _safe_log_key(value: str) -> str:
+    """Sanitize a cache key for safe inclusion in structured log output."""
+    return value.translate(_LOG_UNSAFE_CHARS)
+
+
 # Cache key prefixes
 _KEY_APIS = "apis:"
 _KEY_API = "api:"
@@ -157,7 +163,7 @@ class ApiCatalogService:
         if hit.value is not None:
             logger.debug(
                 "list_apis cache hit",
-                extra={"key": cache_key.translate(_LOG_UNSAFE_CHARS), "needs_refresh": hit.needs_refresh},
+                extra={"key": _safe_log_key(cache_key), "needs_refresh": hit.needs_refresh},
             )
             if hit.needs_refresh:
                 self._schedule_refresh(
@@ -219,7 +225,7 @@ class ApiCatalogService:
         if hit.value is not None:
             logger.debug(
                 "get_api cache hit",
-                extra={"key": cache_key.translate(_LOG_UNSAFE_CHARS), "needs_refresh": hit.needs_refresh},
+                extra={"key": _safe_log_key(cache_key), "needs_refresh": hit.needs_refresh},
             )
             if hit.needs_refresh:
                 self._schedule_refresh(
@@ -254,7 +260,7 @@ class ApiCatalogService:
         if hit.value is not None:
             logger.debug(
                 "list_api_versions cache hit",
-                extra={"key": cache_key.translate(_LOG_UNSAFE_CHARS), "needs_refresh": hit.needs_refresh},
+                extra={"key": _safe_log_key(cache_key), "needs_refresh": hit.needs_refresh},
             )
             if hit.needs_refresh:
                 self._schedule_refresh(
@@ -297,7 +303,7 @@ class ApiCatalogService:
         if hit.value is not None:
             logger.debug(
                 "get_api_definition cache hit",
-                extra={"key": cache_key.translate(_LOG_UNSAFE_CHARS), "needs_refresh": hit.needs_refresh},
+                extra={"key": _safe_log_key(cache_key), "needs_refresh": hit.needs_refresh},
             )
             if hit.needs_refresh:
                 self._schedule_refresh(
@@ -362,7 +368,7 @@ class ApiCatalogService:
         if hit.value is not None:
             logger.debug(
                 "list_deployments cache hit",
-                extra={"key": cache_key.translate(_LOG_UNSAFE_CHARS), "needs_refresh": hit.needs_refresh},
+                extra={"key": _safe_log_key(cache_key), "needs_refresh": hit.needs_refresh},
             )
             if hit.needs_refresh:
                 self._schedule_refresh(
