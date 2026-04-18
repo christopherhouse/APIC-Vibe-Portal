@@ -355,7 +355,8 @@ class IndexerService:
             spec_found=spec_content is not None,
         )
 
-        # Sanitize (pretty-print JSON, truncate oversized tokens)
+        # Sanitize all spec formats: pretty-print JSON where possible,
+        # and truncate any oversized tokens for Lucene compatibility.
         sanitized_spec = self._sanitize_spec_content(spec_content or "", api_name)
 
         # Timestamps — data-plane uses ``lastUpdated`` (ISO 8601 string)
@@ -528,23 +529,25 @@ class IndexerService:
     def _sanitize_spec_content(spec_content: str, api_name: str = "") -> str:
         """Prepare raw spec content for Azure AI Search indexing.
 
-        Azure AI Search (Lucene) rejects documents whose ``searchable``
-        fields contain individual terms longer than 32 766 UTF-8 bytes.
-        OpenAPI specs stored as compact/minified JSON can easily exceed
-        this limit because the standard text analyser tokenises on
-        whitespace and punctuation — a minified JSON blob may consist of
-        only a handful of extremely long tokens.
+        Works on **all** spec formats (OpenAPI JSON, OpenAPI YAML, GraphQL
+        SDL, etc.).  Azure AI Search (Lucene) rejects documents whose
+        ``searchable`` fields contain individual terms longer than 32 766
+        UTF-8 bytes.  Minified JSON specs are the most common offender,
+        but any format can contain oversized tokens (e.g. embedded
+        base-64 blobs, extremely long URLs in YAML).
 
         This method applies two transformations in order:
 
         1. **Pretty-print JSON** — if the content is valid JSON, it is
            re-serialised with indentation so that every key, value, and
            structural character is separated by whitespace.  This lets the
-           analyser split the text into short, meaningful tokens.
-        2. **Truncate oversized tokens** — any remaining whitespace-
-           delimited token whose UTF-8 byte length still exceeds the
-           Lucene limit is truncated to fit.  This handles edge-cases
-           like embedded base-64 blobs or extremely long URLs.
+           analyser split the text into short, meaningful tokens.  Non-JSON
+           formats (YAML, GraphQL SDL, etc.) already contain whitespace
+           and skip this step — they still benefit from step 2.
+        2. **Truncate oversized tokens** — *regardless of format*, any
+           whitespace-delimited token whose UTF-8 byte length still
+           exceeds the Lucene limit is truncated to fit.  This handles
+           edge-cases in any spec format.
         """
         if not spec_content:
             return spec_content
@@ -560,7 +563,8 @@ class IndexerService:
                 api_name=api_name,
             )
         except json.JSONDecodeError, TypeError, ValueError:
-            # Not JSON (e.g. YAML, GraphQL SDL) — leave as-is.
+            # Not JSON (e.g. YAML, GraphQL SDL) — skip pretty-printing.
+            # Token truncation in step 2 still applies to all formats.
             pass
 
         # Step 2: Truncate any individual tokens that still exceed the

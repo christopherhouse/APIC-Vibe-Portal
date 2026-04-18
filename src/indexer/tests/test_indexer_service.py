@@ -669,11 +669,22 @@ class TestSanitizeSpecContent:
         assert '"openapi"' in result
         assert '"3.0.0"' in result
 
-    def test_yaml_content_passes_through(self) -> None:
+    def test_yaml_content_skips_pretty_print(self) -> None:
         yaml_spec = "openapi: 3.0.0\ninfo:\n  title: Test\n"
         result = IndexerService._sanitize_spec_content(yaml_spec)
-        # YAML is not JSON so pretty-print is skipped; content unchanged
+        # YAML is not JSON so pretty-print is skipped, but token
+        # truncation still applies (not needed here — all tokens are short).
         assert result == yaml_spec
+
+    def test_yaml_long_token_is_truncated(self) -> None:
+        """A YAML spec with an oversized value still gets token truncation."""
+        from indexer.indexer_service import _MAX_TERM_BYTES
+
+        long_value = "x" * 40_000
+        yaml_spec = f"openapi: 3.0.0\ninfo:\n  title: Test\n  description: {long_value}\n"
+        result = IndexerService._sanitize_spec_content(yaml_spec)
+        for token in result.split():
+            assert len(token.encode("utf-8")) <= _MAX_TERM_BYTES
 
     def test_short_content_returned_unchanged_semantically(self) -> None:
         """Short JSON is pretty-printed but contains the same data."""
@@ -855,6 +866,38 @@ class TestDocumentChunking:
         for i, child in enumerate(uploaded[1:], start=1):
             assert child["id"] == f"big-api__chunk_{i}"
             assert child["parentApiId"] == "big-api"
+            assert child["chunkIndex"] == i
+
+    def test_large_yaml_spec_produces_multiple_documents(self) -> None:
+        """A large YAML spec is chunked the same as JSON — all formats are chunked."""
+        from indexer.indexer_service import _CHUNK_SIZE_CHARS
+
+        service, apic_client, _, search_client, _ = _make_service()
+
+        # Build a large YAML spec (well-tokenized, not JSON).
+        yaml_lines = [f"path{i}: value{i}" for i in range(_CHUNK_SIZE_CHARS // 8)]
+        yaml_spec = "openapi: 3.0.0\npaths:\n" + "\n".join(f"  {line}" for line in yaml_lines)
+        assert len(yaml_spec) > _CHUNK_SIZE_CHARS  # Must exceed chunk limit
+
+        api = make_api(name="yaml-api")
+        apic_client.list_apis.return_value = [api]
+        apic_client.list_api_versions.return_value = [{"name": "v1"}]
+        apic_client.list_api_definitions.return_value = [{"name": "openapi-yaml"}]
+        apic_client.export_api_specification.return_value = yaml_spec
+        search_client.upload_documents.return_value = [make_upload_result(True)] * 10
+
+        service.full_reindex()
+
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        assert len(uploaded) > 1
+
+        parent = uploaded[0]
+        assert parent["id"] == "yaml-api"
+        assert parent["chunkIndex"] == 0
+
+        for i, child in enumerate(uploaded[1:], start=1):
+            assert child["id"] == f"yaml-api__chunk_{i}"
+            assert child["parentApiId"] == "yaml-api"
             assert child["chunkIndex"] == i
 
     def test_chunk_documents_share_metadata(self) -> None:
