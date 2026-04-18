@@ -41,8 +41,18 @@ def make_api(
     }
 
 
-def make_upload_result(succeeded: bool = True) -> SimpleNamespace:
-    return _ns(succeeded=succeeded)
+def make_upload_result(
+    succeeded: bool = True,
+    key: str | None = None,
+    status_code: int | None = None,
+    error_message: str | None = None,
+) -> SimpleNamespace:
+    return _ns(
+        succeeded=succeeded,
+        key=key,
+        status_code=status_code,
+        error_message=error_message,
+    )
 
 
 def _make_service() -> tuple[IndexerService, MagicMock, MagicMock, MagicMock, MagicMock]:
@@ -262,6 +272,42 @@ class TestFullReindex:
         # Document is still uploaded even when version fetch fails
         search_client.upload_documents.assert_called_once()
 
+    def test_logs_per_document_failure_details(self) -> None:
+        """When documents fail to upload, the warning includes per-doc details."""
+        service, apic_client, _, search_client, _ = _make_service()
+
+        apis = [make_api(name="ok-api"), make_api(name="bad-api")]
+        apic_client.list_apis.return_value = apis
+        apic_client.list_api_versions.return_value = []
+        search_client.upload_documents.return_value = [
+            make_upload_result(True, key="ok-api"),
+            make_upload_result(
+                False,
+                key="bad-api",
+                status_code=400,
+                error_message="Invalid field 'foo'",
+            ),
+        ]
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            count = service.full_reindex()
+
+            assert count == 1
+            assert mock_logger.warning.call_count >= 1
+            # Find the warning call that contains failed_documents
+            found = False
+            for call in mock_logger.warning.call_args_list:
+                kwargs = call.kwargs if call.kwargs else {}
+                if "failed_documents" in kwargs:
+                    details = kwargs["failed_documents"]
+                    assert len(details) == 1
+                    assert details[0]["key"] == "bad-api"
+                    assert details[0]["status_code"] == 400
+                    assert details[0]["error_message"] == "Invalid field 'foo'"
+                    found = True
+                    break
+            assert found, "Expected a warning with failed_documents details"
+
 
 # ---------------------------------------------------------------------------
 # incremental_index
@@ -293,6 +339,38 @@ class TestIncrementalIndex:
         result = service.incremental_index("petstore-api")
 
         assert result is False
+
+    def test_logs_details_on_upload_failure(self) -> None:
+        """When a single document fails, the warning includes key/status/error."""
+        service, apic_client, _, search_client, _ = _make_service()
+
+        api = make_api(name="bad-api")
+        apic_client.get_api.return_value = api
+        apic_client.list_api_versions.return_value = []
+        search_client.upload_documents.return_value = [
+            make_upload_result(
+                False,
+                key="bad-api",
+                status_code=400,
+                error_message="Document is malformed",
+            ),
+        ]
+
+        with patch("indexer.indexer_service.logger") as mock_logger:
+            result = service.incremental_index("bad-api")
+
+            assert result is False
+            assert mock_logger.warning.call_count >= 1
+            # Find the warning call with the failure details
+            found = False
+            for call in mock_logger.warning.call_args_list:
+                kwargs = call.kwargs if call.kwargs else {}
+                if kwargs.get("key") == "bad-api":
+                    assert kwargs["status_code"] == 400
+                    assert kwargs["error_message"] == "Document is malformed"
+                    found = True
+                    break
+            assert found, "Expected a warning with per-document failure details"
 
     def test_uploads_single_document(self) -> None:
         service, apic_client, _, search_client, _ = _make_service()

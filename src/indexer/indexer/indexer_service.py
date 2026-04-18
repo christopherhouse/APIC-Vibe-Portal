@@ -184,10 +184,20 @@ class IndexerService:
             total=len(documents),
         )
         if failed:
+            failed_details = [
+                {
+                    "key": getattr(r, "key", None),
+                    "status_code": getattr(r, "status_code", None),
+                    "error_message": getattr(r, "error_message", None),
+                }
+                for r in result
+                if not r.succeeded
+            ]
             logger.warning(
                 "Some documents failed to upload",
                 failed=failed,
                 total=len(documents),
+                failed_documents=failed_details,
             )
         return succeeded
 
@@ -207,7 +217,17 @@ class IndexerService:
         doc = self._build_document(api)
         result = self._search_client.upload_documents(documents=[doc])
         succeeded = result[0].succeeded if result else False
-        logger.info("Incremental index result", api=api_name, succeeded=succeeded)
+        if succeeded:
+            logger.info("Incremental index result", api=api_name, succeeded=succeeded)
+        else:
+            upload_result = result[0] if result else None
+            logger.warning(
+                "Incremental index failed to upload document",
+                api=api_name,
+                key=getattr(upload_result, "key", None),
+                status_code=getattr(upload_result, "status_code", None),
+                error_message=getattr(upload_result, "error_message", None),
+            )
         return bool(succeeded)
 
     def delete_from_index(self, api_id: str) -> bool:
