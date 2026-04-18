@@ -289,6 +289,130 @@ export function startMockServer(
         return;
       }
 
+      // POST /api/search — full-text search with filtering, facets, and pagination
+      if (pathname === '/api/search' && req.method === 'POST') {
+        let body = '';
+        req.on('data', (chunk: Buffer) => {
+          body += chunk.toString();
+        });
+        req.on('end', () => {
+          let parsed: {
+            query?: string;
+            filters?: { kind?: string[]; lifecycleStage?: string[] };
+            pagination?: { page?: number; pageSize?: number };
+            searchMode?: string;
+          } = {};
+          try {
+            parsed = JSON.parse(body);
+          } catch {
+            // ignore parse errors, use defaults
+          }
+
+          const query = (parsed.query ?? '').toLowerCase();
+          const filterKind = parsed.filters?.kind;
+          const filterLifecycle = parsed.filters?.lifecycleStage;
+          const page = parsed.pagination?.page ?? 1;
+          const pageSize = parsed.pagination?.pageSize ?? 10;
+
+          // Filter APIs by query text (searches title + description)
+          let matched = apis.filter(
+            (a) =>
+              a.title.toLowerCase().includes(query) ||
+              a.description.toLowerCase().includes(query) ||
+              a.name.toLowerCase().includes(query)
+          );
+
+          // Apply kind filter
+          if (filterKind && filterKind.length > 0) {
+            matched = matched.filter((a) => filterKind.includes(a.kind));
+          }
+
+          // Apply lifecycle filter
+          if (filterLifecycle && filterLifecycle.length > 0) {
+            matched = matched.filter((a) => filterLifecycle.includes(a.lifecycleStage));
+          }
+
+          // Build facets from the unfiltered query-matched set for accurate counts
+          const queryMatched = apis.filter(
+            (a) =>
+              a.title.toLowerCase().includes(query) ||
+              a.description.toLowerCase().includes(query) ||
+              a.name.toLowerCase().includes(query)
+          );
+          const kindCounts = new Map<string, number>();
+          const lifecycleCounts = new Map<string, number>();
+          for (const a of queryMatched) {
+            kindCounts.set(a.kind, (kindCounts.get(a.kind) ?? 0) + 1);
+            lifecycleCounts.set(a.lifecycleStage, (lifecycleCounts.get(a.lifecycleStage) ?? 0) + 1);
+          }
+
+          // Assign simple relevance scores (higher for title match)
+          const scored = matched.map((a) => {
+            const titleMatch = a.title.toLowerCase().includes(query);
+            const score = titleMatch ? 0.9 + Math.random() * 0.1 : 0.5 + Math.random() * 0.3;
+            return {
+              apiId: a.id,
+              apiName: a.name,
+              title: a.title,
+              description: a.description,
+              kind: a.kind,
+              lifecycleStage: a.lifecycleStage,
+              score: Math.round(score * 100) / 100,
+            };
+          });
+
+          // Sort by score descending
+          scored.sort((a, b) => b.score - a.score);
+
+          // Paginate
+          const totalCount = scored.length;
+          const start = (page - 1) * pageSize;
+          const pageResults = scored.slice(start, start + pageSize);
+
+          const searchResponse = {
+            results: pageResults,
+            totalCount,
+            facets: {
+              kind: Array.from(kindCounts.entries()).map(([value, count]) => ({ value, count })),
+              lifecycle: Array.from(lifecycleCounts.entries()).map(([value, count]) => ({
+                value,
+                count,
+              })),
+              tags: [],
+            },
+            queryDuration: Math.floor(Math.random() * 80) + 20,
+          };
+
+          res.writeHead(200);
+          res.end(JSON.stringify(searchResponse));
+        });
+        return;
+      }
+
+      // GET /api/search/suggest — autocomplete prefix suggestions
+      if (pathname === '/api/search/suggest' && req.method === 'GET') {
+        const q = (url.searchParams.get('q') ?? '').toLowerCase();
+
+        const suggestions = apis
+          .filter(
+            (a) =>
+              a.title.toLowerCase().includes(q) ||
+              a.name.toLowerCase().includes(q) ||
+              a.description.toLowerCase().includes(q)
+          )
+          .slice(0, 5)
+          .map((a) => ({
+            apiId: a.id,
+            title: a.title,
+            description: a.description,
+            kind: a.kind,
+          }));
+
+        res.writeHead(200);
+        res.end(JSON.stringify({ suggestions }));
+        return;
+      }
+
       // GET /health
       if (pathname === '/health' && req.method === 'GET') {
         res.writeHead(200);
