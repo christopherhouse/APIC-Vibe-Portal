@@ -103,9 +103,9 @@ class ApiCatalogService:
             try:
                 value = refresh_fn()
                 self._cache.set(cache_key, value, ttl_seconds=ttl)
-                logger.debug("Background refresh complete", extra={"key": cache_key})
+                logger.debug("Background cache refresh complete", extra={"key": cache_key})
             except Exception:  # noqa: BLE001
-                logger.warning("Background refresh failed", extra={"key": cache_key}, exc_info=True)
+                logger.warning("Background cache refresh failed", extra={"key": cache_key}, exc_info=True)
             finally:
                 with self._refresh_lock:
                     self._refreshing.discard(cache_key)

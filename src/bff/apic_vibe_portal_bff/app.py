@@ -39,9 +39,9 @@ def _run_startup_cache_warm() -> None:
 
     try:
         count = _get_service().warm_cache()
-        logger.info("Startup cache warm complete", extra={"api_count": count})
+        logger.info("Startup catalog cache warm complete", extra={"api_count": count})
     except Exception as exc:  # noqa: BLE001
-        logger.warning("Startup cache warm failed: %s", exc)
+        logger.warning("Startup catalog cache warm failed: %s", exc)
 
 
 @asynccontextmanager
