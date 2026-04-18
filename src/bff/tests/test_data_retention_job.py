@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from apic_vibe_portal_bff.data.repositories.base_repository import TTL_SECONDS, BaseRepository
+from apic_vibe_portal_bff.data.repositories.base_repository import BaseRepository
+from apic_vibe_portal_bff.data.retention import TTL_SECONDS
 
 
 class TestTTLConstants:

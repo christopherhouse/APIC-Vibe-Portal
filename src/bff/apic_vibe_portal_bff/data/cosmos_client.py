@@ -27,16 +27,21 @@ def get_cosmos_client() -> CosmosClient:
     """Return a cached :class:`CosmosClient`.
 
     Uses ``DefaultAzureCredential`` for Entra-ID-based auth (no access keys).
-    If ``COSMOS_DB_ENDPOINT`` is empty the client is still created but will
-    fail on first data-plane call — this mirrors the local-dev fallback
-    pattern used elsewhere in the BFF.
+
+    Raises ``ValueError`` when ``COSMOS_DB_ENDPOINT`` is missing or blank so
+    misconfiguration fails with a clear message before the Azure SDK client is
+    constructed.
     """
     global _cosmos_client  # noqa: PLW0603
     if _cosmos_client is None:
         settings = get_settings()
+        endpoint = settings.cosmos_db_endpoint.strip()
+        if not endpoint:
+            msg = "COSMOS_DB_ENDPOINT must be configured before creating the Cosmos DB client."
+            raise ValueError(msg)
         credential = DefaultAzureCredential()
-        logger.info("Creating Cosmos DB client for endpoint %s", settings.cosmos_db_endpoint)
-        _cosmos_client = CosmosClient(url=settings.cosmos_db_endpoint, credential=credential)
+        logger.info("Creating Cosmos DB client for endpoint %s", endpoint)
+        _cosmos_client = CosmosClient(url=endpoint, credential=credential)
     return _cosmos_client
 
 

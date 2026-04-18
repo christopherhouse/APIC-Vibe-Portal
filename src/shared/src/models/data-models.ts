@@ -21,6 +21,8 @@ export interface PersistenceMetadata {
   isDeleted: boolean;
   /** ISO-8601 timestamp when the document was soft-deleted, or null. */
   deletedAt: string | null;
+  /** Cosmos DB per-document TTL in seconds.  Set on soft-delete so Cosmos auto-purges after the retention period. */
+  ttl?: number;
 }
 
 // ---------------------------------------------------------------------------

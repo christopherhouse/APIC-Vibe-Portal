@@ -53,8 +53,22 @@ class TestBaseRepositoryCRUD:
         repo = BaseRepository(container, "userId")
 
         result = repo.create({"id": "1", "userId": "u1"})
-        container.create_item.assert_called_once()
+        container.create_item.assert_called_once_with(body={"id": "1", "userId": "u1"}, partition_key="u1")
         assert result["id"] == "1"
+
+    def test_create_raises_on_missing_partition_key(self):
+        container = _make_container_mock()
+        repo = BaseRepository(container, "userId")
+
+        with pytest.raises(ValueError, match="missing required partition key"):
+            repo.create({"id": "1"})
+
+    def test_create_raises_on_empty_partition_key(self):
+        container = _make_container_mock()
+        repo = BaseRepository(container, "userId")
+
+        with pytest.raises(ValueError, match="missing required partition key"):
+            repo.create({"id": "1", "userId": ""})
 
     def test_find_by_id_returns_document(self):
         container = _make_container_mock()

@@ -247,7 +247,7 @@ docs/architecture/
 - [x] Cosmos DB containers are provisioned in infrastructure with correct partition keys
 - [x] Repository classes implement CRUD operations with unit tests
 - [x] Soft delete is implemented and tested
-- [x] Data retention job is implemented and can purge old data
+- [x] Data retention is handled via Cosmos DB native per-document TTL (set on soft-delete)
 - [x] Schema migration utility is implemented and tested
 - [x] Pagination is implemented and tested
 - [x] All repositories have unit tests with >80% coverage

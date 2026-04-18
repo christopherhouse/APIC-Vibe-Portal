@@ -98,8 +98,9 @@ class BaseRepository:
 
     def create(self, document: dict) -> dict:
         """Insert a new document.  Returns the created document (with Cosmos metadata)."""
+        partition_key = self._get_required_partition_key(document)
         logger.debug("Creating document %s in %s", document.get("id"), self._container.id)
-        return self._container.create_item(body=document)
+        return self._container.create_item(body=document, partition_key=partition_key)
 
     def find_by_id(self, item_id: str, partition_key: str) -> dict | None:
         """Point-read a single document by ID and partition key.
