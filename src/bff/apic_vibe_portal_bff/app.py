@@ -9,6 +9,11 @@ Assembles the application by registering routers and middleware.
 
 from __future__ import annotations
 
+import logging
+import threading
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from apic_vibe_portal_bff.config.settings import get_settings
@@ -19,6 +24,37 @@ from apic_vibe_portal_bff.routers import api_catalog, health, search
 from apic_vibe_portal_bff.routers.api_catalog import CatalogApiError, catalog_api_error_handler
 from apic_vibe_portal_bff.routers.search import SearchApiError, search_api_error_handler
 from apic_vibe_portal_bff.utils.logger import configure_logging
+
+logger = logging.getLogger(__name__)
+
+
+def _run_startup_cache_warm() -> None:
+    """Warm the catalog cache once at startup.
+
+    Runs in a background thread so it doesn't block the server from
+    accepting requests.  Ongoing freshness is maintained by the
+    stale-while-revalidate logic in :class:`ApiCatalogService`.
+    """
+    from apic_vibe_portal_bff.routers.api_catalog import _get_service
+
+    try:
+        count = _get_service().warm_cache()
+        logger.info("Startup catalog cache warm complete", extra={"api_count": count})
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Startup catalog cache warm failed: %s", exc)
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """FastAPI lifespan handler — starts the startup cache-warm thread."""
+    thread = threading.Thread(
+        target=_run_startup_cache_warm,
+        daemon=True,
+        name="cache-warmer",
+    )
+    thread.start()
+    logger.info("Startup cache warm thread started")
+    yield
 
 
 def create_app() -> FastAPI:
@@ -31,6 +67,7 @@ def create_app() -> FastAPI:
         title="APIC Vibe Portal BFF",
         description="Backend-for-Frontend API for the APIC Vibe Portal",
         version="0.0.0",
+        lifespan=_lifespan,
     )
 
     # --- Middleware (outermost → innermost) --------------------------------

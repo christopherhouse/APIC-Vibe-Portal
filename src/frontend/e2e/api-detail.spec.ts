@@ -101,7 +101,16 @@ async function mockDetailApis(page: Page, apis: MockApiDefinition[]) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: generateMockSpec(api.title, version.title) }),
+      body: JSON.stringify({
+        data: {
+          id: `def-${versionId}`,
+          name: `definition-${versionId}`,
+          title: `${api.title} ${version.title} Definition`,
+          specificationType: 'openapi',
+          specificationVersion: '3.0.3',
+          content: generateMockSpec(api.title, version.title),
+        },
+      }),
     });
   });
 

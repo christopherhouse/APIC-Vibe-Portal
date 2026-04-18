@@ -25,6 +25,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import redis as redis_lib
 
+    from apic_vibe_portal_bff.utils.cache import CacheResult
+
 logger = logging.getLogger(__name__)
 
 # Scope required to obtain a token for Azure Cache for Redis
@@ -201,6 +203,36 @@ class RedisCacheBackend:
         except Exception:
             logger.warning("Redis GET failed for key %r", key, exc_info=True)
             return None
+
+    def get_with_staleness(self, key: str, original_ttl_seconds: float) -> CacheResult:
+        """Return the value together with a near-expiry hint.
+
+        Uses the Redis ``TTL`` command to determine how much time remains
+        relative to *original_ttl_seconds*.  When the remaining fraction
+        drops below ``STALE_REFRESH_THRESHOLD`` the result is flagged as
+        ``needs_refresh`` so the caller can trigger a background update.
+        """
+        from apic_vibe_portal_bff.utils.cache import STALE_REFRESH_THRESHOLD, CacheResult
+
+        try:
+            full_key = self._full_key(key)
+            raw = self._redis().get(full_key)
+            if raw is None:
+                return CacheResult(value=None, needs_refresh=False)
+
+            value = _deserialize(raw)
+
+            remaining: int = self._redis().ttl(full_key)
+            # TTL returns -1 (no expiry) or -2 (key gone) in edge cases
+            if remaining < 0 or original_ttl_seconds <= 0:
+                return CacheResult(value=value, needs_refresh=False)
+
+            fraction = remaining / original_ttl_seconds
+            needs_refresh = fraction < STALE_REFRESH_THRESHOLD
+            return CacheResult(value=value, needs_refresh=needs_refresh)
+        except Exception:
+            logger.warning("Redis GET_WITH_STALENESS failed for key %r", key, exc_info=True)
+            return CacheResult(value=None, needs_refresh=False)
 
     def set(self, key: str, value: object, ttl_seconds: float | None = None) -> None:
         """Serialize and store *value* in Redis with a TTL."""

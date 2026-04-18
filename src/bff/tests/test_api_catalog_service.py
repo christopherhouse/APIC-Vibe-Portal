@@ -375,3 +375,210 @@ class TestCacheInvalidation:
 
         assert mock_client.list_apis.call_count == 1
         assert mock_client.list_environments.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# warm_cache
+# ---------------------------------------------------------------------------
+
+
+class TestWarmCache:
+    def test_returns_api_count(self) -> None:
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = MOCK_APIS
+        mock_client.list_environments.return_value = MOCK_ENVIRONMENTS
+
+        count = service.warm_cache()
+
+        assert count == len(MOCK_APIS)
+
+    def test_always_fetches_from_apic_even_when_cache_is_warm(self) -> None:
+        """warm_cache must bypass an existing warm list cache."""
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = MOCK_APIS
+        mock_client.list_environments.return_value = MOCK_ENVIRONMENTS
+
+        # First call warms the cache via normal list_apis path
+        service.list_apis()
+        assert mock_client.list_apis.call_count == 1
+
+        # warm_cache should bust the list cache and fetch again
+        service.warm_cache()
+        assert mock_client.list_apis.call_count == 2
+
+    def test_warms_environments_cache(self) -> None:
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = MOCK_APIS
+        mock_client.list_environments.return_value = MOCK_ENVIRONMENTS
+
+        service.warm_cache()
+
+        # environments should now be cached — second call must not hit client
+        mock_client.reset_mock()
+        mock_client.list_environments.return_value = MOCK_ENVIRONMENTS
+        service.list_environments()
+        mock_client.list_environments.assert_not_called()
+
+    def test_subsequent_list_apis_uses_warmed_cache(self) -> None:
+        """After warm_cache, a normal list_apis call must hit the cache."""
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = MOCK_APIS
+        mock_client.list_environments.return_value = MOCK_ENVIRONMENTS
+
+        service.warm_cache()
+        mock_client.reset_mock()
+        mock_client.list_apis.return_value = MOCK_APIS
+
+        service.list_apis()
+
+        mock_client.list_apis.assert_not_called()
+
+    def test_environments_failure_does_not_raise(self) -> None:
+        """A failure warming environments must not propagate."""
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = MOCK_APIS
+        mock_client.list_environments.side_effect = RuntimeError("APIC unavailable")
+
+        # Should complete without raising
+        count = service.warm_cache()
+
+        assert count == len(MOCK_APIS)
+
+    def test_custom_page_size_forwarded(self) -> None:
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = MOCK_APIS
+        mock_client.list_environments.return_value = MOCK_ENVIRONMENTS
+
+        service.warm_cache(page_size=50)
+
+        mock_client.list_apis.assert_called_once()
+
+    def test_busts_previously_cached_list(self) -> None:
+        """Verifies that a stale (deleted-API) list is replaced on warm."""
+        from tests.api_center_mocks import make_api
+
+        service, mock_client = _make_service()
+        # Seed cache with 3 APIs
+        three_apis = [make_api(name=f"api-{i}") for i in range(3)]
+        mock_client.list_apis.return_value = three_apis
+        mock_client.list_environments.return_value = []
+        service.list_apis()
+
+        # APIC now only has 2 APIs (one was deleted)
+        two_apis = three_apis[:2]
+        mock_client.list_apis.return_value = two_apis
+        service.warm_cache()
+
+        # The fresh result should reflect the deletion
+        mock_client.reset_mock()
+        mock_client.list_apis.return_value = two_apis
+        result = service.list_apis()
+        assert result.pagination.total_count == 2
+        mock_client.list_apis.assert_not_called()  # served from warm cache
+
+
+# ---------------------------------------------------------------------------
+# Stale-while-revalidate
+# ---------------------------------------------------------------------------
+
+
+class TestStaleWhileRevalidate:
+    def test_returns_stale_value_and_schedules_refresh(self) -> None:
+        """When a cache entry is near expiry, the stale value is returned
+        and a background refresh is scheduled."""
+        import time
+
+        from apic_vibe_portal_bff.utils.cache import InMemoryCache
+
+        cache: InMemoryCache[object] = InMemoryCache(default_ttl_seconds=60.0)
+        service, mock_client = _make_service()
+        service._cache = cache
+        mock_client.list_apis.return_value = MOCK_APIS
+
+        # Seed with a very short TTL so it becomes "near expiry" quickly
+        service.list_apis()
+        assert mock_client.list_apis.call_count == 1
+
+        # Manually expire the entry to near-expiry (set entry's expires_at
+        # to be within the 20% threshold)
+        for entry in cache._store.values():
+            entry.expires_at = time.monotonic() + (entry.ttl_seconds * 0.1)
+
+        # Next call should return stale value AND trigger background refresh
+        result = service.list_apis()
+        assert result.pagination.total_count == len(MOCK_APIS)
+
+        # Give the background thread a moment to run
+        time.sleep(0.1)
+
+        # Background refresh should have called list_apis again
+        assert mock_client.list_apis.call_count == 2
+
+    def test_no_duplicate_refresh_threads(self) -> None:
+        """Only one refresh thread should be spawned per key."""
+        import time
+
+        from apic_vibe_portal_bff.utils.cache import InMemoryCache
+
+        cache: InMemoryCache[object] = InMemoryCache(default_ttl_seconds=60.0)
+        service, mock_client = _make_service()
+        service._cache = cache
+        mock_client.list_apis.return_value = MOCK_APIS
+
+        service.list_apis()
+
+        # Make near-expiry
+        for entry in cache._store.values():
+            entry.expires_at = time.monotonic() + (entry.ttl_seconds * 0.1)
+
+        # Call twice rapidly — should only spawn one refresh thread
+        service.list_apis()
+        service.list_apis()
+
+        time.sleep(0.1)
+
+        # Only 1 extra call (the background refresh), not 2
+        assert mock_client.list_apis.call_count == 2
+
+    def test_fresh_entry_does_not_trigger_refresh(self) -> None:
+        """A fresh cache entry (well within TTL) should not spawn a refresh."""
+        import time
+
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = MOCK_APIS
+
+        service.list_apis()
+        assert mock_client.list_apis.call_count == 1
+
+        # Second call — entry is still fresh
+        service.list_apis()
+        time.sleep(0.05)
+
+        # No additional APIC call should have happened
+        assert mock_client.list_apis.call_count == 1
+
+    def test_background_refresh_failure_does_not_propagate(self) -> None:
+        """If the background refresh fails, the stale value is still served."""
+        import time
+
+        from apic_vibe_portal_bff.utils.cache import InMemoryCache
+
+        cache: InMemoryCache[object] = InMemoryCache(default_ttl_seconds=60.0)
+        service, mock_client = _make_service()
+        service._cache = cache
+        mock_client.list_apis.return_value = MOCK_APIS
+
+        service.list_apis()
+
+        # Make near-expiry and make the next APIC call fail
+        for entry in cache._store.values():
+            entry.expires_at = time.monotonic() + (entry.ttl_seconds * 0.1)
+
+        mock_client.list_apis.side_effect = RuntimeError("APIC down")
+
+        # Should still return stale value without raising
+        result = service.list_apis()
+        assert result.pagination.total_count == len(MOCK_APIS)
+
+        time.sleep(0.1)
+        # Background thread ran but failed — no crash
