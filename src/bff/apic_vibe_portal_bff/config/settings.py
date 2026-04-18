@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     ai_search_endpoint: str = Field(default="", description="Azure AI Search endpoint")
     ai_search_index_name: str = Field(default="apic-apis", description="Azure AI Search index name")
     openai_endpoint: str = Field(default="", description="Azure OpenAI endpoint")
+    openai_chat_deployment: str = Field(default="gpt-4o", description="Azure OpenAI chat model deployment name")
     key_vault_url: str = Field(default="", description="Azure Key Vault URL")
     appinsights_connection_string: str = Field(default="", description="Application Insights connection string")
 
