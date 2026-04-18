@@ -7,7 +7,7 @@ lazy migration (see :mod:`apic_vibe_portal_bff.data.migrations.lazy_migration`).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field
 
@@ -63,7 +63,7 @@ class ChatSessionDocument(BaseModel):
         model: str | None = None,
     ) -> ChatSessionDocument:
         """Factory helper that creates a new session with timestamps set to *now*."""
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         return cls(
             id=session_id,
             userId=user_id,

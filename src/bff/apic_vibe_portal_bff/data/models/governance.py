@@ -6,7 +6,7 @@ by ``/apiId``.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field
 
@@ -64,7 +64,7 @@ class GovernanceSnapshotDocument(BaseModel):
         agent_id: str = "",
     ) -> GovernanceSnapshotDocument:
         """Factory helper that creates a new snapshot with timestamp set to *now*."""
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         return cls(
             id=snapshot_id,
             apiId=api_id,

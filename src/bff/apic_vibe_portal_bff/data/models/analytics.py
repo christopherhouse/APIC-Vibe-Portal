@@ -6,7 +6,7 @@ by ``/eventType``.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -48,7 +48,7 @@ class AnalyticsEventDocument(BaseModel):
         metadata: dict[str, Any] | None = None,
     ) -> AnalyticsEventDocument:
         """Factory helper that creates a new event with timestamp set to *now*."""
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         return cls(
             id=event_id,
             eventType=event_type,

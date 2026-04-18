@@ -8,7 +8,7 @@ documents read from Cosmos DB.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from azure.cosmos.container import ContainerProxy
@@ -133,7 +133,7 @@ class BaseRepository:
         if doc is None:
             return None
 
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         doc["isDeleted"] = True
         doc["deletedAt"] = now
         return self.update(doc)

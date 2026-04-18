@@ -14,7 +14,7 @@ Retention periods (from ``docs/architecture/data-retention-policy.md``):
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from apic_vibe_portal_bff.data.repositories.base_repository import BaseRepository
 
@@ -50,7 +50,7 @@ def run_cleanup(
     dict[str, int]
         Mapping of container name → number of documents purged.
     """
-    effective_now = now or datetime.utcnow()
+    effective_now = now or datetime.now(UTC)
     retentions = dict(RETENTION_DAYS)
     if retention_overrides:
         retentions.update(retention_overrides)
