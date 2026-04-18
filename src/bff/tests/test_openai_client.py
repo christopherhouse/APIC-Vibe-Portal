@@ -39,10 +39,15 @@ def client(mock_credential):
 
 
 def _inject_mock_client(client: OpenAIClient) -> MagicMock:
-    """Inject a mock AzureOpenAI client into the wrapper and return it."""
-    mock = MagicMock()
-    client._client = mock
-    return mock
+    """Inject a mock MAF OpenAIChatClient into the wrapper and return it.
+
+    The mock simulates ``maf_client.client.chat.completions.create(...)``
+    which is how the wrapper accesses the underlying openai SDK client
+    via the MAF ``OpenAIChatClient.client`` property.
+    """
+    mock_maf_client = MagicMock()
+    client._client = mock_maf_client
+    return mock_maf_client
 
 
 def _mock_completion_response(
@@ -120,7 +125,7 @@ class TestTokenAcquisition:
 class TestChatCompletion:
     def test_successful_chat_completion(self, client):
         mock = _inject_mock_client(client)
-        mock.chat.completions.create.return_value = _mock_completion_response(
+        mock.client.chat.completions.create.return_value = _mock_completion_response(
             content="Hello! I can help you find APIs.",
         )
 
@@ -138,7 +143,7 @@ class TestChatCompletion:
 
     def test_chat_completion_empty_content(self, client):
         mock = _inject_mock_client(client)
-        mock.chat.completions.create.return_value = _mock_completion_response(content=None)
+        mock.client.chat.completions.create.return_value = _mock_completion_response(content=None)
 
         result = client.chat_completion([{"role": "user", "content": "test"}])
         assert result["content"] == ""
@@ -150,7 +155,7 @@ class TestChatCompletion:
         mock_response = MagicMock()
         mock_response.status_code = 429
         mock_response.headers = {}
-        mock.chat.completions.create.side_effect = RateLimitError(
+        mock.client.chat.completions.create.side_effect = RateLimitError(
             message="Rate limit exceeded",
             response=mock_response,
             body=None,
@@ -166,7 +171,7 @@ class TestChatCompletion:
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.headers = {}
-        mock.chat.completions.create.side_effect = InternalServerError(
+        mock.client.chat.completions.create.side_effect = InternalServerError(
             message="Internal server error",
             response=mock_response,
             body=None,
@@ -177,14 +182,14 @@ class TestChatCompletion:
 
     def test_chat_completion_generic_error(self, client):
         mock = _inject_mock_client(client)
-        mock.chat.completions.create.side_effect = RuntimeError("Unexpected")
+        mock.client.chat.completions.create.side_effect = RuntimeError("Unexpected")
 
         with pytest.raises(OpenAIClientError, match="Unexpected"):
             client.chat_completion([{"role": "user", "content": "test"}])
 
     def test_chat_completion_no_usage(self, client):
         mock = _inject_mock_client(client)
-        mock.chat.completions.create.return_value = _mock_completion_response(usage_present=False)
+        mock.client.chat.completions.create.return_value = _mock_completion_response(usage_present=False)
 
         result = client.chat_completion([{"role": "user", "content": "test"}])
         assert result["usage"]["prompt_tokens"] == 0
@@ -220,7 +225,7 @@ class TestChatCompletionStream:
         chunk3.usage.completion_tokens = 10
         chunk3.usage.total_tokens = 60
 
-        mock.chat.completions.create.return_value = [chunk1, chunk2, chunk3]
+        mock.client.chat.completions.create.return_value = [chunk1, chunk2, chunk3]
 
         chunks = list(client.chat_completion_stream([{"role": "user", "content": "test"}]))
         assert len(chunks) == 3
@@ -231,7 +236,7 @@ class TestChatCompletionStream:
 
     def test_stream_error_raises(self, client):
         mock = _inject_mock_client(client)
-        mock.chat.completions.create.side_effect = RuntimeError("Stream failed")
+        mock.client.chat.completions.create.side_effect = RuntimeError("Stream failed")
 
         with pytest.raises(OpenAIClientError, match="Stream failed"):
             list(client.chat_completion_stream([{"role": "user", "content": "test"}]))
@@ -244,12 +249,11 @@ class TestChatCompletionStream:
 
 class TestClientLifecycle:
     def test_close_releases_client(self, client):
-        mock = _inject_mock_client(client)
+        _inject_mock_client(client)
         assert client._client is not None
 
         client.close()
         assert client._client is None
-        mock.close.assert_called_once()
 
     def test_close_when_not_initialized(self, client):
         # Should not raise

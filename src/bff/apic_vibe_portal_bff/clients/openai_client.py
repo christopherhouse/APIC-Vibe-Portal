@@ -152,7 +152,7 @@ class OpenAIClient:
                     "total_tokens": usage.total_tokens if usage else 0,
                 },
             }
-        except (OpenAIClientError, OpenAIRateLimitError, OpenAIUnavailableError):
+        except OpenAIClientError, OpenAIRateLimitError, OpenAIUnavailableError:
             raise
         except Exception as exc:
             self._handle_error(exc, "chat_completion")
@@ -199,7 +199,7 @@ class OpenAIClient:
                     "content": delta.content or "",
                     "finish_reason": chunk.choices[0].finish_reason,
                 }
-        except (OpenAIClientError, OpenAIRateLimitError, OpenAIUnavailableError):
+        except OpenAIClientError, OpenAIRateLimitError, OpenAIUnavailableError:
             raise
         except Exception as exc:
             self._handle_error(exc, "chat_completion_stream")

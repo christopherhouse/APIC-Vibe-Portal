@@ -9,8 +9,9 @@ The pipeline:
 3. LLM generates a response grounded in retrieved API documentation
 4. Return response with citations to source APIs
 
-Includes conversation session management (MAF ``InMemoryHistoryProvider``
-for MVP), tiktoken-based token estimation, and OTel metric emission.
+Includes conversation session management backed by Cosmos DB (with in-memory
+hot cache for rate limiting), tiktoken-based token estimation, and OTel
+metric emission.
 """
 
 from __future__ import annotations
@@ -197,11 +198,22 @@ class _ChatSession:
 
 
 class SessionManager:
-    """Thread-safe manager for in-memory chat sessions."""
+    """Thread-safe session manager with Cosmos DB persistence.
 
-    def __init__(self) -> None:
+    Maintains an in-memory hot cache of ``_ChatSession`` objects for rate
+    limiting (monotonic timestamps don't survive serialisation), and
+    persists conversation messages to Cosmos DB via
+    :class:`ChatSessionRepository`.
+
+    When ``chat_repo`` is ``None`` (e.g. local dev with no Cosmos endpoint),
+    falls back to pure in-memory mode.
+    """
+
+    def __init__(self, chat_repo: Any | None = None, user_id: str = "anonymous") -> None:
         self._sessions: dict[str, _ChatSession] = {}
         self._lock = Lock()
+        self._repo = chat_repo
+        self._user_id = user_id
 
     def get_or_create(self, session_id: str | None) -> _ChatSession:
         """Get an existing session or create a new one.
@@ -216,26 +228,49 @@ class SessionManager:
                 # Expired — remove and create fresh
                 del self._sessions[session_id]
 
+            # Try loading from Cosmos DB if we have a session_id
+            if session_id and self._repo is not None:
+                cosmos_session = self._load_from_cosmos(session_id)
+                if cosmos_session is not None:
+                    self._sessions[session_id] = cosmos_session
+                    return cosmos_session
+
             new_id = session_id or str(uuid.uuid4())
             session = _ChatSession(new_id)
             self._sessions[new_id] = session
+            self._persist_to_cosmos(session)
             return session
 
     def get(self, session_id: str) -> _ChatSession | None:
         """Get a session by ID, or None if not found or expired."""
         with self._lock:
             session = self._sessions.get(session_id)
-            if session is None:
-                return None
-            if session.is_expired():
-                del self._sessions[session_id]
-                return None
-            return session
+            if session is not None:
+                if session.is_expired():
+                    del self._sessions[session_id]
+                    return None
+                return session
+
+            # Try loading from Cosmos DB
+            if self._repo is not None:
+                cosmos_session = self._load_from_cosmos(session_id)
+                if cosmos_session is not None:
+                    self._sessions[session_id] = cosmos_session
+                    return cosmos_session
+
+            return None
 
     def delete(self, session_id: str) -> bool:
         """Delete a session. Returns True if it existed."""
         with self._lock:
-            return self._sessions.pop(session_id, None) is not None
+            existed = self._sessions.pop(session_id, None) is not None
+            if self._repo is not None:
+                try:
+                    result = self._repo.soft_delete(session_id, self._user_id)
+                    return existed or result is not None
+                except Exception:
+                    logger.warning("Failed to soft-delete session %s from Cosmos DB", session_id)
+            return existed
 
     def cleanup_expired(self) -> int:
         """Remove all expired sessions. Returns the count of removed sessions."""
@@ -244,6 +279,70 @@ class SessionManager:
             for sid in expired:
                 del self._sessions[sid]
             return len(expired)
+
+    def persist_session(self, session: _ChatSession) -> None:
+        """Persist session state to Cosmos DB (call after message updates)."""
+        self._persist_to_cosmos(session)
+
+    # ------------------------------------------------------------------
+    # Cosmos DB helpers
+    # ------------------------------------------------------------------
+
+    def _load_from_cosmos(self, session_id: str) -> _ChatSession | None:
+        """Load a session from Cosmos DB and hydrate into a ``_ChatSession``."""
+        try:
+            doc = self._repo.find_by_id(session_id, self._user_id)
+            if doc is None or doc.get("isDeleted"):
+                return None
+
+            session = _ChatSession(session_id)
+            # Hydrate messages from Cosmos document
+            for msg_doc in doc.get("messages", []):
+                session.messages.append({"role": msg_doc["role"], "content": msg_doc["content"]})
+            session.touch()
+            return session
+        except Exception:
+            logger.warning("Failed to load session %s from Cosmos DB", session_id)
+            return None
+
+    def _persist_to_cosmos(self, session: _ChatSession) -> None:
+        """Persist a ``_ChatSession`` to Cosmos DB."""
+        if self._repo is None:
+            return
+
+        try:
+            from apic_vibe_portal_bff.data.models.chat_session import ChatMessageDoc, ChatSessionDocument
+
+            now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+            # Build message docs
+            message_docs = [
+                ChatMessageDoc(
+                    id=str(uuid.uuid4()),
+                    role=m["role"],
+                    content=m["content"],
+                    timestamp=now,
+                )
+                for m in session.messages
+            ]
+
+            # Check if doc exists
+            existing = self._repo.find_by_id(session.session_id, self._user_id)
+            if existing is not None:
+                existing["messages"] = [md.model_dump() for md in message_docs]
+                existing["updatedAt"] = now
+                total_tokens = sum(estimate_tokens(m["content"]) for m in session.messages)
+                existing["tokensUsed"] = total_tokens
+                self._repo.update(existing)
+            else:
+                doc = ChatSessionDocument.new(
+                    session_id=session.session_id,
+                    user_id=self._user_id,
+                )
+                doc_dict = doc.to_cosmos_dict()
+                doc_dict["messages"] = [md.model_dump() for md in message_docs]
+                self._repo.create(doc_dict)
+        except Exception:
+            logger.warning("Failed to persist session %s to Cosmos DB", session.session_id)
 
 
 # ---------------------------------------------------------------------------
@@ -294,12 +393,7 @@ def _create_search_tool(search_client: AISearchClient, model: str) -> Any:
             kind = result.get("kind", "")
             lifecycle = result.get("lifecycleStage", "")
 
-            entry = (
-                f"## {api_name}: {title}\n"
-                f"- Kind: {kind}\n"
-                f"- Lifecycle: {lifecycle}\n"
-                f"- Description: {description}\n"
-            )
+            entry = f"## {api_name}: {title}\n- Kind: {kind}\n- Lifecycle: {lifecycle}\n- Description: {description}\n"
 
             entry_tokens = estimate_tokens(entry, model)
             if total_tokens + entry_tokens > _MAX_CONTEXT_TOKENS:
@@ -342,13 +436,15 @@ class AIChatService:
         model: str = "gpt-4o",
         prompt_price_per_1k: float = _DEFAULT_PROMPT_PRICE_PER_1K,
         completion_price_per_1k: float = _DEFAULT_COMPLETION_PRICE_PER_1K,
+        chat_repo: Any | None = None,
+        user_id: str = "anonymous",
     ) -> None:
         self._openai = openai_client
         self._search = search_client
         self._model = model
         self._prompt_price = prompt_price_per_1k
         self._completion_price = completion_price_per_1k
-        self._sessions = SessionManager()
+        self._sessions = SessionManager(chat_repo=chat_repo, user_id=user_id)
 
         # Create the MAF search tool
         self._search_tool = _create_search_tool(search_client, model)
@@ -393,12 +489,7 @@ class AIChatService:
             kind = result.get("kind", "")
             lifecycle = result.get("lifecycleStage", "")
 
-            entry = (
-                f"## {api_name}: {title}\n"
-                f"- Kind: {kind}\n"
-                f"- Lifecycle: {lifecycle}\n"
-                f"- Description: {description}\n"
-            )
+            entry = f"## {api_name}: {title}\n- Kind: {kind}\n- Lifecycle: {lifecycle}\n- Description: {description}\n"
 
             entry_tokens = estimate_tokens(entry, self._model)
             if total_tokens + entry_tokens > _MAX_CONTEXT_TOKENS:
@@ -529,9 +620,10 @@ class AIChatService:
         # 5. Emit metrics
         self._emit_token_metrics(estimated, result.get("usage", {}))
 
-        # 6. Update session
+        # 6. Update session and persist to Cosmos DB
         session.add_message("user", user_message)
         session.add_message("assistant", result["content"])
+        self._sessions.persist_session(session)
 
         now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         response_message = ChatMessage(
@@ -595,9 +687,10 @@ class AIChatService:
         if usage:
             self._emit_token_metrics(estimated, usage)
 
-        # 6. Update session
+        # 6. Update session and persist to Cosmos DB
         session.add_message("user", user_message)
         session.add_message("assistant", full_content)
+        self._sessions.persist_session(session)
 
         # 7. Send final event with citations
         now = datetime.now(UTC).isoformat().replace("+00:00", "Z")

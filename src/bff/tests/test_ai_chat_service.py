@@ -415,3 +415,117 @@ class TestPromptConstruction:
         # Should include history between system and new user message
         user_msgs = [m for m in messages if m["role"] == "user"]
         assert len(user_msgs) == 2  # previous + current
+
+
+# ---------------------------------------------------------------------------
+# Cosmos DB persistence tests
+# ---------------------------------------------------------------------------
+
+
+class TestSessionManagerWithCosmosDB:
+    def test_persist_to_cosmos_on_create(self):
+        mock_repo = MagicMock()
+        mock_repo.find_by_id.return_value = None
+        mgr = SessionManager(chat_repo=mock_repo, user_id="user-1")
+
+        session = mgr.get_or_create(None)
+
+        # Should have created a document in Cosmos
+        mock_repo.create.assert_called_once()
+        call_args = mock_repo.create.call_args[0][0]
+        assert call_args["userId"] == "user-1"
+        assert call_args["id"] == session.session_id
+
+    def test_persist_to_cosmos_on_update(self):
+        mock_repo = MagicMock()
+        # First call: create (find returns None)
+        mock_repo.find_by_id.return_value = None
+        mgr = SessionManager(chat_repo=mock_repo, user_id="user-1")
+
+        session = mgr.get_or_create("sess-1")
+        session.add_message("user", "Hello")
+        session.add_message("assistant", "Hi!")
+
+        # Now simulate existing doc for update
+        mock_repo.find_by_id.return_value = {
+            "id": "sess-1",
+            "userId": "user-1",
+            "messages": [],
+            "updatedAt": "2026-01-01T00:00:00Z",
+            "tokensUsed": 0,
+        }
+        mgr.persist_session(session)
+
+        mock_repo.update.assert_called_once()
+        updated = mock_repo.update.call_args[0][0]
+        assert len(updated["messages"]) == 2
+
+    def test_load_from_cosmos_on_miss(self):
+        mock_repo = MagicMock()
+        mock_repo.find_by_id.return_value = {
+            "id": "cosmos-sess",
+            "userId": "user-1",
+            "messages": [
+                {"id": "m1", "role": "user", "content": "Saved question", "timestamp": "2026-01-01T00:00:00Z"},
+                {"id": "m2", "role": "assistant", "content": "Saved answer", "timestamp": "2026-01-01T00:00:01Z"},
+            ],
+            "isDeleted": False,
+        }
+        mgr = SessionManager(chat_repo=mock_repo, user_id="user-1")
+
+        session = mgr.get_or_create("cosmos-sess")
+
+        assert session.session_id == "cosmos-sess"
+        assert len(session.messages) == 2
+        assert session.messages[0]["content"] == "Saved question"
+
+    def test_delete_soft_deletes_in_cosmos(self):
+        mock_repo = MagicMock()
+        mock_repo.find_by_id.return_value = None
+        mock_repo.soft_delete.return_value = {"id": "sess-del"}
+        mgr = SessionManager(chat_repo=mock_repo, user_id="user-1")
+
+        mgr.get_or_create("sess-del")
+        result = mgr.delete("sess-del")
+
+        assert result is True
+        mock_repo.soft_delete.assert_called_once_with("sess-del", "user-1")
+
+    def test_no_cosmos_fallback_works(self):
+        """With chat_repo=None, sessions work in-memory only."""
+        mgr = SessionManager(chat_repo=None, user_id="user-1")
+
+        session = mgr.get_or_create("mem-1")
+        session.add_message("user", "Hello")
+        mgr.persist_session(session)
+
+        retrieved = mgr.get("mem-1")
+        assert retrieved is session
+
+    def test_cosmos_error_does_not_crash(self):
+        """Cosmos failures should be logged but not raise."""
+        mock_repo = MagicMock()
+        mock_repo.find_by_id.side_effect = RuntimeError("Cosmos down")
+        mock_repo.create.side_effect = RuntimeError("Cosmos down")
+        mgr = SessionManager(chat_repo=mock_repo, user_id="user-1")
+
+        # Should not raise — falls back gracefully
+        session = mgr.get_or_create("err-sess")
+        assert session is not None
+
+    def test_get_falls_back_to_cosmos(self):
+        """get() loads from Cosmos when not in memory cache."""
+        mock_repo = MagicMock()
+        mock_repo.find_by_id.return_value = {
+            "id": "remote-sess",
+            "userId": "user-1",
+            "messages": [
+                {"id": "m1", "role": "user", "content": "From DB", "timestamp": "2026-01-01T00:00:00Z"},
+            ],
+            "isDeleted": False,
+        }
+        mgr = SessionManager(chat_repo=mock_repo, user_id="user-1")
+
+        session = mgr.get("remote-sess")
+        assert session is not None
+        assert session.messages[0]["content"] == "From DB"

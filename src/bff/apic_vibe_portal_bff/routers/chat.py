@@ -40,8 +40,9 @@ _service_instance: AIChatService | None = None
 def _get_chat_service() -> AIChatService:
     """Return a shared :class:`AIChatService` instance.
 
-    In production the service is created once with real Azure credentials.
-    Tests override this dependency via ``app.dependency_overrides``.
+    In production the service is created once with real Azure credentials
+    and Cosmos DB persistence.  Tests override this dependency via
+    ``app.dependency_overrides``.
     """
     global _service_instance  # noqa: PLW0603
     if _service_instance is None:
@@ -56,10 +57,24 @@ def _get_chat_service() -> AIChatService:
             endpoint=settings.ai_search_endpoint,
             index_name=settings.ai_search_index_name,
         )
+
+        # Wire up Cosmos DB persistence if configured
+        chat_repo = None
+        if settings.cosmos_db_endpoint.strip():
+            try:
+                from apic_vibe_portal_bff.data.cosmos_client import get_container
+                from apic_vibe_portal_bff.data.repositories.chat_session_repository import ChatSessionRepository
+
+                container = get_container(settings.cosmos_db_chat_container)
+                chat_repo = ChatSessionRepository(container)
+            except Exception:
+                logger.warning("Failed to initialise Cosmos DB chat repo — falling back to in-memory sessions")
+
         _service_instance = AIChatService(
             openai_client=openai_client,
             search_client=search_client,
             model=settings.openai_chat_deployment,
+            chat_repo=chat_repo,
         )
     return _service_instance
 
