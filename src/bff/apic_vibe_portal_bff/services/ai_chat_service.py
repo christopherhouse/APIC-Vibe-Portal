@@ -86,6 +86,16 @@ _DEFAULT_COMPLETION_PRICE_PER_1K = 0.015
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _utc_iso_now() -> str:
+    """Return the current UTC time as an ISO 8601 string with ``Z`` suffix."""
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+# ---------------------------------------------------------------------------
 # Token estimation with tiktoken
 # ---------------------------------------------------------------------------
 
@@ -189,7 +199,7 @@ class _ChatSession:
         Each message receives a stable ``id`` and ``timestamp`` so that
         ``get_history`` returns deterministic values across calls.
         """
-        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        now = _utc_iso_now()
         self.messages.append(
             {
                 "role": role,
@@ -601,7 +611,7 @@ class AIChatService:
         session.add_message("user", user_message)
         session.add_message("assistant", result["content"])
 
-        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        now = _utc_iso_now()
         response_message = ChatMessage(
             id=str(uuid.uuid4()),
             role="assistant",
@@ -659,9 +669,14 @@ class AIChatService:
                     yield f"data: {json.dumps({'type': 'content', 'content': content})}\n\n"
                 if "usage" in chunk:
                     usage = chunk["usage"]
-        except Exception as exc:
-            logger.error("Streaming error mid-response: %s", str(exc))
-            yield f"data: {json.dumps({'type': 'error', 'error': str(exc), 'sessionId': session.session_id})}\n\n"
+        except Exception:
+            logger.exception("Streaming error mid-response")
+            error_payload = {
+                "type": "error",
+                "error": "An internal error occurred during streaming",
+                "sessionId": session.session_id,
+            }
+            yield f"data: {json.dumps(error_payload)}\n\n"
             return
 
         # 5. Emit metrics
@@ -673,7 +688,7 @@ class AIChatService:
         session.add_message("assistant", full_content)
 
         # 7. Send final event with citations
-        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        now = _utc_iso_now()
         message_id = str(uuid.uuid4())
         final_event = {
             "type": "end",
@@ -712,10 +727,7 @@ class AIChatService:
                     id=msg.get("id", str(uuid.uuid4())),
                     role=msg["role"],
                     content=msg["content"],
-                    timestamp=msg.get(
-                        "timestamp",
-                        datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-                    ),
+                    timestamp=msg.get("timestamp", _utc_iso_now()),
                 )
             )
         return messages
@@ -733,7 +745,7 @@ class AIChatService:
             try:
                 self._history_provider.clear(session_id)
             except Exception:
-                logger.warning("Failed to clear history from provider for session %s", session_id)
+                logger.exception("Failed to clear history from provider for session %s", session_id)
         return deleted
 
 

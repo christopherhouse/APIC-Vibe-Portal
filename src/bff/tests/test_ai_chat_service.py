@@ -326,7 +326,7 @@ class TestAIChatServiceStream:
         assert '"error"' in events[0]
 
     def test_stream_mid_stream_error_yields_error_event(self, service, mock_openai):
-        """If streaming raises mid-response, an SSE error event is emitted."""
+        """If streaming raises mid-response, a safe SSE error event is emitted."""
 
         def failing_stream(*args, **kwargs):
             yield {"content": "Partial", "finish_reason": None}
@@ -336,7 +336,11 @@ class TestAIChatServiceStream:
         events = list(service.chat_stream("Hello"))
         # Should have: start, content (partial), error
         assert any('"type": "start"' in e for e in events)
-        assert any('"type": "error"' in e for e in events)
+        error_events = [e for e in events if '"type": "error"' in e]
+        assert len(error_events) == 1
+        # Error message should be generic, not exposing internal details
+        assert "internal error" in error_events[0].lower()
+        assert "Connection dropped" not in error_events[0]
         # Should NOT have an "end" event
         assert not any('"type": "end"' in e for e in events)
 
