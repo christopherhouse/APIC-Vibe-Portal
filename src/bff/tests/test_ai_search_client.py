@@ -268,6 +268,8 @@ class TestAISearchClientSuggest:
         call_kwargs = mock_sdk_client.suggest.call_args
         assert call_kwargs.kwargs["top"] == 3
         assert call_kwargs.kwargs["suggester_name"] == "sg"
+        # select must only contain suggester source fields (no "kind")
+        assert call_kwargs.kwargs["select"] == ["apiName", "title", "description"]
 
     def test_suggest_handles_error(self, client):
         from azure.core.exceptions import HttpResponseError
@@ -280,6 +282,84 @@ class TestAISearchClientSuggest:
 
         with pytest.raises(AISearchClientError):
             client.suggest("test")
+
+
+# ---------------------------------------------------------------------------
+# Error handling diagnostics
+# ---------------------------------------------------------------------------
+
+
+class TestAISearchClientErrorHandling:
+    def test_handle_error_extracts_error_details_from_http_response(self, client):
+        """_handle_error should extract error_code and error_message from HttpResponseError."""
+        from azure.core.exceptions import HttpResponseError
+
+        error = HttpResponseError("Bad request")
+        error.status_code = 400
+        # Simulate the OData error structure returned by Azure Search
+        error.error = MagicMock()
+        error.error.code = "InvalidRequestParameter"
+        error.error.message = "The field 'kind' is not valid in this context."
+        error.response = MagicMock()
+        error.response.text.return_value = '{"error":{"code":"InvalidRequestParameter","message":"detail"}}'
+
+        with pytest.raises(AISearchClientError) as exc_info:
+            client._handle_error(error, "suggest query: test")
+
+        assert exc_info.value.status_code == 400
+        # The raised exception should carry the detailed error message
+        assert "The field 'kind' is not valid in this context." in str(exc_info.value)
+
+    def test_handle_error_falls_back_to_str_when_no_error_detail(self, client):
+        """_handle_error should fall back to str(exc) when .error is not set."""
+        from azure.core.exceptions import HttpResponseError
+
+        error = HttpResponseError("Operation returned bad status")
+        error.status_code = 400
+        error.error = None
+        error.response = None
+
+        with pytest.raises(AISearchClientError) as exc_info:
+            client._handle_error(error, "suggest query: test")
+
+        assert exc_info.value.status_code == 400
+        assert "Operation returned bad status" in str(exc_info.value)
+
+    def test_handle_error_logs_response_body(self, client, caplog):
+        """_handle_error should log the response body for diagnostics."""
+        import logging
+
+        from azure.core.exceptions import HttpResponseError
+
+        error = HttpResponseError("Bad request")
+        error.status_code = 400
+        error.error = MagicMock()
+        error.error.code = "InvalidField"
+        error.error.message = "Field error"
+        mock_response = MagicMock()
+        mock_response.text.return_value = '{"error":{"code":"InvalidField","message":"Field error"}}'
+        error.response = mock_response
+
+        with caplog.at_level(logging.ERROR), pytest.raises(AISearchClientError):
+            client._handle_error(error, "suggest query: test")
+
+        assert any("InvalidField" in r.message for r in caplog.records)
+
+    def test_handle_error_server_error_uses_error_message(self, client):
+        """_handle_error should use error_message for 500+ errors when available."""
+        from azure.core.exceptions import HttpResponseError
+
+        error = HttpResponseError("Server error")
+        error.status_code = 503
+        error.error = MagicMock()
+        error.error.code = "ServiceUnavailable"
+        error.error.message = "Search service is temporarily unavailable"
+        error.response = None
+
+        with pytest.raises(AISearchUnavailableError) as exc_info:
+            client._handle_error(error, "search query: test")
+
+        assert "Search service is temporarily unavailable" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------

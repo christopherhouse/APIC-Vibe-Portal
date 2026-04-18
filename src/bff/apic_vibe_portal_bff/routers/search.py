@@ -129,7 +129,12 @@ def search(
     try:
         return service.search(request)
     except AISearchClientError as exc:
-        logger.error("search failed", extra={"error": str(exc)})
+        logger.error(
+            "search failed — status=%s error=%s",
+            exc.status_code,
+            str(exc),
+            extra={"error": str(exc), "status_code": exc.status_code},
+        )
         _raise_error(exc.status_code or 500, "SEARCH_ERROR", str(exc))
 
 
@@ -152,5 +157,11 @@ def suggest(
     try:
         return service.suggest(prefix=q)
     except AISearchClientError as exc:
-        logger.error("suggest failed", extra={"error": str(exc)})
+        logger.error(
+            "suggest failed — status=%s prefix=%s error=%s",
+            exc.status_code,
+            q,
+            str(exc),
+            extra={"error": str(exc), "status_code": exc.status_code, "prefix": q},
+        )
         _raise_error(exc.status_code or 500, "SEARCH_ERROR", str(exc))
