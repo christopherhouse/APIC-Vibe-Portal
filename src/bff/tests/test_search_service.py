@@ -447,15 +447,17 @@ class TestSearchServiceSearch:
 class TestSearchServiceSuggest:
     def test_suggest_returns_suggestions(self, service, mock_client):
         mock_client.suggest.return_value = [
-            {"apiName": "petstore", "title": "Petstore API", "@search.text": "Petstore API"},
-            {"apiName": "pets-v2", "title": "Pets v2 API", "@search.text": "Pets v2 API"},
+            {"apiName": "petstore", "title": "Petstore API", "description": "Manages pets", "kind": "rest", "@search.text": "Petstore API"},
+            {"apiName": "pets-v2", "title": "Pets v2 API", "description": "Pets v2", "kind": "graphql", "@search.text": "Pets v2 API"},
         ]
 
         response = service.suggest("pet")
 
         assert len(response.suggestions) == 2
-        assert response.suggestions[0].text == "Petstore API"
-        assert response.suggestions[0].api_name == "petstore"
+        assert response.suggestions[0].api_id == "petstore"
+        assert response.suggestions[0].title == "Petstore API"
+        assert response.suggestions[0].description == "Manages pets"
+        assert response.suggestions[0].kind == "rest"
         assert response.query_prefix == "pet"
 
     def test_suggest_empty_prefix(self, service, mock_client):
@@ -473,4 +475,4 @@ class TestSearchServiceSuggest:
 
         response = service.suggest("pet")
 
-        assert response.suggestions[0].text == "Petstore API"
+        assert response.suggestions[0].title == "Petstore API"

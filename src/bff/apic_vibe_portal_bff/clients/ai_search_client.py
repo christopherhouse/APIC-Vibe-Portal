@@ -35,7 +35,7 @@ HIGHLIGHT_FIELDS = "title,description,apiName"
 
 # Fields for the suggest endpoint — must be source fields of the suggester
 # defined in the index schema (see indexer/index_schema.py).
-SUGGEST_FIELDS = ["apiName", "title", "description"]
+SUGGEST_FIELDS = ["apiName", "title", "description", "kind"]
 
 
 # ---------------------------------------------------------------------------
