@@ -4,6 +4,8 @@ version = "0.0.0"
 description = "Backend-for-Frontend API for APIC Vibe Portal"
 requires-python = ">=3.14"
 dependencies = [
+    "agent-framework>=1.0.1",
+    "agent-framework-openai>=1.0.1",
     "apic-client",
     "azure-cosmos>=4.9.0",
     "azure-identity>=1.21.0",
