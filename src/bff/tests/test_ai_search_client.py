@@ -301,7 +301,10 @@ class TestAISearchClientErrorHandling:
         error.error.code = "InvalidRequestParameter"
         error.error.message = "The field 'kind' is not valid in this context."
         error.response = MagicMock()
-        error.response.text.return_value = '{"error":{"code":"InvalidRequestParameter","message":"detail"}}'
+        error.response.text.return_value = (
+            '{"error":{"code":"InvalidRequestParameter",'
+            '"message":"The field \'kind\' is not valid in this context."}}'
+        )
 
         with pytest.raises(AISearchClientError) as exc_info:
             client._handle_error(error, "suggest query: test")
@@ -336,14 +339,17 @@ class TestAISearchClientErrorHandling:
         error.error = MagicMock()
         error.error.code = "InvalidField"
         error.error.message = "Field error"
+        response_body = '{"error":{"code":"InvalidField","message":"Field error"}}'
         mock_response = MagicMock()
-        mock_response.text.return_value = '{"error":{"code":"InvalidField","message":"Field error"}}'
+        mock_response.text.return_value = response_body
         error.response = mock_response
 
         with caplog.at_level(logging.ERROR), pytest.raises(AISearchClientError):
             client._handle_error(error, "suggest query: test")
 
+        # Verify both the error code and the response body appear in the log
         assert any("InvalidField" in r.message for r in caplog.records)
+        assert any(response_body in r.message for r in caplog.records)
 
     def test_handle_error_server_error_uses_error_message(self, client):
         """_handle_error should use error_message for 500+ errors when available."""
