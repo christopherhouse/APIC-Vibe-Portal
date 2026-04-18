@@ -27,8 +27,10 @@ from apic_vibe_portal_bff.models.search import (
     SuggestResponse,
 )
 from apic_vibe_portal_bff.services.search_service import SearchService
+from apic_vibe_portal_bff.utils.logger import sanitize_for_log
 
 logger = logging.getLogger(__name__)
+
 
 # ---------------------------------------------------------------------------
 # Service dependency — lazily created once per process
@@ -129,7 +131,12 @@ def search(
     try:
         return service.search(request)
     except AISearchClientError as exc:
-        logger.error("search failed", extra={"error": str(exc)})
+        logger.error(
+            "search failed — status=%s error=%s",
+            exc.status_code,
+            str(exc),
+            extra={"error": str(exc), "status_code": exc.status_code},
+        )
         _raise_error(exc.status_code or 500, "SEARCH_ERROR", str(exc))
 
 
@@ -152,5 +159,12 @@ def suggest(
     try:
         return service.suggest(prefix=q)
     except AISearchClientError as exc:
-        logger.error("suggest failed", extra={"error": str(exc)})
+        safe_q = sanitize_for_log(q)
+        logger.error(
+            "suggest failed — status=%s prefix=%s error=%s",
+            exc.status_code,
+            safe_q,
+            str(exc),
+            extra={"error": str(exc), "status_code": exc.status_code, "prefix": safe_q},
+        )
         _raise_error(exc.status_code or 500, "SEARCH_ERROR", str(exc))

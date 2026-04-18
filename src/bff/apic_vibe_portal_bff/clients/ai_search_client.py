@@ -33,8 +33,9 @@ FACET_FIELDS = ["kind", "lifecycleStage", "tags"]
 # Searchable text fields for highlight extraction
 HIGHLIGHT_FIELDS = "title,description,apiName"
 
-# Fields for the suggest endpoint
-SUGGEST_FIELDS = ["apiName", "title", "description", "kind"]
+# Fields for the suggest endpoint — must be source fields of the suggester
+# defined in the index schema (see indexer/index_schema.py).
+SUGGEST_FIELDS = ["apiName", "title", "description"]
 
 
 # ---------------------------------------------------------------------------
@@ -135,14 +136,50 @@ class AISearchClient:
         return self._client
 
     def _handle_error(self, exc: Exception, context: str) -> None:
-        """Translate Azure SDK exceptions into domain errors."""
+        """Translate Azure SDK exceptions into domain errors.
+
+        Extracts detailed error information from ``HttpResponseError``
+        responses and logs them for diagnostics before raising.
+        """
         if isinstance(exc, ResourceNotFoundError):
+            logger.error(
+                "AI Search resource not found: %s",
+                context,
+                extra={"context": context},
+            )
             raise AISearchNotFoundError(context) from exc
         if isinstance(exc, HttpResponseError):
             status = exc.status_code
+            # Extract the detailed error from the response body when available
+            error_code = getattr(exc.error, "code", None) if exc.error else None
+            error_message = getattr(exc.error, "message", None) if exc.error else None
+            response_body: str | None = None
+            if exc.response is not None:
+                try:
+                    response_body = exc.response.text()
+                except Exception:
+                    response_body = None
+
+            logger.error(
+                "AI Search HTTP error — status=%s context=%s error_code=%s error_message=%s response_body=%s",
+                status,
+                context,
+                error_code,
+                error_message,
+                response_body,
+                extra={
+                    "status": status,
+                    "context": context,
+                    "error_code": error_code,
+                    "error_message": error_message,
+                    "response_body": response_body,
+                },
+            )
+
+            detail = error_message or str(exc)
             if status is not None and status >= 500:
-                raise AISearchUnavailableError(str(exc)) from exc
-            raise AISearchClientError(str(exc), status_code=status) from exc
+                raise AISearchUnavailableError(detail) from exc
+            raise AISearchClientError(detail, status_code=status) from exc
         raise AISearchClientError(str(exc)) from exc
 
     # ------------------------------------------------------------------
@@ -279,8 +316,18 @@ class AISearchClient:
         List of suggestion dicts.
         """
         logger.debug(
-            "AISearchClient.suggest",
-            extra={"prefix": search_text, "top": top},
+            "AISearchClient.suggest — prefix=%s top=%s suggester=%s select=%s",
+            search_text,
+            top,
+            suggester_name,
+            SUGGEST_FIELDS,
+            extra={
+                "prefix": search_text,
+                "top": top,
+                "suggester_name": suggester_name,
+                "select_fields": SUGGEST_FIELDS,
+                "filter": filter_expression,
+            },
         )
         try:
             client = self._get_client()
