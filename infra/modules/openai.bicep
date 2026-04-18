@@ -44,7 +44,7 @@ param embeddingModelVersion string = '2'
 param embeddingDeploymentSkuName string = 'Standard'
 
 @description('Embedding deployment capacity (in thousands of tokens per minute)')
-param embeddingDeploymentCapacity int = 30
+param embeddingDeploymentCapacity int = 150
 
 @description('Resource tags')
 param tags object
