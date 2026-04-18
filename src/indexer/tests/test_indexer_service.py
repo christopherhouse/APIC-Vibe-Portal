@@ -74,10 +74,77 @@ class TestEnsureIndex:
     def test_calls_create_or_update_index(self) -> None:
         service, _, search_index_client, _, _ = _make_service()
         mock_schema = MagicMock()
+        mock_schema.suggesters = []
 
         service.ensure_index(mock_schema)
 
         search_index_client.create_or_update_index.assert_called_once_with(mock_schema)
+
+    def test_no_rebuild_when_suggesters_present(self) -> None:
+        """When the live index already has the expected suggesters, no rebuild."""
+        service, _, search_index_client, _, _ = _make_service()
+
+        suggester = _ns(name="sg", source_fields=["apiName", "title"])
+        mock_schema = MagicMock()
+        mock_schema.suggesters = [suggester]
+
+        # Live index has the suggester
+        live_index = MagicMock()
+        live_index.suggesters = [_ns(name="sg")]
+        search_index_client.get_index.return_value = live_index
+
+        service.ensure_index(mock_schema)
+
+        search_index_client.delete_index.assert_not_called()
+        search_index_client.create_or_update_index.assert_called_once_with(mock_schema)
+
+    def test_rebuilds_index_when_suggesters_missing(self) -> None:
+        """When the live index is missing suggesters, delete and recreate."""
+        service, _, search_index_client, _, _ = _make_service()
+
+        suggester = _ns(name="sg", source_fields=["apiName", "title"])
+        mock_schema = MagicMock()
+        mock_schema.suggesters = [suggester]
+
+        # Live index has NO suggesters
+        live_index = MagicMock()
+        live_index.suggesters = []
+        search_index_client.get_index.return_value = live_index
+
+        service.ensure_index(mock_schema)
+
+        search_index_client.delete_index.assert_called_once_with("apic-apis")
+        # create_or_update_index called twice: initial + rebuild
+        assert search_index_client.create_or_update_index.call_count == 2
+
+    def test_rebuilds_when_suggesters_none_on_live_index(self) -> None:
+        """Handles the case where the live index returns suggesters=None."""
+        service, _, search_index_client, _, _ = _make_service()
+
+        suggester = _ns(name="sg", source_fields=["apiName"])
+        mock_schema = MagicMock()
+        mock_schema.suggesters = [suggester]
+
+        live_index = MagicMock()
+        live_index.suggesters = None
+        search_index_client.get_index.return_value = live_index
+
+        service.ensure_index(mock_schema)
+
+        search_index_client.delete_index.assert_called_once_with("apic-apis")
+        assert search_index_client.create_or_update_index.call_count == 2
+
+    def test_skips_reconciliation_when_schema_has_no_suggesters(self) -> None:
+        """No get_index call when schema has no suggesters."""
+        service, _, search_index_client, _, _ = _make_service()
+
+        mock_schema = MagicMock()
+        mock_schema.suggesters = []
+
+        service.ensure_index(mock_schema)
+
+        search_index_client.get_index.assert_not_called()
+        search_index_client.delete_index.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
