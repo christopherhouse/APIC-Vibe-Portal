@@ -65,6 +65,9 @@ def _make_service() -> tuple[IndexerService, MagicMock, MagicMock, MagicMock, Ma
     # Default embedding response
     embedding_service.generate_embedding.return_value = [0.1] * 1536
 
+    # Default: no existing chunk documents to clean up.
+    search_client.search.return_value = iter([])
+
     service = IndexerService(
         apic_client=apic_client,
         search_index_client=search_index_client,
@@ -204,6 +207,8 @@ class TestFullReindex:
         assert doc["apiName"] == "my-api"
         assert doc["title"] == "My API"
         assert doc["description"] == "My description"
+        assert doc["parentApiId"] == ""
+        assert doc["chunkIndex"] == 0
         assert "contentVector" in doc
         assert len(doc["contentVector"]) == 1536
 
@@ -341,7 +346,7 @@ class TestIncrementalIndex:
         assert result is False
 
     def test_logs_details_on_upload_failure(self) -> None:
-        """When a single document fails, the warning includes key/status/error."""
+        """When a single document fails, the warning includes failure details."""
         service, apic_client, _, search_client, _ = _make_service()
 
         api = make_api(name="bad-api")
@@ -365,12 +370,15 @@ class TestIncrementalIndex:
             found = False
             for call in mock_logger.warning.call_args_list:
                 kwargs = call.kwargs if call.kwargs else {}
-                if kwargs.get("key") == "bad-api":
-                    assert kwargs["status_code"] == 400
-                    assert kwargs["error_message"] == "Document is malformed"
+                if "failed_documents" in kwargs:
+                    details = kwargs["failed_documents"]
+                    assert len(details) == 1
+                    assert details[0]["key"] == "bad-api"
+                    assert details[0]["status_code"] == 400
+                    assert details[0]["error_message"] == "Document is malformed"
                     found = True
                     break
-            assert found, "Expected a warning with per-document failure details"
+            assert found, "Expected a warning with failed_documents details"
 
     def test_uploads_single_document(self) -> None:
         service, apic_client, _, search_client, _ = _make_service()
@@ -531,6 +539,8 @@ class TestDatetimeTimezone:
 class TestFetchSpecContent:
     def test_spec_content_fetched_via_data_plane(self) -> None:
         """Spec export uses the data-plane export_api_specification method."""
+        import json as json_mod
+
         service, apic_client, _, search_client, _ = _make_service()
 
         api = make_api(name="spec-api")
@@ -544,7 +554,8 @@ class TestFetchSpecContent:
 
         apic_client.export_api_specification.assert_called_once_with("spec-api", "v1", "openapi")
         uploaded = search_client.upload_documents.call_args.kwargs["documents"]
-        assert uploaded[0]["specContent"] == '{"openapi": "3.0.0"}'
+        # Spec content is sanitized (pretty-printed JSON) but semantically identical.
+        assert json_mod.loads(uploaded[0]["specContent"]) == {"openapi": "3.0.0"}
 
     def test_logs_warning_on_spec_fetch_failure(self) -> None:
         """Spec export errors are logged as warnings (not silently swallowed)."""
@@ -732,8 +743,8 @@ class TestSanitizeSpecContent:
         for token in result.split():
             assert len(token.encode("utf-8")) <= _MAX_TERM_BYTES
 
-    def test_sanitize_called_during_build_document(self) -> None:
-        """_build_document applies sanitization to specContent."""
+    def test_sanitize_called_during_build_documents(self) -> None:
+        """_build_documents applies sanitization to specContent."""
         service, apic_client, _, search_client, _ = _make_service()
 
         long_spec = '{"data":"' + "x" * 40_000 + '"}'
@@ -742,13 +753,231 @@ class TestSanitizeSpecContent:
         apic_client.list_api_versions.return_value = [{"name": "v1"}]
         apic_client.list_api_definitions.return_value = [{"name": "openapi"}]
         apic_client.export_api_specification.return_value = long_spec
-        search_client.upload_documents.return_value = [make_upload_result(True)]
+        # Need enough upload results for all docs produced
+        search_client.upload_documents.return_value = [make_upload_result(True)] * 10
 
         service.full_reindex()
 
         from indexer.indexer_service import _MAX_TERM_BYTES
 
         uploaded = search_client.upload_documents.call_args.kwargs["documents"]
-        spec = uploaded[0]["specContent"]
-        for token in spec.split():
-            assert len(token.encode("utf-8")) <= _MAX_TERM_BYTES
+        for doc in uploaded:
+            for token in doc["specContent"].split():
+                assert len(token.encode("utf-8")) <= _MAX_TERM_BYTES
+
+
+# ---------------------------------------------------------------------------
+# _split_into_chunks
+# ---------------------------------------------------------------------------
+
+
+class TestSplitIntoChunks:
+    def test_empty_string_returns_single_element(self) -> None:
+        result = IndexerService._split_into_chunks("")
+        assert result == [""]
+
+    def test_short_string_returns_single_element(self) -> None:
+        result = IndexerService._split_into_chunks("hello world")
+        assert result == ["hello world"]
+
+    def test_exact_chunk_size_returns_single_element(self) -> None:
+        from indexer.indexer_service import _CHUNK_SIZE_CHARS
+
+        text = "x" * _CHUNK_SIZE_CHARS
+        result = IndexerService._split_into_chunks(text)
+        assert len(result) == 1
+        assert result[0] == text
+
+    def test_large_text_is_split_into_chunks(self) -> None:
+        from indexer.indexer_service import _CHUNK_SIZE_CHARS
+
+        text = "a" * (_CHUNK_SIZE_CHARS * 3 + 100)
+        result = IndexerService._split_into_chunks(text)
+        assert len(result) == 4
+        assert all(len(c) <= _CHUNK_SIZE_CHARS for c in result)
+        assert "".join(result) == text
+
+
+# ---------------------------------------------------------------------------
+# Document chunking (large spec → multiple documents)
+# ---------------------------------------------------------------------------
+
+
+class TestDocumentChunking:
+    def test_small_spec_produces_single_document(self) -> None:
+        """A spec under the chunk size produces only one document."""
+        service, apic_client, _, search_client, _ = _make_service()
+
+        api = make_api(name="small-api")
+        apic_client.list_apis.return_value = [api]
+        apic_client.list_api_versions.return_value = [{"name": "v1"}]
+        apic_client.list_api_definitions.return_value = [{"name": "openapi"}]
+        apic_client.export_api_specification.return_value = '{"openapi": "3.0.0"}'
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        service.full_reindex()
+
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        assert len(uploaded) == 1
+        assert uploaded[0]["id"] == "small-api"
+        assert uploaded[0]["parentApiId"] == ""
+        assert uploaded[0]["chunkIndex"] == 0
+
+    def test_large_spec_produces_multiple_documents(self) -> None:
+        """A spec exceeding the chunk size produces parent + child documents."""
+        from indexer.indexer_service import _CHUNK_SIZE_CHARS
+
+        service, apic_client, _, search_client, _ = _make_service()
+
+        # Build a well-tokenized spec larger than one chunk.
+        # Use space-separated tokens to avoid token-truncation shrinking the text.
+        spec = " ".join(f"token{i}" for i in range(_CHUNK_SIZE_CHARS // 4))
+
+        api = make_api(name="big-api")
+        apic_client.list_apis.return_value = [api]
+        apic_client.list_api_versions.return_value = [{"name": "v1"}]
+        apic_client.list_api_definitions.return_value = [{"name": "openapi"}]
+        apic_client.export_api_specification.return_value = spec
+        search_client.upload_documents.return_value = [make_upload_result(True)] * 10
+
+        service.full_reindex()
+
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        assert len(uploaded) > 1
+
+        # Parent document (chunkIndex 0) carries the API name as ID.
+        parent = uploaded[0]
+        assert parent["id"] == "big-api"
+        assert parent["parentApiId"] == ""
+        assert parent["chunkIndex"] == 0
+
+        # Child documents have chunk IDs and reference the parent.
+        for i, child in enumerate(uploaded[1:], start=1):
+            assert child["id"] == f"big-api__chunk_{i}"
+            assert child["parentApiId"] == "big-api"
+            assert child["chunkIndex"] == i
+
+    def test_chunk_documents_share_metadata(self) -> None:
+        """All chunk documents carry the same API metadata."""
+        from indexer.indexer_service import _CHUNK_SIZE_CHARS
+
+        service, apic_client, _, search_client, _ = _make_service()
+
+        spec = " ".join(f"word{i}" for i in range(_CHUNK_SIZE_CHARS // 3))
+
+        api = make_api(name="meta-api", title="Meta API", description="Desc")
+        apic_client.list_apis.return_value = [api]
+        apic_client.list_api_versions.return_value = []
+        search_client.upload_documents.return_value = [make_upload_result(True)] * 5
+
+        # Monkeypatch spec fetch to return the large spec
+        apic_client.list_api_versions.return_value = [{"name": "v1"}]
+        apic_client.list_api_definitions.return_value = [{"name": "def"}]
+        apic_client.export_api_specification.return_value = spec
+
+        service.full_reindex()
+
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        assert len(uploaded) > 1
+        for doc in uploaded:
+            assert doc["apiName"] == "meta-api"
+            assert doc["title"] == "Meta API"
+            assert doc["description"] == "Desc"
+
+    def test_each_chunk_gets_own_embedding(self) -> None:
+        """Each chunk document triggers its own embedding call."""
+        from indexer.indexer_service import _CHUNK_SIZE_CHARS
+
+        service, apic_client, _, search_client, embedding_service = _make_service()
+
+        spec = " ".join(f"tok{i}" for i in range(_CHUNK_SIZE_CHARS // 2))  # large, well-tokenized
+
+        api = make_api(name="emb-api")
+        apic_client.list_apis.return_value = [api]
+        apic_client.list_api_versions.return_value = [{"name": "v1"}]
+        apic_client.list_api_definitions.return_value = [{"name": "def"}]
+        apic_client.export_api_specification.return_value = spec
+        search_client.upload_documents.return_value = [make_upload_result(True)] * 5
+
+        service.full_reindex()
+
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        # Each document should have triggered an embedding call.
+        assert embedding_service.generate_embedding.call_count == len(uploaded)
+
+    def test_incremental_index_cleans_up_old_chunks(self) -> None:
+        """incremental_index calls _cleanup_api_chunks before uploading."""
+        service, apic_client, _, search_client, _ = _make_service()
+
+        # Simulate an existing chunk document in the index.
+        search_client.search.return_value = iter([{"id": "my-api__chunk_1"}])
+
+        api = make_api(name="my-api")
+        apic_client.get_api.return_value = api
+        apic_client.list_api_versions.return_value = []
+        search_client.upload_documents.return_value = [make_upload_result(True)]
+
+        service.incremental_index("my-api")
+
+        # The old chunk should have been deleted.
+        search_client.delete_documents.assert_called()
+        delete_calls = search_client.delete_documents.call_args_list
+        # At least one delete call should contain the old chunk ID.
+        deleted_ids = []
+        for call in delete_calls:
+            docs = call.kwargs.get("documents") or (call.args[0] if call.args else [])
+            deleted_ids.extend(d["id"] for d in docs if isinstance(d, dict))
+        assert "my-api__chunk_1" in deleted_ids
+
+    def test_delete_from_index_cleans_up_chunks(self) -> None:
+        """delete_from_index removes the parent and any chunk documents."""
+        service, _, _, search_client, _ = _make_service()
+
+        # Simulate existing chunks.
+        search_client.search.return_value = iter(
+            [
+                {"id": "my-api__chunk_1"},
+                {"id": "my-api__chunk_2"},
+            ]
+        )
+        search_client.delete_documents.return_value = [make_upload_result(True)]
+
+        result = service.delete_from_index("my-api")
+
+        assert result is True
+        # Should have at least two delete calls: one for chunks, one for parent.
+        assert search_client.delete_documents.call_count >= 2
+
+    def test_2mb_spec_is_fully_indexed(self) -> None:
+        """A 2 MB spec (APIM max size) is indexed across many chunk documents."""
+        from indexer.indexer_service import _CHUNK_SIZE_CHARS, _MAX_TERM_BYTES
+
+        service, apic_client, _, search_client, _ = _make_service()
+
+        # Simulate a ~2 MB spec with well-tokenized content (many short words).
+        spec = " ".join(f"path{i}" for i in range(250_000))  # ~2 MB of text
+
+        api = make_api(name="huge-api")
+        apic_client.list_apis.return_value = [api]
+        apic_client.list_api_versions.return_value = [{"name": "v1"}]
+        apic_client.list_api_definitions.return_value = [{"name": "openapi"}]
+        apic_client.export_api_specification.return_value = spec
+
+        # Return one success result per uploaded document (dynamic).
+        def _dynamic_upload(documents: list) -> list:
+            return [make_upload_result(True) for _ in documents]
+
+        search_client.upload_documents.side_effect = lambda documents: _dynamic_upload(documents)
+
+        count = service.full_reindex()
+
+        uploaded = search_client.upload_documents.call_args.kwargs["documents"]
+        assert count == len(uploaded)
+        # Every document must have specContent within chunk limits.
+        for doc in uploaded:
+            assert len(doc["specContent"]) <= _CHUNK_SIZE_CHARS
+            # Every token must be within Lucene term limit.
+            for token in doc["specContent"].split():
+                assert len(token.encode("utf-8")) <= _MAX_TERM_BYTES
+        # Should have produced many chunks for a 2 MB spec.
+        assert len(uploaded) > 1

@@ -109,6 +109,17 @@ def build_index_schema(index_name: str = INDEX_NAME, embedding_dimensions: int =
             facetable=False,
         ),
         SearchField(
+            name="parentApiId",
+            type=SearchFieldDataType.String,
+            filterable=True,
+        ),
+        SearchField(
+            name="chunkIndex",
+            type=SearchFieldDataType.Int32,
+            filterable=True,
+            sortable=True,
+        ),
+        SearchField(
             name="createdAt",
             type=SearchFieldDataType.DateTimeOffset,
             filterable=True,
