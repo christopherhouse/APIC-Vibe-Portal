@@ -153,11 +153,12 @@ def _emit_metric(name: str, value: float, attributes: dict[str, str] | None = No
 
 
 class _ChatSession:
-    """In-memory session state for rate limiting only.
+    """In-memory session state for rate limiting and local message cache.
 
-    Conversation history is managed by MAF's ``CosmosHistoryProvider``
-    (or ``InMemoryHistoryProvider`` for local dev).  This class only
-    tracks rate-limiting timestamps and expiry.
+    Conversation history is also persisted to Cosmos DB via MAF's
+    ``CosmosHistoryProvider`` on the Agent.  This class maintains a
+    local copy of messages for prompt construction and a sliding window,
+    plus monotonic timestamps for per-session rate limiting.
     """
 
     __slots__ = ("session_id", "messages", "created_at", "updated_at", "_message_timestamps", "_lock")
