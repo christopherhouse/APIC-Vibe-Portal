@@ -77,6 +77,13 @@ class IndexerService:
     def ensure_index(self, index_schema: object) -> None:
         """Create or update the AI Search index with the given schema.
 
+        Azure AI Search cannot add a suggester to an existing index whose
+        source fields have already been tokenized without prefix sequences.
+        When suggesters are expected but missing after ``create_or_update_index``
+        this method deletes and recreates the index so the prefix tokenization
+        is built from scratch.  The caller should follow up with a full
+        reindex to repopulate the documents.
+
         Parameters
         ----------
         index_schema:
@@ -85,7 +92,47 @@ class IndexerService:
         """
         logger.info("Ensuring AI Search index exists", index=self._index_name)
         self._index_client.create_or_update_index(index_schema)
+
+        # Verify the live index actually has the expected suggesters.
+        expected_suggesters = getattr(index_schema, "suggesters", None) or []
+        if expected_suggesters:
+            self._reconcile_suggesters(index_schema, expected_suggesters)
+
         logger.info("Index ready", index=self._index_name)
+
+    def _reconcile_suggesters(
+        self,
+        index_schema: object,
+        expected_suggesters: list[object],
+    ) -> None:
+        """Delete and recreate the index if required suggesters are missing.
+
+        Azure AI Search silently drops suggesters from an
+        ``create_or_update_index`` call when the source fields were
+        originally indexed without prefix tokenization.  This helper
+        detects the mismatch and rebuilds the index.
+        """
+        live_index = self._index_client.get_index(self._index_name)
+        live_suggester_names: set[str] = {s.name for s in (live_index.suggesters or [])}
+        expected_names: set[str] = {s.name for s in expected_suggesters}
+        missing = expected_names - live_suggester_names
+        if not missing:
+            return
+
+        logger.warning(
+            "Suggesters missing after index update — rebuilding index. "
+            "Azure AI Search cannot add suggesters to preexisting fields; "
+            "a full delete + recreate is required.",
+            index=self._index_name,
+            missing_suggesters=sorted(missing),
+        )
+        self._index_client.delete_index(self._index_name)
+        self._index_client.create_or_update_index(index_schema)
+        logger.info(
+            "Index rebuilt with suggesters",
+            index=self._index_name,
+            suggesters=sorted(expected_names),
+        )
 
     # ------------------------------------------------------------------
     # Indexing operations
