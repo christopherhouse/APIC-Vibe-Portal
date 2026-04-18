@@ -41,8 +41,8 @@ def _get_chat_service() -> AIChatService:
     """Return a shared :class:`AIChatService` instance.
 
     In production the service is created once with real Azure credentials
-    and Cosmos DB persistence.  Tests override this dependency via
-    ``app.dependency_overrides``.
+    and MAF ``CosmosHistoryProvider`` for Cosmos DB-backed chat history.
+    Tests override this dependency via ``app.dependency_overrides``.
     """
     global _service_instance  # noqa: PLW0603
     if _service_instance is None:
@@ -58,23 +58,26 @@ def _get_chat_service() -> AIChatService:
             index_name=settings.ai_search_index_name,
         )
 
-        # Wire up Cosmos DB persistence if configured
-        chat_repo = None
+        # Wire up MAF CosmosHistoryProvider if Cosmos DB is configured
+        history_provider = None
         if settings.cosmos_db_endpoint.strip():
             try:
-                from apic_vibe_portal_bff.data.cosmos_client import get_container
-                from apic_vibe_portal_bff.data.repositories.chat_session_repository import ChatSessionRepository
+                from agent_framework.azure import CosmosHistoryProvider
 
-                container = get_container(settings.cosmos_db_chat_container)
-                chat_repo = ChatSessionRepository(container)
+                history_provider = CosmosHistoryProvider(
+                    endpoint=settings.cosmos_db_endpoint,
+                    database_name=settings.cosmos_db_database_name,
+                    container_name=settings.cosmos_db_chat_container,
+                )
+                logger.info("Using MAF CosmosHistoryProvider for chat history")
             except Exception:
-                logger.warning("Failed to initialise Cosmos DB chat repo — falling back to in-memory sessions")
+                logger.warning("Failed to initialise CosmosHistoryProvider — falling back to InMemoryHistoryProvider")
 
         _service_instance = AIChatService(
             openai_client=openai_client,
             search_client=search_client,
             model=settings.openai_chat_deployment,
-            chat_repo=chat_repo,
+            history_provider=history_provider,
         )
     return _service_instance
 

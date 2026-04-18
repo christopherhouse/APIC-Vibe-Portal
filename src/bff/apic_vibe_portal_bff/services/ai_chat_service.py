@@ -1,17 +1,18 @@
 """RAG-powered AI chat service using Microsoft Agent Framework (MAF).
 
-Uses the MAF ``Agent`` class with a custom ``@tool``-decorated search
-function so the LLM can decide when and how to retrieve API documentation.
+Uses the MAF ``Agent`` class with:
+- ``OpenAIChatClient`` for Azure OpenAI integration
+- ``CosmosHistoryProvider`` for persisting chat history to Cosmos DB
+- A ``@tool``-decorated search function for RAG retrieval
 
 The pipeline:
 1. Receive user question
-2. MAF Agent invokes the ``search_api_catalog`` tool when grounding is needed
+2. MAF Agent invokes ``search_api_catalog`` tool when grounding is needed
 3. LLM generates a response grounded in retrieved API documentation
-4. Return response with citations to source APIs
+4. MAF automatically persists conversation history to Cosmos DB
 
-Includes conversation session management backed by Cosmos DB (with in-memory
-hot cache for rate limiting), tiktoken-based token estimation, and OTel
-metric emission.
+Includes per-session rate limiting, tiktoken-based token estimation,
+and OTel metric emission.
 """
 
 from __future__ import annotations
@@ -152,7 +153,12 @@ def _emit_metric(name: str, value: float, attributes: dict[str, str] | None = No
 
 
 class _ChatSession:
-    """In-memory chat session with sliding window history."""
+    """In-memory session state for rate limiting only.
+
+    Conversation history is managed by MAF's ``CosmosHistoryProvider``
+    (or ``InMemoryHistoryProvider`` for local dev).  This class only
+    tracks rate-limiting timestamps and expiry.
+    """
 
     __slots__ = ("session_id", "messages", "created_at", "updated_at", "_message_timestamps", "_lock")
 
@@ -198,22 +204,17 @@ class _ChatSession:
 
 
 class SessionManager:
-    """Thread-safe session manager with Cosmos DB persistence.
+    """Thread-safe session manager.
 
-    Maintains an in-memory hot cache of ``_ChatSession`` objects for rate
-    limiting (monotonic timestamps don't survive serialisation), and
-    persists conversation messages to Cosmos DB via
-    :class:`ChatSessionRepository`.
-
-    When ``chat_repo`` is ``None`` (e.g. local dev with no Cosmos endpoint),
-    falls back to pure in-memory mode.
+    Provides in-memory ``_ChatSession`` objects for rate limiting and
+    local message cache.  Persistent conversation history is delegated
+    to MAF's ``CosmosHistoryProvider`` which is configured on the
+    ``Agent`` instance (see :class:`AIChatService`).
     """
 
-    def __init__(self, chat_repo: Any | None = None, user_id: str = "anonymous") -> None:
+    def __init__(self) -> None:
         self._sessions: dict[str, _ChatSession] = {}
         self._lock = Lock()
-        self._repo = chat_repo
-        self._user_id = user_id
 
     def get_or_create(self, session_id: str | None) -> _ChatSession:
         """Get an existing session or create a new one.
@@ -228,49 +229,26 @@ class SessionManager:
                 # Expired — remove and create fresh
                 del self._sessions[session_id]
 
-            # Try loading from Cosmos DB if we have a session_id
-            if session_id and self._repo is not None:
-                cosmos_session = self._load_from_cosmos(session_id)
-                if cosmos_session is not None:
-                    self._sessions[session_id] = cosmos_session
-                    return cosmos_session
-
             new_id = session_id or str(uuid.uuid4())
             session = _ChatSession(new_id)
             self._sessions[new_id] = session
-            self._persist_to_cosmos(session)
             return session
 
     def get(self, session_id: str) -> _ChatSession | None:
         """Get a session by ID, or None if not found or expired."""
         with self._lock:
             session = self._sessions.get(session_id)
-            if session is not None:
-                if session.is_expired():
-                    del self._sessions[session_id]
-                    return None
-                return session
-
-            # Try loading from Cosmos DB
-            if self._repo is not None:
-                cosmos_session = self._load_from_cosmos(session_id)
-                if cosmos_session is not None:
-                    self._sessions[session_id] = cosmos_session
-                    return cosmos_session
-
-            return None
+            if session is None:
+                return None
+            if session.is_expired():
+                del self._sessions[session_id]
+                return None
+            return session
 
     def delete(self, session_id: str) -> bool:
         """Delete a session. Returns True if it existed."""
         with self._lock:
-            existed = self._sessions.pop(session_id, None) is not None
-            if self._repo is not None:
-                try:
-                    result = self._repo.soft_delete(session_id, self._user_id)
-                    return existed or result is not None
-                except Exception:
-                    logger.warning("Failed to soft-delete session %s from Cosmos DB", session_id)
-            return existed
+            return self._sessions.pop(session_id, None) is not None
 
     def cleanup_expired(self) -> int:
         """Remove all expired sessions. Returns the count of removed sessions."""
@@ -279,70 +257,6 @@ class SessionManager:
             for sid in expired:
                 del self._sessions[sid]
             return len(expired)
-
-    def persist_session(self, session: _ChatSession) -> None:
-        """Persist session state to Cosmos DB (call after message updates)."""
-        self._persist_to_cosmos(session)
-
-    # ------------------------------------------------------------------
-    # Cosmos DB helpers
-    # ------------------------------------------------------------------
-
-    def _load_from_cosmos(self, session_id: str) -> _ChatSession | None:
-        """Load a session from Cosmos DB and hydrate into a ``_ChatSession``."""
-        try:
-            doc = self._repo.find_by_id(session_id, self._user_id)
-            if doc is None or doc.get("isDeleted"):
-                return None
-
-            session = _ChatSession(session_id)
-            # Hydrate messages from Cosmos document
-            for msg_doc in doc.get("messages", []):
-                session.messages.append({"role": msg_doc["role"], "content": msg_doc["content"]})
-            session.touch()
-            return session
-        except Exception:
-            logger.warning("Failed to load session %s from Cosmos DB", session_id)
-            return None
-
-    def _persist_to_cosmos(self, session: _ChatSession) -> None:
-        """Persist a ``_ChatSession`` to Cosmos DB."""
-        if self._repo is None:
-            return
-
-        try:
-            from apic_vibe_portal_bff.data.models.chat_session import ChatMessageDoc, ChatSessionDocument
-
-            now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-            # Build message docs
-            message_docs = [
-                ChatMessageDoc(
-                    id=str(uuid.uuid4()),
-                    role=m["role"],
-                    content=m["content"],
-                    timestamp=now,
-                )
-                for m in session.messages
-            ]
-
-            # Check if doc exists
-            existing = self._repo.find_by_id(session.session_id, self._user_id)
-            if existing is not None:
-                existing["messages"] = [md.model_dump() for md in message_docs]
-                existing["updatedAt"] = now
-                total_tokens = sum(estimate_tokens(m["content"]) for m in session.messages)
-                existing["tokensUsed"] = total_tokens
-                self._repo.update(existing)
-            else:
-                doc = ChatSessionDocument.new(
-                    session_id=session.session_id,
-                    user_id=self._user_id,
-                )
-                doc_dict = doc.to_cosmos_dict()
-                doc_dict["messages"] = [md.model_dump() for md in message_docs]
-                self._repo.create(doc_dict)
-        except Exception:
-            logger.warning("Failed to persist session %s to Cosmos DB", session.session_id)
 
 
 # ---------------------------------------------------------------------------
@@ -414,6 +328,12 @@ def _create_search_tool(search_client: AISearchClient, model: str) -> Any:
 class AIChatService:
     """RAG-powered chat service using Microsoft Agent Framework.
 
+    The MAF ``Agent`` is configured with:
+    - ``OpenAIChatClient`` for Azure OpenAI
+    - A ``search_api_catalog`` tool for RAG retrieval
+    - A ``HistoryProvider`` for conversation persistence (defaults to
+      ``InMemoryHistoryProvider``; use ``CosmosHistoryProvider`` in prod)
+
     Parameters
     ----------
     openai_client:
@@ -422,6 +342,9 @@ class AIChatService:
         :class:`AISearchClient` instance for retrieving API context.
     model:
         Model/deployment name for tiktoken encoding.
+    history_provider:
+        MAF ``HistoryProvider`` for conversation persistence.  Defaults to
+        ``InMemoryHistoryProvider`` when ``None``.
     prompt_price_per_1k:
         Per-1K-token price for prompt tokens (for cost estimation).
     completion_price_per_1k:
@@ -434,20 +357,26 @@ class AIChatService:
         search_client: AISearchClient,
         *,
         model: str = "gpt-4o",
+        history_provider: Any | None = None,
         prompt_price_per_1k: float = _DEFAULT_PROMPT_PRICE_PER_1K,
         completion_price_per_1k: float = _DEFAULT_COMPLETION_PRICE_PER_1K,
-        chat_repo: Any | None = None,
-        user_id: str = "anonymous",
     ) -> None:
         self._openai = openai_client
         self._search = search_client
         self._model = model
         self._prompt_price = prompt_price_per_1k
         self._completion_price = completion_price_per_1k
-        self._sessions = SessionManager(chat_repo=chat_repo, user_id=user_id)
+        self._sessions = SessionManager()
 
         # Create the MAF search tool
         self._search_tool = _create_search_tool(search_client, model)
+
+        # Set up history provider (Cosmos in prod, in-memory for dev/tests)
+        if history_provider is None:
+            from agent_framework import InMemoryHistoryProvider
+
+            history_provider = InMemoryHistoryProvider()
+        self._history_provider = history_provider
 
     @property
     def session_manager(self) -> SessionManager:
@@ -620,10 +549,9 @@ class AIChatService:
         # 5. Emit metrics
         self._emit_token_metrics(estimated, result.get("usage", {}))
 
-        # 6. Update session and persist to Cosmos DB
+        # 6. Update local session cache (history persisted by MAF HistoryProvider)
         session.add_message("user", user_message)
         session.add_message("assistant", result["content"])
-        self._sessions.persist_session(session)
 
         now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         response_message = ChatMessage(
@@ -687,10 +615,9 @@ class AIChatService:
         if usage:
             self._emit_token_metrics(estimated, usage)
 
-        # 6. Update session and persist to Cosmos DB
+        # 6. Update local session cache (history persisted by MAF HistoryProvider)
         session.add_message("user", user_message)
         session.add_message("assistant", full_content)
-        self._sessions.persist_session(session)
 
         # 7. Send final event with citations
         now = datetime.now(UTC).isoformat().replace("+00:00", "Z")

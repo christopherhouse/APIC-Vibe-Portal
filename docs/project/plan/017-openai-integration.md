@@ -160,29 +160,32 @@ interface Citation {
 | Date       | Status         | Author | Notes                                                                                                                                                                                                                |
 | ---------- | -------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | —          | 🔲 Not Started | —      | Task created                                                                                                                                                                                                         |
-| 2026-04-18 | ✅ Complete     | Copilot | Implemented OpenAI client wrapper, RAG chat service, chat endpoints (sync + SSE streaming), session management, tiktoken token estimation, OTel metric stubs, rate limiting. 68 new tests, 481 total tests all green. |
+| 2026-04-18 | ✅ Complete     | Copilot | Initial implementation with raw openai SDK, in-memory sessions, 68 new tests. |
+| 2026-04-18 | ✅ Complete     | Copilot | Refactored to Microsoft Agent Framework (MAF) 1.0.1. Uses MAF `OpenAIChatClient`, `@tool` for RAG, `CosmosHistoryProvider` for Cosmos DB chat history. 71 new tests, 484 total all green. |
 
 ### Technical Decisions
 
-1. **Used `openai` Python SDK instead of Microsoft Agent Framework (MAF)**: MAF (`agent-framework` v1.0.1) was evaluated as the more modern approach and is GA, but has a Python 3.14 compatibility bug — `observability.py` tries to import `__version__` from the package `__init__.py` which is not defined, causing `ImportError` on any agent import. Since the BFF requires Python >= 3.14, MAF is currently unusable. The raw `openai` SDK works correctly on Python 3.14 and provides full control over the RAG pipeline. Migration to MAF should be revisited once the Python 3.14 compatibility issue is resolved upstream.
-2. **In-memory session management for MVP**: Conversation sessions are stored in-memory using a thread-safe `SessionManager` class with sliding window history (last 10 turns) and 30-minute expiry. This is suitable for single-instance MVP deployments. For multi-replica scaling, sessions should be migrated to Redis or Cosmos DB.
-3. **OTel metrics emitted via structured logging**: Token estimation and usage metrics (`apic.llm.tokens.*`, `apic.llm.cost.estimated`) are emitted as structured log entries. Task 019 will replace these with proper OpenTelemetry SDK histogram observations.
-4. **Added `OPENAI_ENDPOINT` env var to BFF Container App**: The CD workflow (`deploy-app.yml`) now passes `OPENAI_ENDPOINT` to the BFF container in all three environments (dev, staging, prod), matching the existing pattern for the indexer container.
-5. **Added `openai_chat_deployment` setting**: New configuration field defaulting to `gpt-4o` for the chat model deployment name, separate from the embedding deployment used by the indexer.
+1. **Microsoft Agent Framework (MAF) 1.0.1 adopted**: The implementation uses MAF (`agent-framework` v1.0.1) as the core AI framework. MAF provides `OpenAIChatClient` (Azure OpenAI with credential-based auth), `Agent` with `@tool`-decorated functions for RAG retrieval, and `CosmosHistoryProvider` for native Cosmos DB-backed conversation history. The raw `openai` SDK is still used for low-level streaming and error handling where MAF's higher-level abstractions don't yet cover (e.g. SSE streaming with usage tracking).
+2. **MAF `CosmosHistoryProvider` for chat history**: Conversation history is persisted to Cosmos DB using MAF's native `CosmosHistoryProvider`, which plugs into the `Agent` as a context provider. This replaces the earlier custom `ChatSessionRepository`-based approach and leverages the existing `chat-sessions` Cosmos DB container from task 016. Falls back to `InMemoryHistoryProvider` when `COSMOS_DB_ENDPOINT` is not configured (local dev).
+3. **In-memory `SessionManager` retained for rate limiting**: Rate limiting uses monotonic timestamps which cannot be persisted, so an in-memory `SessionManager` is kept as a thin layer for per-session rate limiting (30 msg/min) and session expiry (30 min).
+4. **MAF `@tool` decorator for RAG search**: A `search_api_catalog` tool is created using MAF's `@tool` decorator, enabling the LLM to invoke API catalog search via function calling when it needs to ground its answers.
+5. **OTel metrics emitted via structured logging**: Token estimation and usage metrics (`apic.llm.tokens.*`, `apic.llm.cost.estimated`) are emitted as structured log entries. Task 019 will replace these with proper OpenTelemetry SDK histogram observations.
+6. **Added `OPENAI_ENDPOINT` env var to BFF Container App**: The CD workflow (`deploy-app.yml`) now passes `OPENAI_ENDPOINT` to the BFF container in all three environments (dev, staging, prod), matching the existing pattern for the indexer container.
+7. **Added `openai_chat_deployment` setting**: New configuration field defaulting to `gpt-4o` for the chat model deployment name, separate from the embedding deployment used by the indexer.
 
 ### Deviations from Plan
 
-1. **Microsoft Agent Framework evaluated but not used**: The plan references Foundry Agent Service for multi-agent orchestration, but MAF has a Python 3.14 compatibility bug preventing its use. The `openai` SDK is used directly instead. This is a temporary deviation — MAF adoption should be revisited when the upstream bug is fixed.
-2. **OTel metrics are stubs**: Metrics are emitted via structured logging rather than OTel SDK histograms, pending task 019 (observability setup).
+1. **OTel metrics are stubs**: Metrics are emitted via structured logging rather than OTel SDK histograms, pending task 019 (observability setup).
+2. **SSE streaming uses raw openai SDK**: MAF's `Agent.run(stream=True)` returns an async `ResponseStream` which doesn't map cleanly to SSE events with per-chunk token content. The streaming endpoint uses the raw openai SDK via the MAF `OpenAIChatClient.client` property for fine-grained control over SSE formatting and usage tracking.
 
 ### Validation Results
 
-- **481 tests passing** (413 existing + 68 new), 0 failures
+- **484 tests passing** (413 existing + 71 new), 0 failures
 - **Ruff lint**: All checks passed
 - **Ruff format**: All files formatted
 - **Python compile check**: All files compile successfully
-- New test files: `test_openai_client.py` (18 tests), `test_ai_chat_service.py` (33 tests), `test_chat_routes.py` (17 tests)
-- Tests cover: client init/config, token acquisition, chat completion (sync/stream), error handling (rate limit, server error, generic), session management (create/get/expire/delete/cleanup), RAG context retrieval (with/without results, search failure), token estimation (tiktoken), metric emission (including drift warning), prompt construction, all route endpoints (POST /api/chat, POST /api/chat/stream, GET /api/chat/history, DELETE /api/chat/history), error handler formatting
+- New test files: `test_openai_client.py` (15 tests), `test_ai_chat_service.py` (39 tests), `test_chat_routes.py` (17 tests)
+- Tests cover: MAF OpenAIChatClient wrapper, chat completion (sync/stream), error handling (rate limit, server error, generic), session management (rate limiting, expiry, cleanup), RAG context retrieval (with/without results, search failure), token estimation (tiktoken), metric emission (including drift warning), prompt construction, MAF history provider integration (InMemoryHistoryProvider default, custom provider, search tool creation), all route endpoints (POST /api/chat, POST /api/chat/stream, GET /api/chat/history, DELETE /api/chat/history), error handler formatting
 
 ## Coding Agent Prompt
 
