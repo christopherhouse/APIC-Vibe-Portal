@@ -68,7 +68,9 @@ _SESSION_EXPIRY_SECONDS = 30 * 60  # 30 minutes
 _MAX_CONTEXT_TOKENS = 3000  # Max tokens for RAG context
 _MAX_TOTAL_TOKENS = 8000  # Budget for the entire prompt
 _RATE_LIMIT_PER_SESSION = 30  # Messages per minute per session
+_RATE_LIMIT_WINDOW_SECONDS = 60  # Sliding window for rate limiting
 _RAG_TOP_K = 5  # Number of search results to retrieve
+_CITATION_EXCERPT_LENGTH = 200  # Max characters for citation content excerpt
 
 # Default per-token pricing (GPT-4o, USD per 1K tokens)
 _DEFAULT_PROMPT_PRICE_PER_1K = 0.005
@@ -176,8 +178,8 @@ class _ChatSession:
         """Return True if the session is within rate limits."""
         now = time.monotonic()
         with self._lock:
-            # Prune timestamps older than 60 seconds
-            self._message_timestamps = [t for t in self._message_timestamps if now - t < 60]
+            # Prune timestamps older than the rate limit window
+            self._message_timestamps = [t for t in self._message_timestamps if now - t < _RATE_LIMIT_WINDOW_SECONDS]
             if len(self._message_timestamps) >= _RATE_LIMIT_PER_SESSION:
                 return False
             self._message_timestamps.append(now)
@@ -328,7 +330,7 @@ class AIChatService:
                 Citation(
                     title=f"{api_name}: {title}" if title else api_name,
                     url=f"/api/catalog/{api_name}",
-                    content=description[:200] if description else None,
+                    content=description[:_CITATION_EXCERPT_LENGTH] if description else None,
                 )
             )
 
