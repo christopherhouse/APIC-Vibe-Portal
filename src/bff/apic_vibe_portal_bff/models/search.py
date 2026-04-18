@@ -42,6 +42,8 @@ class SearchDocument(BaseModel):
     tags: list[str] = Field(default_factory=list)
     custom_properties: str = Field(default="", alias="customProperties")
     spec_content: str = Field(default="", alias="specContent")
+    parent_api_id: str = Field(default="", alias="parentApiId")
+    chunk_index: int = Field(default=0, alias="chunkIndex")
     created_at: str | None = Field(default=None, alias="createdAt")
     updated_at: str | None = Field(default=None, alias="updatedAt")
 
@@ -197,10 +199,16 @@ class SearchResponse(BaseModel):
 
 
 class SuggestResult(BaseModel):
-    """A single autocomplete suggestion."""
+    """A single autocomplete suggestion.
 
-    text: str
-    api_name: str = Field(alias="apiName")
+    Field names align with the frontend ``SuggestItem`` TypeScript interface
+    so JSON serialisation produces ``{ apiId, title, description, kind }``.
+    """
+
+    api_id: str = Field(alias="apiId")
+    title: str
+    description: str = ""
+    kind: str = ""
 
     model_config = {"populate_by_name": True}
 

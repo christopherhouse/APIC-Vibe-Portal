@@ -35,6 +35,8 @@ class TestBuildIndexSchema:
             "tags",
             "customProperties",
             "specContent",
+            "parentApiId",
+            "chunkIndex",
             "createdAt",
             "updatedAt",
             "contentVector",
@@ -89,6 +91,8 @@ class TestBuildIndexSchema:
         assert fields["kind"].filterable is True
         assert fields["lifecycleStage"].filterable is True
         assert fields["tags"].filterable is True
+        assert fields["parentApiId"].filterable is True
+        assert fields["chunkIndex"].filterable is True
 
     def test_facetable_fields(self) -> None:
         schema = build_index_schema()
@@ -104,6 +108,17 @@ class TestBuildIndexSchema:
         assert fields["title"].sortable is True
         assert fields["createdAt"].sortable is True
         assert fields["updatedAt"].sortable is True
+        assert fields["chunkIndex"].sortable is True
+
+    def test_spec_content_not_filterable_sortable_facetable(self) -> None:
+        """specContent must not be filterable/sortable/facetable to avoid
+        Lucene term-too-large errors on large spec content.
+        """
+        schema = build_index_schema()
+        fields = {f.name: f for f in schema.fields}
+        assert fields["specContent"].filterable is False
+        assert fields["specContent"].sortable is False
+        assert fields["specContent"].facetable is False
 
     def test_has_suggester(self) -> None:
         schema = build_index_schema()

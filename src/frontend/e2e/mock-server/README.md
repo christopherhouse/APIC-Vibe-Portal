@@ -5,15 +5,17 @@ so the frontend can be tested end-to-end without a running BFF or Azure services
 
 ## Supported Endpoints
 
-| Method | Path                                                 | Description                       |
-| ------ | ---------------------------------------------------- | --------------------------------- |
-| GET    | `/api/catalog`                                       | List APIs (pagination, filtering) |
-| GET    | `/api/catalog/:apiId`                                | API detail                        |
-| GET    | `/api/catalog/:apiId/versions`                       | API versions                      |
-| GET    | `/api/catalog/:apiId/versions/:versionId/definition` | API spec                          |
-| GET    | `/api/catalog/:apiId/deployments`                    | API deployments                   |
-| GET    | `/api/environments`                                  | Environments list                 |
-| GET    | `/health`                                            | Health check                      |
+| Method | Path                                                 | Description                             |
+| ------ | ---------------------------------------------------- | --------------------------------------- |
+| GET    | `/api/catalog`                                       | List APIs (pagination, filtering)       |
+| GET    | `/api/catalog/:apiId`                                | API detail                              |
+| GET    | `/api/catalog/:apiId/versions`                       | API versions                            |
+| GET    | `/api/catalog/:apiId/versions/:versionId/definition` | API spec                                |
+| GET    | `/api/catalog/:apiId/deployments`                    | API deployments                         |
+| GET    | `/api/environments`                                  | Environments list                       |
+| POST   | `/api/search`                                        | Full-text search with facets/pagination |
+| GET    | `/api/search/suggest`                                | Autocomplete prefix suggestions         |
+| GET    | `/health`                                            | Health check                            |
 
 ## Usage
 
