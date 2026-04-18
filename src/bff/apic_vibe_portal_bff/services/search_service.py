@@ -27,6 +27,7 @@ from apic_vibe_portal_bff.models.search import (
     SuggestResponse,
     SuggestResult,
 )
+from apic_vibe_portal_bff.utils.logger import sanitize_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -217,6 +218,12 @@ class SearchService:
         prefix:
             The text prefix to generate suggestions from.
         """
+        safe_prefix = sanitize_for_log(prefix)
+        logger.debug(
+            "SearchService.suggest — prefix=%s",
+            safe_prefix,
+            extra={"prefix": safe_prefix},
+        )
         raw_suggestions = self._client.suggest(search_text=prefix, top=5)
 
         suggestions: list[SuggestResult] = []

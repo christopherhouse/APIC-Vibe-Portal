@@ -69,6 +69,16 @@ def configure_logging(*, log_level: str = "INFO", environment: str = "developmen
     logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
 
 
+def sanitize_for_log(value: str) -> str:
+    """Return a log-safe string by neutralizing line-break characters.
+
+    Prevents log injection attacks by stripping carriage-return and
+    newline characters from user-provided values before they are
+    interpolated into log messages.
+    """
+    return value.replace("\r", "").replace("\n", "")
+
+
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     """Return a *structlog* bound logger.
 
