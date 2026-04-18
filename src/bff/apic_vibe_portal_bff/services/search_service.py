@@ -217,7 +217,12 @@ class SearchService:
         prefix:
             The text prefix to generate suggestions from.
         """
-        logger.debug("SearchService.suggest — prefix=%s", prefix, extra={"prefix": prefix})
+        safe_prefix = prefix.replace("\r", "").replace("\n", "")
+        logger.debug(
+            "SearchService.suggest — prefix=%s",
+            safe_prefix,
+            extra={"prefix": safe_prefix},
+        )
         raw_suggestions = self._client.suggest(search_text=prefix, top=5)
 
         suggestions: list[SuggestResult] = []
