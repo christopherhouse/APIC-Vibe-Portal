@@ -127,6 +127,28 @@ class TestChatSession:
         assert history[0]["role"] == "user"
         assert history[1]["role"] == "assistant"
 
+    def test_session_messages_have_stable_ids(self):
+        session = _ChatSession("test-id")
+        session.add_message("user", "Hello")
+        session.add_message("assistant", "Hi!")
+        # Each message should have an id and timestamp
+        for msg in session.messages:
+            assert "id" in msg
+            assert "timestamp" in msg
+            assert len(msg["id"]) > 0
+            assert len(msg["timestamp"]) > 0
+        # IDs should be unique
+        ids = [m["id"] for m in session.messages]
+        assert len(set(ids)) == len(ids)
+
+    def test_session_sliding_window_without_system(self):
+        session = _ChatSession("test-id")
+        # Add only user messages (no system prompt)
+        for i in range(_MAX_CONVERSATION_TURNS * 3):
+            session.add_message("user", f"message-{i}")
+        # Should trim to max_messages (not pin first message)
+        assert len(session.messages) <= _MAX_CONVERSATION_TURNS * 2
+
     def test_session_sliding_window(self):
         session = _ChatSession("test-id")
         # Add system message first
@@ -303,6 +325,21 @@ class TestAIChatServiceStream:
         assert len(events) == 1
         assert '"error"' in events[0]
 
+    def test_stream_mid_stream_error_yields_error_event(self, service, mock_openai):
+        """If streaming raises mid-response, an SSE error event is emitted."""
+
+        def failing_stream(*args, **kwargs):
+            yield {"content": "Partial", "finish_reason": None}
+            raise RuntimeError("Connection dropped")
+
+        mock_openai.chat_completion_stream.return_value = failing_stream()
+        events = list(service.chat_stream("Hello"))
+        # Should have: start, content (partial), error
+        assert any('"type": "start"' in e for e in events)
+        assert any('"type": "error"' in e for e in events)
+        # Should NOT have an "end" event
+        assert not any('"type": "end"' in e for e in events)
+
 
 class TestAIChatServiceHistory:
     def test_get_history_empty(self, service):
@@ -316,6 +353,16 @@ class TestAIChatServiceHistory:
         assert messages[0].role == "user"
         assert messages[1].role == "assistant"
 
+    def test_get_history_returns_stable_ids(self, service):
+        """Consecutive get_history calls return the same IDs and timestamps."""
+        service.chat("Hello", session_id="stable-1")
+        msgs1 = service.get_history("stable-1")
+        msgs2 = service.get_history("stable-1")
+        assert len(msgs1) == len(msgs2) == 2
+        for m1, m2 in zip(msgs1, msgs2, strict=True):
+            assert m1.id == m2.id
+            assert m1.timestamp == m2.timestamp
+
     def test_clear_history(self, service):
         service.chat("Hello", session_id="clear-1")
         assert service.clear_history("clear-1") is True
@@ -323,6 +370,19 @@ class TestAIChatServiceHistory:
 
     def test_clear_nonexistent(self, service):
         assert service.clear_history("nope") is False
+
+    def test_clear_history_calls_provider_clear(self, mock_openai, mock_search):
+        """clear_history should also call the history provider's clear method."""
+        mock_provider = MagicMock()
+        mock_provider.clear = MagicMock()
+        svc = AIChatService(
+            openai_client=mock_openai,
+            search_client=mock_search,
+            history_provider=mock_provider,
+        )
+        svc.chat("Hello", session_id="prov-clear")
+        svc.clear_history("prov-clear")
+        mock_provider.clear.assert_called_once_with("prov-clear")
 
 
 # ---------------------------------------------------------------------------
@@ -446,3 +506,10 @@ class TestMAFHistoryProvider:
     def test_service_creates_search_tool(self, service):
         """The MAF search tool is created during init."""
         assert service._search_tool is not None
+
+    def test_service_creates_agent(self, service):
+        """The MAF Agent is created during init and wired with tools."""
+        from agent_framework import Agent
+
+        assert service._agent is not None
+        assert isinstance(service._agent, Agent)

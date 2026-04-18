@@ -71,7 +71,7 @@ def _get_chat_service() -> AIChatService:
                 )
                 logger.info("Using MAF CosmosHistoryProvider for chat history")
             except Exception:
-                logger.warning("Failed to initialise CosmosHistoryProvider — falling back to InMemoryHistoryProvider")
+                logger.exception("Failed to initialise CosmosHistoryProvider — falling back to InMemoryHistoryProvider")
 
         _service_instance = AIChatService(
             openai_client=openai_client,
@@ -158,7 +158,17 @@ def chat(
     except ChatRateLimitError:
         _raise_error(429, "RATE_LIMIT_EXCEEDED", "Too many messages. Please wait before sending another.")
     except OpenAIClientError as exc:
-        logger.error("Chat failed — status=%s error=%s", exc.status_code, str(exc))
+        logger.error(
+            "Chat failed — status=%s error=%s",
+            exc.status_code,
+            str(exc),
+            extra={
+                "status_code": exc.status_code,
+                "error_code": getattr(exc, "code", None),
+                "error_message": str(exc),
+                "session_id": request.session_id,
+            },
+        )
         _raise_error(exc.status_code or 500, "CHAT_ERROR", str(exc))
 
 

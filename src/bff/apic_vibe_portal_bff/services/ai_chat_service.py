@@ -159,6 +159,9 @@ class _ChatSession:
     ``CosmosHistoryProvider`` on the Agent.  This class maintains a
     local copy of messages for prompt construction and a sliding window,
     plus monotonic timestamps for per-session rate limiting.
+
+    Each message gets a stable ``id`` and ``timestamp`` assigned on first
+    insertion so that ``get_history`` returns deterministic values.
     """
 
     __slots__ = ("session_id", "messages", "created_at", "updated_at", "_message_timestamps", "_lock")
@@ -181,11 +184,29 @@ class _ChatSession:
         self.updated_at = time.monotonic()
 
     def add_message(self, role: str, content: str) -> None:
-        """Append a message and trim to the sliding window."""
-        self.messages.append({"role": role, "content": content})
-        if len(self.messages) > _MAX_CONVERSATION_TURNS * 2:
-            # Keep the system prompt (first message) plus the sliding window
-            self.messages = self.messages[:1] + self.messages[-((_MAX_CONVERSATION_TURNS * 2) - 1) :]
+        """Append a message and trim to the sliding window.
+
+        Each message receives a stable ``id`` and ``timestamp`` so that
+        ``get_history`` returns deterministic values across calls.
+        """
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        self.messages.append(
+            {
+                "role": role,
+                "content": content,
+                "id": str(uuid.uuid4()),
+                "timestamp": now,
+            }
+        )
+        max_messages = _MAX_CONVERSATION_TURNS * 2
+        if len(self.messages) > max_messages:
+            first_message = self.messages[0]
+            if first_message.get("role") == "system":
+                # Keep the system prompt plus the most recent conversation messages.
+                self.messages = [first_message] + self.messages[-(max_messages - 1) :]
+            else:
+                # No system prompt is stored in the session, so trim to the most recent messages only.
+                self.messages = self.messages[-max_messages:]
         self.touch()
 
     def check_rate_limit(self) -> bool:
@@ -379,10 +400,37 @@ class AIChatService:
             history_provider = InMemoryHistoryProvider()
         self._history_provider = history_provider
 
+        # Create the MAF Agent wired with the search tool and history provider
+        self._agent = self._create_agent()
+
     @property
     def session_manager(self) -> SessionManager:
         """Expose session manager for route handlers."""
         return self._sessions
+
+    # ------------------------------------------------------------------
+    # MAF Agent construction
+    # ------------------------------------------------------------------
+
+    def _create_agent(self) -> Any:
+        """Create a MAF ``Agent`` wired with tools and history.
+
+        The Agent is configured with:
+        - The ``OpenAIChatClient`` from :attr:`_openai`
+        - The ``search_api_catalog`` tool for RAG retrieval
+        - The ``HistoryProvider`` for conversation persistence
+        - The system prompt as instructions
+        """
+        from agent_framework import Agent
+
+        return Agent(
+            client=self._openai.get_maf_client(),
+            instructions=SYSTEM_PROMPT,
+            tools=[self._search_tool],
+            context_providers=[self._history_provider],
+            name="API Discovery Assistant",
+            description="Helps developers find and use APIs from the catalog",
+        )
 
     # ------------------------------------------------------------------
     # RAG retrieval (direct, for non-agent path and citations)
@@ -542,7 +590,6 @@ class AIChatService:
 
         # 3. Estimate tokens
         estimated = estimate_messages_tokens(messages, self._model)
-        _emit_metric("apic.llm.tokens.estimated", float(estimated), {"component": "chat"})
 
         # 4. Generate
         result = self._openai.chat_completion(messages, max_tokens=1024)
@@ -604,13 +651,18 @@ class AIChatService:
         # Send initial event with session ID
         yield f"data: {json.dumps({'type': 'start', 'sessionId': session.session_id})}\n\n"
 
-        for chunk in self._openai.chat_completion_stream(messages, max_tokens=1024):
-            content = chunk.get("content", "")
-            if content:
-                full_content += content
-                yield f"data: {json.dumps({'type': 'content', 'content': content})}\n\n"
-            if "usage" in chunk:
-                usage = chunk["usage"]
+        try:
+            for chunk in self._openai.chat_completion_stream(messages, max_tokens=1024):
+                content = chunk.get("content", "")
+                if content:
+                    full_content += content
+                    yield f"data: {json.dumps({'type': 'content', 'content': content})}\n\n"
+                if "usage" in chunk:
+                    usage = chunk["usage"]
+        except Exception as exc:
+            logger.error("Streaming error mid-response: %s", str(exc))
+            yield f"data: {json.dumps({'type': 'error', 'error': str(exc), 'sessionId': session.session_id})}\n\n"
+            return
 
         # 5. Emit metrics
         if usage:
@@ -641,7 +693,14 @@ class AIChatService:
     # ------------------------------------------------------------------
 
     def get_history(self, session_id: str) -> list[ChatMessage]:
-        """Return the conversation history for a session."""
+        """Return the conversation history for a session.
+
+        Uses stable IDs and timestamps stored alongside each message
+        rather than generating new ones on every call.  If a MAF
+        ``HistoryProvider`` is configured, it will have received the
+        same messages during the ``Agent.run()`` call; this method reads
+        from the local in-memory cache for consistency.
+        """
         session = self._sessions.get(session_id)
         if session is None:
             return []
@@ -650,17 +709,32 @@ class AIChatService:
         for msg in session.get_history_messages():
             messages.append(
                 ChatMessage(
-                    id=str(uuid.uuid4()),
+                    id=msg.get("id", str(uuid.uuid4())),
                     role=msg["role"],
                     content=msg["content"],
-                    timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                    timestamp=msg.get(
+                        "timestamp",
+                        datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                    ),
                 )
             )
         return messages
 
     def clear_history(self, session_id: str) -> bool:
-        """Clear the conversation history for a session."""
-        return self._sessions.delete(session_id)
+        """Clear the conversation history for a session.
+
+        Removes the in-memory session and, if a MAF ``HistoryProvider``
+        with a ``clear`` method is configured, also clears persisted
+        history.
+        """
+        deleted = self._sessions.delete(session_id)
+        # Also clear from the MAF history provider if it supports it
+        if hasattr(self._history_provider, "clear"):
+            try:
+                self._history_provider.clear(session_id)
+            except Exception:
+                logger.warning("Failed to clear history from provider for session %s", session_id)
+        return deleted
 
 
 # ---------------------------------------------------------------------------
