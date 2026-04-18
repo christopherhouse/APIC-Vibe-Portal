@@ -264,6 +264,57 @@ class ApiCatalogService:
         return deployments
 
     # ------------------------------------------------------------------
+    # Cache warming
+    # ------------------------------------------------------------------
+
+    def warm_cache(self, page_size: int = 20) -> int:
+        """Pre-populate the Redis cache with fresh catalog data from APIC.
+
+        Busts the API list and environments cache entries so that the
+        subsequent fetch always goes to APIC, then stores the results.
+        Any previously cached entries for deleted APIs are overwritten with
+        the fresh list, and will expire naturally via TTL.
+
+        Warms **all pages** for the given *page_size* so that the full
+        catalog is in Redis before any user request arrives.  This method is
+        intended to be called at BFF startup and then periodically by the
+        background cache-warmer thread.
+
+        Parameters
+        ----------
+        page_size:
+            Items per page to warm.  Must match the ``pageSize`` used by
+            the frontend so that user requests hit the cache.  Defaults to
+            20 (the API catalog router default).
+
+        Returns the total number of distinct API records fetched.
+        """
+        # Bust list and environments caches so the next call hits APIC.
+        self._cache.invalidate_prefix(_KEY_APIS)
+        self._cache.invalidate_prefix(_KEY_ENVS)
+
+        # Warm page 1 to discover the total count, then warm remaining pages.
+        first = self.list_apis(page=1, page_size=page_size)
+        total = first.pagination.total_count
+        total_pages = first.pagination.total_pages
+
+        for page in range(2, total_pages + 1):
+            self.list_apis(page=page, page_size=page_size)
+
+        logger.info(
+            "warm_cache: API list cached",
+            extra={"total": total, "pages": total_pages, "page_size": page_size},
+        )
+
+        try:
+            self.list_environments()
+            logger.debug("warm_cache: environments cached")
+        except Exception:  # noqa: BLE001
+            logger.warning("warm_cache: failed to pre-cache environments")
+
+        return total
+
+    # ------------------------------------------------------------------
     # Cache management
     # ------------------------------------------------------------------
 

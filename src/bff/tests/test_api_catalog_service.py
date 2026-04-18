@@ -375,3 +375,103 @@ class TestCacheInvalidation:
 
         assert mock_client.list_apis.call_count == 1
         assert mock_client.list_environments.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# warm_cache
+# ---------------------------------------------------------------------------
+
+
+class TestWarmCache:
+    def test_returns_api_count(self) -> None:
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = MOCK_APIS
+        mock_client.list_environments.return_value = MOCK_ENVIRONMENTS
+
+        count = service.warm_cache()
+
+        assert count == len(MOCK_APIS)
+
+    def test_always_fetches_from_apic_even_when_cache_is_warm(self) -> None:
+        """warm_cache must bypass an existing warm list cache."""
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = MOCK_APIS
+        mock_client.list_environments.return_value = MOCK_ENVIRONMENTS
+
+        # First call warms the cache via normal list_apis path
+        service.list_apis()
+        assert mock_client.list_apis.call_count == 1
+
+        # warm_cache should bust the list cache and fetch again
+        service.warm_cache()
+        assert mock_client.list_apis.call_count == 2
+
+    def test_warms_environments_cache(self) -> None:
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = MOCK_APIS
+        mock_client.list_environments.return_value = MOCK_ENVIRONMENTS
+
+        service.warm_cache()
+
+        # environments should now be cached — second call must not hit client
+        mock_client.reset_mock()
+        mock_client.list_environments.return_value = MOCK_ENVIRONMENTS
+        service.list_environments()
+        mock_client.list_environments.assert_not_called()
+
+    def test_subsequent_list_apis_uses_warmed_cache(self) -> None:
+        """After warm_cache, a normal list_apis call must hit the cache."""
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = MOCK_APIS
+        mock_client.list_environments.return_value = MOCK_ENVIRONMENTS
+
+        service.warm_cache()
+        mock_client.reset_mock()
+        mock_client.list_apis.return_value = MOCK_APIS
+
+        service.list_apis()
+
+        mock_client.list_apis.assert_not_called()
+
+    def test_environments_failure_does_not_raise(self) -> None:
+        """A failure warming environments must not propagate."""
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = MOCK_APIS
+        mock_client.list_environments.side_effect = RuntimeError("APIC unavailable")
+
+        # Should complete without raising
+        count = service.warm_cache()
+
+        assert count == len(MOCK_APIS)
+
+    def test_custom_page_size_forwarded(self) -> None:
+        service, mock_client = _make_service()
+        mock_client.list_apis.return_value = MOCK_APIS
+        mock_client.list_environments.return_value = MOCK_ENVIRONMENTS
+
+        service.warm_cache(page_size=50)
+
+        mock_client.list_apis.assert_called_once()
+
+    def test_busts_previously_cached_list(self) -> None:
+        """Verifies that a stale (deleted-API) list is replaced on warm."""
+        from tests.api_center_mocks import make_api
+
+        service, mock_client = _make_service()
+        # Seed cache with 3 APIs
+        three_apis = [make_api(name=f"api-{i}") for i in range(3)]
+        mock_client.list_apis.return_value = three_apis
+        mock_client.list_environments.return_value = []
+        service.list_apis()
+
+        # APIC now only has 2 APIs (one was deleted)
+        two_apis = three_apis[:2]
+        mock_client.list_apis.return_value = two_apis
+        service.warm_cache()
+
+        # The fresh result should reflect the deletion
+        mock_client.reset_mock()
+        mock_client.list_apis.return_value = two_apis
+        result = service.list_apis()
+        assert result.pagination.total_count == 2
+        mock_client.list_apis.assert_not_called()  # served from warm cache
