@@ -9,6 +9,7 @@
 - [Architecture Document](../apic_architecture.md) — Agent Layer: Foundry Agent Service; Multi-agent design
 - [Product Charter](../apic_product_charter.md) — Enable AI-assisted workflows via multi-agent systems
 - [Product Spec](../apic_portal_spec.md) — Agent-based feature requirements
+- [Persistence & Data Governance Baseline](016-persistence-data-governance-baseline.md) — Agent conversation persistence, PII handling
 
 ## Overview
 
@@ -18,6 +19,7 @@ Set up Azure Foundry Agent Service and create the first agent — the API Discov
 
 - **002** — Azure infrastructure (Foundry Agent Service resource)
 - **006** — BFF API project setup
+- **016** — Persistence & Data Governance Baseline (chat session repository for conversation history)
 - **017** — OpenAI integration (existing chat service to integrate with)
 - **014** — Search API (search integration for agent context)
 - **020** — Security Trimming (access control for agent responses)

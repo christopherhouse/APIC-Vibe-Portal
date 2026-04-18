@@ -268,7 +268,7 @@ class TestAISearchClientSuggest:
         call_kwargs = mock_sdk_client.suggest.call_args
         assert call_kwargs.kwargs["top"] == 3
         assert call_kwargs.kwargs["suggester_name"] == "sg"
-        # select must contain all suggester source fields including "kind"
+        # select must contain all suggester source fields
         assert call_kwargs.kwargs["select"] == ["apiName", "title", "description", "kind"]
 
     def test_suggest_handles_error(self, client):

@@ -9,6 +9,7 @@
 - [Architecture Document](../apic_architecture.md) — Azure OpenAI for AI features
 - [Product Charter](../apic_product_charter.md) — Enable AI-assisted workflows
 - [Product Spec](../apic_portal_spec.md) — AI-powered features requirements
+- [Persistence & Data Governance Baseline](016-persistence-data-governance-baseline.md) — Chat session storage strategy, PII handling, data retention policies
 
 ## Overview
 
@@ -21,6 +22,7 @@ Integrate Azure OpenAI into the BFF to power AI-assisted API discovery through a
 - **007** — Shared types package (chat DTOs)
 - **013** — AI Search index (used for RAG retrieval)
 - **014** — Search API implementation (RAG retrieval pipeline)
+- **016** — Persistence & Data Governance Baseline (chat session repository, schema versioning)
 
 ## Implementation Details
 

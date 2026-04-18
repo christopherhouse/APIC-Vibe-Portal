@@ -9,6 +9,7 @@
 - [Architecture Document](../apic_architecture.md) — AI-powered insights; multi-agent capabilities
 - [Product Charter](../apic_product_charter.md) — Improved metadata completeness as success metric
 - [Product Spec](../apic_portal_spec.md) — Metadata quality feature requirements
+- [Persistence & Data Governance Baseline](016-persistence-data-governance-baseline.md) — Schema versioning, data retention for score history
 
 ## Overview
 
