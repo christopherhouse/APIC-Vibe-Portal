@@ -539,7 +539,7 @@ class TestDatetimeTimezone:
 class TestFetchSpecContent:
     def test_spec_content_fetched_via_data_plane(self) -> None:
         """Spec export uses the data-plane export_api_specification method."""
-        import json as json_mod
+        import json
 
         service, apic_client, _, search_client, _ = _make_service()
 
@@ -555,7 +555,7 @@ class TestFetchSpecContent:
         apic_client.export_api_specification.assert_called_once_with("spec-api", "v1", "openapi")
         uploaded = search_client.upload_documents.call_args.kwargs["documents"]
         # Spec content is sanitized (pretty-printed JSON) but semantically identical.
-        assert json_mod.loads(uploaded[0]["specContent"]) == {"openapi": "3.0.0"}
+        assert json.loads(uploaded[0]["specContent"]) == {"openapi": "3.0.0"}
 
     def test_logs_warning_on_spec_fetch_failure(self) -> None:
         """Spec export errors are logged as warnings (not silently swallowed)."""
@@ -717,7 +717,7 @@ class TestSanitizeSpecContent:
 
     def test_json_with_base64_blob_truncated(self) -> None:
         """Simulates an OpenAPI spec with an embedded base64 example."""
-        import json as json_mod
+        import json
 
         from indexer.indexer_service import _MAX_TERM_BYTES
 
@@ -738,7 +738,7 @@ class TestSanitizeSpecContent:
                 }
             },
         }
-        compact = json_mod.dumps(spec)
+        compact = json.dumps(spec)
         result = IndexerService._sanitize_spec_content(compact)
         for token in result.split():
             assert len(token.encode("utf-8")) <= _MAX_TERM_BYTES
