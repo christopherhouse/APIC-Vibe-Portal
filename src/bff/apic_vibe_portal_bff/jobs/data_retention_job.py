@@ -1,8 +1,12 @@
-"""Data retention cleanup job.
+"""Data retention via Cosmos DB native TTL.
 
-Permanently deletes soft-deleted documents that have exceeded their
-configured retention period.  Intended to be invoked on a daily schedule
-(e.g. via Azure Container Apps Job or an external cron trigger).
+Retention is handled automatically by Cosmos DB: each container has
+``defaultTtl: -1`` (per-document TTL) and the ``soft_delete`` method
+on :class:`BaseRepository` sets a ``ttl`` field on the document.  Cosmos
+DB then purges the document after the TTL expires — no custom cleanup
+job is needed.
+
+This module documents the retention periods for reference.
 
 Retention periods (from ``docs/architecture/data-retention-policy.md``):
 
@@ -11,65 +15,7 @@ Retention periods (from ``docs/architecture/data-retention-policy.md``):
 * Analytics events — 1 year (365 days)
 """
 
-from __future__ import annotations
+# Re-export the TTL constants from the repository module for convenience.
+from apic_vibe_portal_bff.data.repositories.base_repository import TTL_SECONDS
 
-import logging
-from datetime import UTC, datetime, timedelta
-
-from apic_vibe_portal_bff.data.repositories.base_repository import BaseRepository
-
-logger = logging.getLogger(__name__)
-
-# Default retention days per container
-RETENTION_DAYS = {
-    "chat-sessions": 90,
-    "governance-snapshots": 730,
-    "analytics-events": 365,
-}
-
-
-def run_cleanup(
-    repositories: dict[str, BaseRepository],
-    *,
-    retention_overrides: dict[str, int] | None = None,
-    now: datetime | None = None,
-) -> dict[str, int]:
-    """Purge expired soft-deleted documents from all repositories.
-
-    Parameters
-    ----------
-    repositories:
-        Mapping of container name → :class:`BaseRepository` instance.
-    retention_overrides:
-        Optional dict overriding the default retention days per container.
-    now:
-        Override the current time (useful for testing).
-
-    Returns
-    -------
-    dict[str, int]
-        Mapping of container name → number of documents purged.
-    """
-    effective_now = now or datetime.now(UTC)
-    retentions = dict(RETENTION_DAYS)
-    if retention_overrides:
-        retentions.update(retention_overrides)
-
-    results: dict[str, int] = {}
-
-    for container_name, repo in repositories.items():
-        days = retentions.get(container_name, 365)
-        cutoff = (effective_now - timedelta(days=days)).isoformat() + "Z"
-        logger.info("Cleaning %s: purging soft-deleted before %s (%d-day retention)", container_name, cutoff, days)
-
-        expired = repo.find_expired_soft_deleted(cutoff)
-        purged = 0
-        for doc in expired:
-            pk = doc.get(repo._pk_field, "")
-            if repo.hard_delete(doc["id"], pk):
-                purged += 1
-
-        results[container_name] = purged
-        logger.info("Purged %d documents from %s", purged, container_name)
-
-    return results
+__all__ = ["TTL_SECONDS"]

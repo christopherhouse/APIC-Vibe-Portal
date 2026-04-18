@@ -92,7 +92,7 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-12-01
 // CONTAINERS (partition keys and indexing defined in task 016)
 // ============================================================================
 
-// Chat sessions container — partitioned by userId
+// Chat sessions container — partitioned by userId, TTL-enabled (90-day retention)
 resource chatSessionsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-12-01-preview' = {
   parent: database
   name: 'chat-sessions'
@@ -104,6 +104,7 @@ resource chatSessionsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabas
         kind: 'Hash'
         version: 2
       }
+      defaultTtl: -1 // Per-document TTL: Cosmos auto-deletes when document-level "ttl" expires
       indexingPolicy: {
         indexingMode: 'consistent'
         automatic: true
@@ -125,7 +126,7 @@ resource chatSessionsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabas
   }
 }
 
-// Governance snapshots container — partitioned by apiId
+// Governance snapshots container — partitioned by apiId, TTL-enabled (2-year retention)
 resource governanceSnapshotsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-12-01-preview' = {
   parent: database
   name: 'governance-snapshots'
@@ -137,6 +138,7 @@ resource governanceSnapshotsContainer 'Microsoft.DocumentDB/databaseAccounts/sql
         kind: 'Hash'
         version: 2
       }
+      defaultTtl: -1 // Per-document TTL
       indexingPolicy: {
         indexingMode: 'consistent'
         automatic: true
@@ -158,7 +160,7 @@ resource governanceSnapshotsContainer 'Microsoft.DocumentDB/databaseAccounts/sql
   }
 }
 
-// Analytics events container — partitioned by eventType
+// Analytics events container — partitioned by eventType, TTL-enabled (1-year retention)
 resource analyticsEventsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-12-01-preview' = {
   parent: database
   name: 'analytics-events'
@@ -170,6 +172,7 @@ resource analyticsEventsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlData
         kind: 'Hash'
         version: 2
       }
+      defaultTtl: -1 // Per-document TTL
       indexingPolicy: {
         indexingMode: 'consistent'
         automatic: true

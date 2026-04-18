@@ -2,22 +2,42 @@
 
 ## Overview
 
-This document defines retention periods, deletion methods, and lifecycle management for all persistent data in the APIC Vibe Portal. All data has a defined retention period after which it is purged according to the method specified below.
+This document defines retention periods, deletion methods, and lifecycle management for all persistent data in the APIC Vibe Portal. Data retention is handled by **Cosmos DB native TTL** (Time-to-Live): when a document is soft-deleted, a `ttl` field is set on the document and Cosmos DB automatically purges it after the configured period.
 
 ## Retention Schedule
 
-| Data Class           | Retention Period         | Rationale                         | Deletion Method                         |
-| -------------------- | ------------------------ | --------------------------------- | --------------------------------------- |
-| Chat sessions        | 90 days                  | Privacy, compliance               | Soft delete, then purge via cleanup job |
-| Governance snapshots | 2 years                  | Audit, compliance                 | Soft delete, then purge via cleanup job |
-| Analytics telemetry  | 1 year hot, 3 years cold | Trend analysis, cost optimization | Soft delete, then purge via cleanup job |
+| Data Class           | Retention Period | Rationale                         | Deletion Method                                          |
+| -------------------- | ---------------- | --------------------------------- | -------------------------------------------------------- |
+| Chat sessions        | 90 days          | Privacy, compliance               | Soft delete sets `ttl`; Cosmos DB auto-purges after 90d  |
+| Governance snapshots | 2 years          | Audit, compliance                 | Soft delete sets `ttl`; Cosmos DB auto-purges after 730d |
+| Analytics telemetry  | 1 year           | Trend analysis, cost optimization | Soft delete sets `ttl`; Cosmos DB auto-purges after 365d |
 
-## Soft Delete
+## Soft Delete with Cosmos DB TTL
 
-All records support a two-phase deletion model:
+All records support a two-phase deletion model powered by Cosmos DB native TTL:
 
-1. **Soft Delete**: Mark the record with `isDeleted: true` and `deletedAt: <timestamp>`. Soft-deleted records are excluded from normal queries but remain in the database.
-2. **Hard Delete**: A scheduled data-retention cleanup job permanently removes soft-deleted records after the retention period has elapsed.
+1. **Soft Delete**: Mark the record with `isDeleted: true`, `deletedAt: <timestamp>`, and `ttl: <seconds>`. Soft-deleted records are excluded from normal queries but remain in the database until the TTL expires.
+2. **Automatic Purge**: Cosmos DB automatically and permanently removes the document once the `ttl` elapses. No custom cleanup job is required.
+
+### How It Works
+
+Each container has `defaultTtl: -1` in its Bicep definition, which enables per-document TTL without a container-wide default. Documents without a `ttl` field live indefinitely. When `soft_delete()` is called, the repository sets:
+
+```json
+{
+  "isDeleted": true,
+  "deletedAt": "2026-04-18T12:00:00Z",
+  "ttl": 7776000
+}
+```
+
+The `ttl` value (in seconds) varies by container:
+
+| Container              | TTL (seconds) | Equivalent |
+| ---------------------- | ------------- | ---------- |
+| `chat-sessions`        | 7,776,000     | 90 days    |
+| `governance-snapshots` | 63,072,000    | 730 days   |
+| `analytics-events`     | 31,536,000    | 365 days   |
 
 ### Soft Delete Fields
 
@@ -30,21 +50,7 @@ Every document schema includes:
 }
 ```
 
-## Data Retention Cleanup Job
-
-A scheduled job runs periodically to hard-delete records that have exceeded their retention period.
-
-- **Job Location**: `src/bff/apic_vibe_portal_bff/jobs/data_retention_job.py`
-- **Frequency**: Daily (recommended via Azure Container Apps Job or external scheduler)
-- **Logic**: For each container, query soft-deleted documents where `deletedAt` is older than the retention period, then permanently delete them.
-
-### Cleanup Thresholds
-
-| Container              | Purge Condition                               |
-| ---------------------- | --------------------------------------------- |
-| `chat-sessions`        | `isDeleted == true AND deletedAt < now - 90d` |
-| `governance-snapshots` | `isDeleted == true AND deletedAt < now - 2y`  |
-| `analytics-events`     | `isDeleted == true AND deletedAt < now - 1y`  |
+When soft-deleted, the `ttl` field is added and Cosmos DB handles the rest.
 
 ## User Data Deletion (GDPR Right to Erasure)
 

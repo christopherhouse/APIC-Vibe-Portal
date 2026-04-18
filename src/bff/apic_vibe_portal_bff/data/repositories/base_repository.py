@@ -3,6 +3,10 @@
 All concrete repositories inherit from :class:`BaseRepository` and may
 override the ``_apply_migrations`` hook to run lazy schema migrations on
 documents read from Cosmos DB.
+
+Data retention is handled by **Cosmos DB native TTL**: when a document is
+soft-deleted a ``ttl`` field (in seconds) is set so Cosmos DB automatically
+purges it after the configured retention period.
 """
 
 from __future__ import annotations
@@ -15,6 +19,14 @@ from azure.cosmos.container import ContainerProxy
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 
 logger = logging.getLogger(__name__)
+
+# Default TTL values in seconds per container.
+# Containers must have ``defaultTtl: -1`` (per-document TTL enabled) in Bicep.
+TTL_SECONDS = {
+    "chat-sessions": 90 * 86400,  # 90 days
+    "governance-snapshots": 730 * 86400,  # ~2 years
+    "analytics-events": 365 * 86400,  # 1 year
+}
 
 
 class PaginatedResult:
@@ -40,11 +52,22 @@ class BaseRepository:
     partition_key_field:
         The camelCase field name used as the logical partition key
         (e.g. ``"userId"``).
+    ttl_seconds:
+        Cosmos DB TTL (in seconds) applied when a document is soft-deleted.
+        Defaults to the value in :data:`TTL_SECONDS` for the container, or
+        ``365 * 86400`` (1 year) if unspecified.
     """
 
-    def __init__(self, container: ContainerProxy, partition_key_field: str) -> None:
+    def __init__(
+        self,
+        container: ContainerProxy,
+        partition_key_field: str,
+        *,
+        ttl_seconds: int | None = None,
+    ) -> None:
         self._container = container
         self._pk_field = partition_key_field
+        self._ttl = ttl_seconds if ttl_seconds is not None else TTL_SECONDS.get(container.id, 365 * 86400)
 
     # ------------------------------------------------------------------
     # Hooks (override in subclasses)
@@ -53,6 +76,21 @@ class BaseRepository:
     def _apply_migrations(self, document: dict) -> dict:
         """Apply lazy schema migrations.  Default implementation is a no-op."""
         return document
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _get_required_partition_key(self, document: dict) -> Any:
+        """Return the partition key value or raise a clear error."""
+        pk_value = document.get(self._pk_field)
+        if pk_value in (None, ""):
+            msg = (
+                f"Document is missing required partition key field "
+                f"{self._pk_field!r} for container {self._container.id!r}."
+            )
+            raise ValueError(msg)
+        return pk_value
 
     # ------------------------------------------------------------------
     # CRUD
@@ -120,12 +158,15 @@ class BaseRepository:
 
     def update(self, document: dict) -> dict:
         """Replace an existing document (full replace)."""
-        pk_value = document.get(self._pk_field, "")
+        pk_value = self._get_required_partition_key(document)
         logger.debug("Updating document %s in %s", document.get("id"), self._container.id)
         return self._container.replace_item(item=document["id"], body=document, partition_key=pk_value)
 
     def soft_delete(self, item_id: str, partition_key: str) -> dict | None:
-        """Mark a document as soft-deleted.
+        """Mark a document as soft-deleted and set a Cosmos DB TTL for automatic purge.
+
+        The ``ttl`` field tells Cosmos DB to permanently delete the document
+        after the configured retention period (see :data:`TTL_SECONDS`).
 
         Returns the updated document or ``None`` if not found.
         """
@@ -136,6 +177,7 @@ class BaseRepository:
         now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         doc["isDeleted"] = True
         doc["deletedAt"] = now
+        doc["ttl"] = self._ttl
         return self.update(doc)
 
     def hard_delete(self, item_id: str, partition_key: str) -> bool:
@@ -145,24 +187,3 @@ class BaseRepository:
             return True
         except CosmosResourceNotFoundError:
             return False
-
-    # ------------------------------------------------------------------
-    # Retention helpers
-    # ------------------------------------------------------------------
-
-    def find_expired_soft_deleted(self, before_iso: str, *, max_items: int = 100) -> list[dict]:
-        """Return soft-deleted documents whose ``deletedAt`` is earlier than *before_iso*.
-
-        This is a cross-partition query used by the retention cleanup job.
-        """
-        query = "SELECT * FROM c WHERE c.isDeleted = true AND c.deletedAt < @cutoff"
-        parameters: list[dict[str, Any]] = [{"name": "@cutoff", "value": before_iso}]
-
-        return list(
-            self._container.query_items(
-                query=query,
-                parameters=parameters,
-                enable_cross_partition_query=True,
-                max_item_count=max_items,
-            )
-        )

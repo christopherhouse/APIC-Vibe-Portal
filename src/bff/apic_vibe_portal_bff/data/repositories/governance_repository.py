@@ -8,7 +8,7 @@ from __future__ import annotations
 from azure.cosmos.container import ContainerProxy
 
 from apic_vibe_portal_bff.data.models.governance import CURRENT_SCHEMA_VERSION
-from apic_vibe_portal_bff.data.repositories.base_repository import BaseRepository
+from apic_vibe_portal_bff.data.repositories.base_repository import BaseRepository, PaginatedResult
 
 
 class GovernanceRepository(BaseRepository):
@@ -30,7 +30,7 @@ class GovernanceRepository(BaseRepository):
         *,
         max_items: int = 25,
         continuation_token: str | None = None,
-    ):
+    ) -> PaginatedResult:
         """Return governance snapshots for an API, newest first."""
         return self.find_by_partition_key(
             api_id,

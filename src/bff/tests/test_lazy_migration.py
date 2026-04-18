@@ -73,3 +73,16 @@ class TestApplyMigrations:
         _ = apply_migrations(doc, target_version=2, migrations=MIGRATIONS)
         assert doc["schemaVersion"] == 1
         assert "model" not in doc
+
+    def test_raises_on_stalled_migration(self):
+        """Guard against infinite loops when a migration doesn't advance schemaVersion."""
+
+        def _bad_migration(doc: dict) -> dict:
+            return dict(doc)  # returns same version — no increment
+
+        with pytest.raises(ValueError, match="did not advance schemaVersion"):
+            apply_migrations(
+                {"schemaVersion": 1, "id": "abc"},
+                target_version=2,
+                migrations={1: _bad_migration},
+            )

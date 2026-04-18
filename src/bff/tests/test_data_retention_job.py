@@ -1,86 +1,73 @@
-"""Unit tests for the data retention cleanup job."""
+"""Unit tests for data retention via Cosmos DB native TTL.
+
+Verifies that the TTL constants are correctly defined and that the
+``soft_delete`` method on ``BaseRepository`` sets the expected ``ttl``
+field so Cosmos DB can auto-purge documents.
+"""
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
-from apic_vibe_portal_bff.data.repositories.base_repository import BaseRepository
-from apic_vibe_portal_bff.jobs.data_retention_job import RETENTION_DAYS, run_cleanup
+from apic_vibe_portal_bff.data.repositories.base_repository import TTL_SECONDS, BaseRepository
 
 
-def _make_repo(expired_docs: list[dict] | None = None) -> BaseRepository:
-    """Return a mock repository with ``find_expired_soft_deleted`` and ``hard_delete``."""
-    repo = MagicMock(spec=BaseRepository)
-    repo._pk_field = "userId"
-    repo.find_expired_soft_deleted.return_value = expired_docs or []
-    repo.hard_delete.return_value = True
-    return repo
+class TestTTLConstants:
+    """Tests for :data:`TTL_SECONDS`."""
+
+    def test_chat_sessions_90_days(self):
+        assert TTL_SECONDS["chat-sessions"] == 90 * 86400
+
+    def test_governance_snapshots_730_days(self):
+        assert TTL_SECONDS["governance-snapshots"] == 730 * 86400
+
+    def test_analytics_events_365_days(self):
+        assert TTL_SECONDS["analytics-events"] == 365 * 86400
 
 
-class TestRunCleanup:
-    """Tests for :func:`run_cleanup`."""
+class TestSoftDeleteTTL:
+    """Tests that soft_delete sets the correct TTL for each container."""
 
-    def test_no_expired_docs(self):
-        repos = {"chat-sessions": _make_repo([])}
-        result = run_cleanup(repos)
-        assert result == {"chat-sessions": 0}
+    def _make_repo(self, container_id: str) -> tuple[BaseRepository, MagicMock]:
+        container = MagicMock()
+        container.id = container_id
+        doc = {"id": "1", "userId": "u1", "schemaVersion": 1}
+        container.read_item.return_value = doc
+        container.replace_item.return_value = doc
+        repo = BaseRepository(container, "userId")
+        return repo, container
 
-    def test_purges_expired_docs(self):
-        expired = [
-            {"id": "1", "userId": "u1", "isDeleted": True, "deletedAt": "2025-01-01T00:00:00Z"},
-            {"id": "2", "userId": "u2", "isDeleted": True, "deletedAt": "2025-02-01T00:00:00Z"},
-        ]
-        repos = {"chat-sessions": _make_repo(expired)}
-        result = run_cleanup(repos)
-        assert result == {"chat-sessions": 2}
-        assert repos["chat-sessions"].hard_delete.call_count == 2
+    def test_chat_session_ttl(self):
+        repo, container = self._make_repo("chat-sessions")
+        repo.soft_delete("1", "u1")
+        body = container.replace_item.call_args.kwargs.get("body") or container.replace_item.call_args[1].get("body")
+        assert body["ttl"] == TTL_SECONDS["chat-sessions"]
 
-    def test_uses_correct_retention_days(self):
-        repos = {
-            "chat-sessions": _make_repo(),
-            "governance-snapshots": _make_repo(),
-            "analytics-events": _make_repo(),
-        }
-        now = datetime(2026, 4, 18, 12, 0, 0)
-        run_cleanup(repos, now=now)
+    def test_governance_snapshot_ttl(self):
+        repo, container = self._make_repo("governance-snapshots")
+        repo.soft_delete("1", "u1")
+        body = container.replace_item.call_args.kwargs.get("body") or container.replace_item.call_args[1].get("body")
+        assert body["ttl"] == TTL_SECONDS["governance-snapshots"]
 
-        # Verify each repo was called with the correct cutoff date
-        for container_name, repo in repos.items():
-            call_args = repo.find_expired_soft_deleted.call_args
-            cutoff = call_args[0][0]  # positional arg
-            days = RETENTION_DAYS[container_name]
-            expected_cutoff = (now - timedelta(days=days)).isoformat() + "Z"
-            assert cutoff == expected_cutoff, f"Wrong cutoff for {container_name}"
+    def test_analytics_event_ttl(self):
+        repo, container = self._make_repo("analytics-events")
+        repo.soft_delete("1", "u1")
+        body = container.replace_item.call_args.kwargs.get("body") or container.replace_item.call_args[1].get("body")
+        assert body["ttl"] == TTL_SECONDS["analytics-events"]
 
-    def test_retention_override(self):
-        repos = {"chat-sessions": _make_repo()}
-        now = datetime(2026, 4, 18, 12, 0, 0)
-        run_cleanup(repos, retention_overrides={"chat-sessions": 30}, now=now)
+    def test_custom_ttl_override(self):
+        container = MagicMock()
+        container.id = "custom"
+        doc = {"id": "1", "userId": "u1", "schemaVersion": 1}
+        container.read_item.return_value = doc
+        container.replace_item.return_value = doc
+        repo = BaseRepository(container, "userId", ttl_seconds=3600)
+        repo.soft_delete("1", "u1")
+        body = container.replace_item.call_args.kwargs.get("body") or container.replace_item.call_args[1].get("body")
+        assert body["ttl"] == 3600
 
-        call_args = repos["chat-sessions"].find_expired_soft_deleted.call_args
-        cutoff = call_args[0][0]
-        expected = (now - timedelta(days=30)).isoformat() + "Z"
-        assert cutoff == expected
-
-    def test_handles_hard_delete_failure(self):
-        expired = [{"id": "1", "userId": "u1"}]
-        repo = _make_repo(expired)
-        repo.hard_delete.return_value = False  # simulate failure
-        repos = {"chat-sessions": repo}
-
-        result = run_cleanup(repos)
-        assert result == {"chat-sessions": 0}
-
-    def test_multiple_containers(self):
-        repos = {
-            "chat-sessions": _make_repo([{"id": "1", "userId": "u1"}]),
-            "governance-snapshots": _make_repo([{"id": "2", "userId": "u2"}, {"id": "3", "userId": "u3"}]),
-            "analytics-events": _make_repo([]),
-        }
-        result = run_cleanup(repos)
-        assert result == {
-            "chat-sessions": 1,
-            "governance-snapshots": 2,
-            "analytics-events": 0,
-        }
+    def test_default_ttl_for_unknown_container(self):
+        container = MagicMock()
+        container.id = "unknown-container"
+        repo = BaseRepository(container, "userId")
+        assert repo._ttl == 365 * 86400  # 1 year fallback

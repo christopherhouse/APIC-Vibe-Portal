@@ -8,7 +8,7 @@ from __future__ import annotations
 from azure.cosmos.container import ContainerProxy
 
 from apic_vibe_portal_bff.data.models.analytics import CURRENT_SCHEMA_VERSION
-from apic_vibe_portal_bff.data.repositories.base_repository import BaseRepository
+from apic_vibe_portal_bff.data.repositories.base_repository import BaseRepository, PaginatedResult
 
 
 class AnalyticsRepository(BaseRepository):
@@ -30,7 +30,7 @@ class AnalyticsRepository(BaseRepository):
         *,
         max_items: int = 50,
         continuation_token: str | None = None,
-    ):
+    ) -> PaginatedResult:
         """Return analytics events of a given type, newest first."""
         return self.find_by_partition_key(
             event_type,

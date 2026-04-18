@@ -69,6 +69,10 @@ def apply_migrations(
             raise ValueError(msg)
         logger.debug("Migrating document %s from v%d to v%d", doc.get("id", "?"), current, current + 1)
         doc = fn(doc)
-        current = doc.get("schemaVersion", current + 1)
+        next_version = doc.get("schemaVersion", current + 1)
+        if next_version <= current:
+            msg = f"Migration for schemaVersion {current} did not advance schemaVersion: got {next_version}"
+            raise ValueError(msg)
+        current = next_version
 
     return doc
