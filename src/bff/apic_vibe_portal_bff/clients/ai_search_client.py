@@ -34,7 +34,7 @@ FACET_FIELDS = ["kind", "lifecycleStage", "tags"]
 HIGHLIGHT_FIELDS = "title,description,apiName"
 
 # Fields for the suggest endpoint
-SUGGEST_FIELDS = "apiName,title,description,kind"
+SUGGEST_FIELDS = ["apiName", "title", "description", "kind"]
 
 
 # ---------------------------------------------------------------------------

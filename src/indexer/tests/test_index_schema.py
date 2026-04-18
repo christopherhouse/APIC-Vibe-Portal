@@ -104,3 +104,20 @@ class TestBuildIndexSchema:
         assert fields["title"].sortable is True
         assert fields["createdAt"].sortable is True
         assert fields["updatedAt"].sortable is True
+
+    def test_has_suggester(self) -> None:
+        schema = build_index_schema()
+        assert schema.suggesters is not None
+        assert len(schema.suggesters) == 1
+
+    def test_suggester_name_is_sg(self) -> None:
+        schema = build_index_schema()
+        suggester = schema.suggesters[0]
+        assert suggester.name == "sg"
+
+    def test_suggester_source_fields(self) -> None:
+        schema = build_index_schema()
+        suggester = schema.suggesters[0]
+        assert "apiName" in suggester.source_fields
+        assert "title" in suggester.source_fields
+        assert "description" in suggester.source_fields
