@@ -268,7 +268,18 @@ export function startMockServer(
           return;
         }
         res.writeHead(200);
-        res.end(JSON.stringify({ data: generateMockSpec(api.title, version.title) }));
+        res.end(
+          JSON.stringify({
+            data: {
+              id: `def-${version.id}`,
+              name: `definition-${version.id}`,
+              title: `${api.title} ${version.title} Definition`,
+              specificationType: 'openapi',
+              specificationVersion: '3.0.3',
+              content: generateMockSpec(api.title, version.title),
+            },
+          })
+        );
         return;
       }
 

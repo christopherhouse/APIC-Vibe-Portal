@@ -39,6 +39,11 @@ from apic_vibe_portal_bff.utils.cache import CacheBackend, InMemoryCache
 
 logger = logging.getLogger(__name__)
 
+# Characters that could be used for log injection (newlines, carriage returns,
+# and other control characters).  Stripping these from user-supplied values
+# before including them in log ``extra`` dicts prevents forged log lines.
+_LOG_UNSAFE_CHARS = str.maketrans({"\n": " ", "\r": " ", "\t": " ", "\x00": ""})
+
 # Cache key prefixes
 _KEY_APIS = "apis:"
 _KEY_API = "api:"
@@ -150,7 +155,10 @@ class ApiCatalogService:
         cache_key = f"{_KEY_APIS}{filter_str or ''}:{sort_field}:{sort_reverse}:{page}:{page_size}"
         hit = self._cache.get_with_staleness(cache_key, _TTL_API_LIST)
         if hit.value is not None:
-            logger.debug("list_apis cache hit", extra={"key": cache_key, "needs_refresh": hit.needs_refresh})
+            logger.debug(
+                "list_apis cache hit",
+                extra={"key": cache_key.translate(_LOG_UNSAFE_CHARS), "needs_refresh": hit.needs_refresh},
+            )
             if hit.needs_refresh:
                 self._schedule_refresh(
                     cache_key,
@@ -209,7 +217,10 @@ class ApiCatalogService:
         cache_key = f"{_KEY_API}{api_name}:{include_versions}:{include_deployments}"
         hit = self._cache.get_with_staleness(cache_key, _TTL_API_DETAIL)
         if hit.value is not None:
-            logger.debug("get_api cache hit", extra={"key": cache_key, "needs_refresh": hit.needs_refresh})
+            logger.debug(
+                "get_api cache hit",
+                extra={"key": cache_key.translate(_LOG_UNSAFE_CHARS), "needs_refresh": hit.needs_refresh},
+            )
             if hit.needs_refresh:
                 self._schedule_refresh(
                     cache_key,
@@ -241,7 +252,10 @@ class ApiCatalogService:
         cache_key = f"{_KEY_VERSIONS}{api_name}"
         hit = self._cache.get_with_staleness(cache_key, _TTL_API_DETAIL)
         if hit.value is not None:
-            logger.debug("list_api_versions cache hit", extra={"key": cache_key, "needs_refresh": hit.needs_refresh})
+            logger.debug(
+                "list_api_versions cache hit",
+                extra={"key": cache_key.translate(_LOG_UNSAFE_CHARS), "needs_refresh": hit.needs_refresh},
+            )
             if hit.needs_refresh:
                 self._schedule_refresh(
                     cache_key,
@@ -281,7 +295,10 @@ class ApiCatalogService:
         cache_key = f"{_KEY_SPEC}{api_name}:{version_name}:{definition_name}"
         hit = self._cache.get_with_staleness(cache_key, _TTL_SPEC)
         if hit.value is not None:
-            logger.debug("get_api_definition cache hit", extra={"key": cache_key, "needs_refresh": hit.needs_refresh})
+            logger.debug(
+                "get_api_definition cache hit",
+                extra={"key": cache_key.translate(_LOG_UNSAFE_CHARS), "needs_refresh": hit.needs_refresh},
+            )
             if hit.needs_refresh:
                 self._schedule_refresh(
                     cache_key,
@@ -343,7 +360,10 @@ class ApiCatalogService:
         cache_key = f"{_KEY_DEPLOYMENTS}{api_name}"
         hit = self._cache.get_with_staleness(cache_key, _TTL_DEPLOYMENTS)
         if hit.value is not None:
-            logger.debug("list_deployments cache hit", extra={"key": cache_key, "needs_refresh": hit.needs_refresh})
+            logger.debug(
+                "list_deployments cache hit",
+                extra={"key": cache_key.translate(_LOG_UNSAFE_CHARS), "needs_refresh": hit.needs_refresh},
+            )
             if hit.needs_refresh:
                 self._schedule_refresh(
                     cache_key,
