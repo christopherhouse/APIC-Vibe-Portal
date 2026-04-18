@@ -73,8 +73,8 @@ Complete usage analytics, metadata scoring, performance optimization, and launch
 | [013](013-ai-search-index-setup.md)                | Azure AI Search Index Setup & Indexing Pipeline | ✅     | 002, 006, 009                |
 | [014](014-search-api-implementation.md)            | Search API Implementation (BFF)                 | ✅     | 006, 007, 013                |
 | [015](015-frontend-search-ui.md)                   | Search UI (Frontend)                            | ✅     | 005, 007, 014                |
-| [016](016-persistence-data-governance-baseline.md) | Persistence & Data Governance Baseline          | 🔲     | 002, 006, 007, 008, 013, 014 |
-| [017](017-openai-integration.md)                   | Azure OpenAI Service Integration (BFF)          | 🔲     | 002, 006, 007, 013, 014      |
+| [016](016-persistence-data-governance-baseline.md) | Persistence & Data Governance Baseline          | ✅     | 002, 006, 007, 008, 013, 014 |
+| [017](017-openai-integration.md)                   | Azure OpenAI Service Integration (BFF)          | 🔲     | 002, 006, 007, 013, 014, 016 |
 | [018](018-frontend-chat-ui.md)                     | AI Chat Interface (Frontend)                    | 🔲     | 005, 007, 017                |
 | [019](019-observability-app-insights.md)           | Application Insights Observability              | 🔲     | 002, 005, 006                |
 | [020](020-security-trimming.md)                    | Security Trimming Implementation                | 🔲     | 009, 014, 017, 008           |
@@ -82,20 +82,20 @@ Complete usage analytics, metadata scoring, performance optimization, and launch
 
 ### Phase 2 — Governance + Compare
 
-| #                                        | Task                                         | Status | Key Dependencies        |
-| ---------------------------------------- | -------------------------------------------- | ------ | ----------------------- |
-| [022](022-foundry-agent-setup.md)        | Foundry Agent Service Setup & First Agent    | 🔲     | 002, 006, 017, 014, 020 |
-| [023](023-governance-agent.md)           | Governance & Compliance Agent                | 🔲     | 022, 009                |
-| [024](024-api-comparison-feature.md)     | API Comparison Feature                       | 🔲     | 009, 010, 012, 022, 023 |
-| [025](025-governance-dashboard-ui.md)    | Governance Dashboard UI                      | 🔲     | 005, 023, 010, 008, 020 |
-| [026](026-multi-agent-orchestration.md)  | Multi-Agent Orchestration & Agent Management | 🔲     | 022, 023, 008           |
-| [027](027-phase2-integration-testing.md) | Phase 2 Integration Testing & Polish         | 🔲     | 021, 022–026            |
+| #                                        | Task                                         | Status | Key Dependencies             |
+| ---------------------------------------- | -------------------------------------------- | ------ | ---------------------------- |
+| [022](022-foundry-agent-setup.md)        | Foundry Agent Service Setup & First Agent    | 🔲     | 002, 006, 016, 017, 014, 020 |
+| [023](023-governance-agent.md)           | Governance & Compliance Agent                | 🔲     | 022, 009, 016                |
+| [024](024-api-comparison-feature.md)     | API Comparison Feature                       | 🔲     | 009, 010, 012, 022, 023      |
+| [025](025-governance-dashboard-ui.md)    | Governance Dashboard UI                      | 🔲     | 005, 016, 023, 010, 008, 020 |
+| [026](026-multi-agent-orchestration.md)  | Multi-Agent Orchestration & Agent Management | 🔲     | 022, 023, 008                |
+| [027](027-phase2-integration-testing.md) | Phase 2 Integration Testing & Polish         | 🔲     | 021, 022–026                 |
 
 ### Phase 3 — Analytics & Polish
 
 | #                                       | Task                                                        | Status | Key Dependencies        |
 | --------------------------------------- | ----------------------------------------------------------- | ------ | ----------------------- |
-| [028](028-analytics-data-collection.md) | Usage Analytics Data Collection                             | 🔲     | 019, 006, 008           |
+| [028](028-analytics-data-collection.md) | Usage Analytics Data Collection                             | 🔲     | 016, 019, 006, 008      |
 | [029](029-analytics-dashboard.md)       | Analytics Dashboard                                         | 🔲     | 005, 028, 008           |
 | [030](030-metadata-completeness.md)     | Metadata Completeness Scoring & Recommendations             | 🔲     | 009, 023, 017, 012, 025 |
 | [031](031-performance-accessibility.md) | Performance Optimization & Accessibility                    | 🔲     | All previous            |

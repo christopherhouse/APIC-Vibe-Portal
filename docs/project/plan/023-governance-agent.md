@@ -9,6 +9,7 @@
 - [Architecture Document](../apic_architecture.md) — Multi-agent design; Agent Layer: Foundry
 - [Product Charter](../apic_product_charter.md) — Provide governance visibility; metadata completeness as success metric
 - [Product Spec](../apic_portal_spec.md) — Governance feature requirements
+- [Persistence & Data Governance Baseline](016-persistence-data-governance-baseline.md) — Governance snapshot storage, schema versioning, retention policy
 
 ## Overview
 
@@ -18,6 +19,7 @@ Create a Governance & Compliance Agent that can assess API governance status, ch
 
 - **022** — Foundry Agent Service setup (agent framework, router)
 - **009** — API Center data layer (governance metadata source)
+- **016** — Persistence & Data Governance Baseline (governance-snapshots container, repository pattern)
 
 ## Implementation Details
 

@@ -9,6 +9,7 @@
 - [Architecture Document](../apic_architecture.md) — Frontend: Next.js SPA; governance visibility
 - [Product Charter](../apic_product_charter.md) — Provide governance visibility; metadata completeness as success metric
 - [Product Spec](../apic_portal_spec.md) — Governance dashboard requirements
+- [Persistence & Data Governance Baseline](016-persistence-data-governance-baseline.md) — Governance snapshot storage, Cosmos DB indexing for trend queries
 
 ## Overview
 
@@ -17,6 +18,7 @@ Build the governance dashboard in the frontend that provides a visual overview o
 ## Dependencies
 
 - **005** — Frontend project setup
+- **016** — Persistence & Data Governance Baseline (governance-snapshots container for historical data)
 - **023** — Governance Agent (governance scoring and compliance data)
 - **010** — BFF API catalog endpoints (API listing data)
 - **008** — Entra ID authentication (role-based dashboard access)

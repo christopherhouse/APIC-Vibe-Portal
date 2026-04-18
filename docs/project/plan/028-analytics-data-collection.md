@@ -9,6 +9,7 @@
 - [Architecture Document](../apic_architecture.md) — Observability: App Insights; data collection layer
 - [Product Charter](../apic_product_charter.md) — Phase 3: Analytics; success metrics (portal adoption, API discovery time)
 - [Product Spec](../apic_portal_spec.md) — Analytics data requirements
+- [Persistence & Data Governance Baseline](016-persistence-data-governance-baseline.md) — Analytics event storage, PII handling, data retention policy
 
 ## Overview
 
@@ -16,6 +17,7 @@ Implement a comprehensive analytics data collection layer that captures user int
 
 ## Dependencies
 
+- **016** — Persistence & Data Governance Baseline (analytics-events container, repository pattern)
 - **019** — Application Insights observability (telemetry foundation)
 - **006** — BFF API project setup
 - **008** — Entra ID authentication (user identity for analytics)
