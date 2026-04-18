@@ -106,3 +106,33 @@ class TestInMemoryCache:
 
     def test_len_empty_cache_is_zero(self) -> None:
         assert len(self.cache) == 0
+
+    # ------------------------------------------------------------------
+    # get_with_staleness
+    # ------------------------------------------------------------------
+
+    def test_get_with_staleness_returns_value_and_no_refresh_when_fresh(self) -> None:
+        self.cache.set("k", "fresh", ttl_seconds=60.0)
+        result = self.cache.get_with_staleness("k", original_ttl_seconds=60.0)
+        assert result.value == "fresh"
+        assert result.needs_refresh is False
+
+    def test_get_with_staleness_returns_none_on_miss(self) -> None:
+        result = self.cache.get_with_staleness("missing", original_ttl_seconds=60.0)
+        assert result.value is None
+        assert result.needs_refresh is False
+
+    def test_get_with_staleness_returns_none_on_expired(self) -> None:
+        self.cache.set("k", "expired", ttl_seconds=0.01)
+        time.sleep(0.05)
+        result = self.cache.get_with_staleness("k", original_ttl_seconds=60.0)
+        assert result.value is None
+        assert result.needs_refresh is False
+
+    def test_get_with_staleness_signals_refresh_when_near_expiry(self) -> None:
+        # TTL of 0.1 s — sleep 0.09 s so only ~10% remains (< 20% threshold)
+        self.cache.set("k", "stale", ttl_seconds=0.1)
+        time.sleep(0.09)
+        result = self.cache.get_with_staleness("k", original_ttl_seconds=0.1)
+        assert result.value == "stale"
+        assert result.needs_refresh is True

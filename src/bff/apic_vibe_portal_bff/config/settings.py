@@ -66,15 +66,6 @@ class Settings(BaseSettings):
         default=6380,
         description="Azure Cache for Redis SSL port (default 6380).",
     )
-    cache_warm_interval_seconds: int = Field(
-        default=90,
-        description=(
-            "Interval in seconds between periodic cache warm-up runs. "
-            "Should be shorter than the API list TTL (120 s) so the cache "
-            "never goes completely cold between refreshes. Set to 0 to disable "
-            "periodic warming (startup warm-up still runs)."
-        ),
-    )
 
     # --- Entra ID (authentication) ---------------------------------------
     bff_entra_tenant_id: str = Field(default="", description="Entra ID (Azure AD) tenant ID")

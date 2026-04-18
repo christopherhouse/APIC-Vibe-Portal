@@ -203,6 +203,67 @@ class TestInvalidatePrefix:
 
 
 # ---------------------------------------------------------------------------
+# get_with_staleness
+# ---------------------------------------------------------------------------
+
+
+class TestGetWithStaleness:
+    def test_returns_value_with_no_refresh_when_fresh(self) -> None:
+        from apic_vibe_portal_bff.utils.cache import CacheResult
+
+        backend, mock_client = _make_backend()
+        value = {"key": "fresh"}
+        mock_client.get.return_value = _serialize(value)
+        mock_client.ttl.return_value = 50  # 50 of 60 remaining → 83%
+
+        result = backend.get_with_staleness("k", original_ttl_seconds=60.0)
+
+        assert isinstance(result, CacheResult)
+        assert result.value == value
+        assert result.needs_refresh is False
+
+    def test_signals_refresh_when_near_expiry(self) -> None:
+        backend, mock_client = _make_backend()
+        value = {"key": "stale"}
+        mock_client.get.return_value = _serialize(value)
+        mock_client.ttl.return_value = 5  # 5 of 60 remaining → 8.3% < 20%
+
+        result = backend.get_with_staleness("k", original_ttl_seconds=60.0)
+
+        assert result.value == value
+        assert result.needs_refresh is True
+
+    def test_returns_none_on_miss(self) -> None:
+        backend, mock_client = _make_backend()
+        mock_client.get.return_value = None
+
+        result = backend.get_with_staleness("missing", original_ttl_seconds=60.0)
+
+        assert result.value is None
+        assert result.needs_refresh is False
+
+    def test_returns_none_on_redis_error(self) -> None:
+        backend, mock_client = _make_backend()
+        mock_client.get.side_effect = ConnectionError("Redis down")
+
+        result = backend.get_with_staleness("any", original_ttl_seconds=60.0)
+
+        assert result.value is None
+        assert result.needs_refresh is False
+
+    def test_no_refresh_when_ttl_returns_negative(self) -> None:
+        """TTL returns -1 (no expiry) or -2 (key gone) — no refresh."""
+        backend, mock_client = _make_backend()
+        mock_client.get.return_value = _serialize("hello")
+        mock_client.ttl.return_value = -1
+
+        result = backend.get_with_staleness("k", original_ttl_seconds=60.0)
+
+        assert result.value == "hello"
+        assert result.needs_refresh is False
+
+
+# ---------------------------------------------------------------------------
 # close
 # ---------------------------------------------------------------------------
 

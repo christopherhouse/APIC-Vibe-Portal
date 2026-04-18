@@ -3,12 +3,20 @@
 Orchestrates calls to :class:`ApiCenterClient`, applies the data mapper, and
 caches results using a :class:`~apic_vibe_portal_bff.utils.cache.CacheBackend`
 implementation (Redis in production, in-memory fallback for local development).
+
+Implements **stale-while-revalidate** caching: when a cached value is still
+valid but within the last 20 % of its TTL, the value is returned immediately
+to the caller while a background thread refreshes the cache entry.  This
+keeps user-facing latency low and avoids periodic cache nuking.
 """
 
 from __future__ import annotations
 
 import logging
 import math
+import threading
+from collections.abc import Callable
+from typing import Any
 
 from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient, ApiCenterNotFoundError
 from apic_vibe_portal_bff.clients.api_center_mapper import (
@@ -72,6 +80,38 @@ class ApiCatalogService:
     ) -> None:
         self._client = client
         self._cache: CacheBackend = cache if cache is not None else InMemoryCache(default_ttl_seconds=cache_ttl_seconds)
+        # Tracks keys that already have a background refresh in flight to
+        # avoid spawning duplicate threads for the same key.
+        self._refreshing: set[str] = set()
+        self._refresh_lock = threading.Lock()
+
+    # ------------------------------------------------------------------
+    # Background refresh helper
+    # ------------------------------------------------------------------
+
+    def _schedule_refresh(self, cache_key: str, refresh_fn: Callable[[], Any], ttl: float) -> None:
+        """Fire a background daemon thread to refresh *cache_key*.
+
+        If a refresh for this key is already in-flight the call is a no-op.
+        """
+        with self._refresh_lock:
+            if cache_key in self._refreshing:
+                return
+            self._refreshing.add(cache_key)
+
+        def _do_refresh() -> None:
+            try:
+                value = refresh_fn()
+                self._cache.set(cache_key, value, ttl_seconds=ttl)
+                logger.debug("Background refresh complete", extra={"key": cache_key})
+            except Exception:  # noqa: BLE001
+                logger.warning("Background refresh failed", extra={"key": cache_key}, exc_info=True)
+            finally:
+                with self._refresh_lock:
+                    self._refreshing.discard(cache_key)
+
+        thread = threading.Thread(target=_do_refresh, daemon=True, name=f"cache-refresh:{cache_key}")
+        thread.start()
 
     # ------------------------------------------------------------------
     # Public operations
@@ -108,28 +148,43 @@ class ApiCatalogService:
             raise ValueError(f"page_size must be >= 1, got {page_size}")
 
         cache_key = f"{_KEY_APIS}{filter_str or ''}:{sort_field}:{sort_reverse}:{page}:{page_size}"
-        cached = self._cache.get(cache_key)
-        if cached is not None:
-            logger.debug("list_apis cache hit", extra={"key": cache_key})
-            return cached  # type: ignore[return-value]
+        hit = self._cache.get_with_staleness(cache_key, _TTL_API_LIST)
+        if hit.value is not None:
+            logger.debug("list_apis cache hit", extra={"key": cache_key, "needs_refresh": hit.needs_refresh})
+            if hit.needs_refresh:
+                self._schedule_refresh(
+                    cache_key,
+                    lambda: self._fetch_api_list(filter_str, sort_field, sort_reverse, page, page_size),
+                    _TTL_API_LIST,
+                )
+            return hit.value  # type: ignore[return-value]
 
+        result = self._fetch_api_list(filter_str, sort_field, sort_reverse, page, page_size)
+        self._cache.set(cache_key, result, ttl_seconds=_TTL_API_LIST)
+        return result
+
+    def _fetch_api_list(
+        self,
+        filter_str: str | None,
+        sort_field: str | None,
+        sort_reverse: bool,
+        page: int,
+        page_size: int,
+    ) -> PaginatedResponse:
+        """Fetch the API list from APIC and build a paginated response."""
         raw_apis = self._client.list_apis(filter_str=filter_str)
-
-        # Map all items first so we can sort on model attributes
         definitions = [map_api_definition(raw) for raw in raw_apis]
 
-        # Sort BEFORE pagination so ordering is consistent across pages
         if sort_field is not None:
             definitions.sort(key=lambda x: getattr(x, sort_field, ""), reverse=sort_reverse)
 
-        # Apply in-process pagination (API Center SDK lists all items)
         total_count = len(definitions)
         total_pages = math.ceil(total_count / page_size) if total_count > 0 else 0
         start = (page - 1) * page_size
         end = start + page_size
         page_items = definitions[start:end]
 
-        result = PaginatedResponse(
+        return PaginatedResponse(
             items=page_items,
             pagination=PaginationMeta(
                 page=page,
@@ -138,8 +193,6 @@ class ApiCatalogService:
                 total_pages=total_pages,
             ),
         )
-        self._cache.set(cache_key, result, ttl_seconds=_TTL_API_LIST)
-        return result
 
     def get_api(self, api_name: str, include_versions: bool = True, include_deployments: bool = True) -> ApiDefinition:
         """Return a single API definition with optional versions and deployments.
@@ -154,11 +207,23 @@ class ApiCatalogService:
             When ``True``, fetch and embed deployment objects.
         """
         cache_key = f"{_KEY_API}{api_name}:{include_versions}:{include_deployments}"
-        cached = self._cache.get(cache_key)
-        if cached is not None:
-            logger.debug("get_api cache hit", extra={"key": cache_key})
-            return cached  # type: ignore[return-value]
+        hit = self._cache.get_with_staleness(cache_key, _TTL_API_DETAIL)
+        if hit.value is not None:
+            logger.debug("get_api cache hit", extra={"key": cache_key, "needs_refresh": hit.needs_refresh})
+            if hit.needs_refresh:
+                self._schedule_refresh(
+                    cache_key,
+                    lambda: self._fetch_api(api_name, include_versions, include_deployments),
+                    _TTL_API_DETAIL,
+                )
+            return hit.value  # type: ignore[return-value]
 
+        definition = self._fetch_api(api_name, include_versions, include_deployments)
+        self._cache.set(cache_key, definition, ttl_seconds=_TTL_API_DETAIL)
+        return definition
+
+    def _fetch_api(self, api_name: str, include_versions: bool, include_deployments: bool) -> ApiDefinition:
+        """Fetch a single API from APIC with optional sub-resources."""
         raw = self._client.get_api(api_name)
 
         versions: list[ApiVersion] = []
@@ -169,22 +234,29 @@ class ApiCatalogService:
         if include_deployments:
             deployments = self.list_deployments(api_name)
 
-        definition = map_api_definition(raw, versions=versions, deployments=deployments)
-        self._cache.set(cache_key, definition, ttl_seconds=_TTL_API_DETAIL)
-        return definition
+        return map_api_definition(raw, versions=versions, deployments=deployments)
 
     def list_api_versions(self, api_name: str) -> list[ApiVersion]:
         """Return all versions for the given API."""
         cache_key = f"{_KEY_VERSIONS}{api_name}"
-        cached = self._cache.get(cache_key)
-        if cached is not None:
-            logger.debug("list_api_versions cache hit", extra={"key": cache_key})
-            return cached  # type: ignore[return-value]
+        hit = self._cache.get_with_staleness(cache_key, _TTL_API_DETAIL)
+        if hit.value is not None:
+            logger.debug("list_api_versions cache hit", extra={"key": cache_key, "needs_refresh": hit.needs_refresh})
+            if hit.needs_refresh:
+                self._schedule_refresh(
+                    cache_key,
+                    lambda: self._fetch_versions(api_name),
+                    _TTL_API_DETAIL,
+                )
+            return hit.value  # type: ignore[return-value]
 
-        raw_versions = self._client.list_api_versions(api_name)
-        versions = [map_api_version(v) for v in raw_versions]
+        versions = self._fetch_versions(api_name)
         self._cache.set(cache_key, versions, ttl_seconds=_TTL_API_DETAIL)
         return versions
+
+    def _fetch_versions(self, api_name: str) -> list[ApiVersion]:
+        raw_versions = self._client.list_api_versions(api_name)
+        return [map_api_version(v) for v in raw_versions]
 
     def get_api_definition(
         self,
@@ -207,22 +279,31 @@ class ApiCatalogService:
             Optional definition name; defaults to the first available.
         """
         cache_key = f"{_KEY_SPEC}{api_name}:{version_name}:{definition_name}"
-        cached = self._cache.get(cache_key)
-        if cached is not None:
-            logger.debug("get_api_definition cache hit", extra={"key": cache_key})
-            return cached  # type: ignore[return-value]
+        hit = self._cache.get_with_staleness(cache_key, _TTL_SPEC)
+        if hit.value is not None:
+            logger.debug("get_api_definition cache hit", extra={"key": cache_key, "needs_refresh": hit.needs_refresh})
+            if hit.needs_refresh:
+                self._schedule_refresh(
+                    cache_key,
+                    lambda: self._fetch_spec(api_name, version_name, definition_name),
+                    _TTL_SPEC,
+                )
+            return hit.value  # type: ignore[return-value]
 
+        spec = self._fetch_spec(api_name, version_name, definition_name)
+        self._cache.set(cache_key, spec, ttl_seconds=_TTL_SPEC)
+        return spec
+
+    def _fetch_spec(self, api_name: str, version_name: str, definition_name: str | None) -> ApiSpecification:
         raw_defs = self._client.list_api_definitions(api_name, version_name)
         if not raw_defs:
             raise ApiCenterNotFoundError(f"No definitions found for api/{api_name}/versions/{version_name}")
 
         def _get_name(obj: object) -> str:
-            """Extract the ``name`` attribute from an SDK object or dict."""
             if isinstance(obj, dict):
                 return obj.get("name") or ""
             return getattr(obj, "name", None) or ""
 
-        # Resolve target definition
         if definition_name is None:
             target_raw = raw_defs[0]
         else:
@@ -234,51 +315,66 @@ class ApiCatalogService:
 
         resolved_name = _get_name(target_raw)
         content = self._client.export_api_specification(api_name, version_name, resolved_name)
-        spec = map_api_specification(target_raw, content=content)
-        self._cache.set(cache_key, spec, ttl_seconds=_TTL_SPEC)
-        return spec
+        return map_api_specification(target_raw, content=content)
 
     def list_environments(self) -> list[ApiEnvironment]:
         """Return all deployment environments."""
-        cached = self._cache.get(_KEY_ENVS)
-        if cached is not None:
-            logger.debug("list_environments cache hit")
-            return cached  # type: ignore[return-value]
+        hit = self._cache.get_with_staleness(_KEY_ENVS, _TTL_ENV)
+        if hit.value is not None:
+            logger.debug("list_environments cache hit", extra={"needs_refresh": hit.needs_refresh})
+            if hit.needs_refresh:
+                self._schedule_refresh(
+                    _KEY_ENVS,
+                    self._fetch_environments,
+                    _TTL_ENV,
+                )
+            return hit.value  # type: ignore[return-value]
 
-        raw_envs = self._client.list_environments()
-        environments = [map_environment(e) for e in raw_envs]
+        environments = self._fetch_environments()
         self._cache.set(_KEY_ENVS, environments, ttl_seconds=_TTL_ENV)
         return environments
+
+    def _fetch_environments(self) -> list[ApiEnvironment]:
+        raw_envs = self._client.list_environments()
+        return [map_environment(e) for e in raw_envs]
 
     def list_deployments(self, api_name: str) -> list[ApiDeployment]:
         """Return all deployments for the given API."""
         cache_key = f"{_KEY_DEPLOYMENTS}{api_name}"
-        cached = self._cache.get(cache_key)
-        if cached is not None:
-            logger.debug("list_deployments cache hit", extra={"key": cache_key})
-            return cached  # type: ignore[return-value]
+        hit = self._cache.get_with_staleness(cache_key, _TTL_DEPLOYMENTS)
+        if hit.value is not None:
+            logger.debug("list_deployments cache hit", extra={"key": cache_key, "needs_refresh": hit.needs_refresh})
+            if hit.needs_refresh:
+                self._schedule_refresh(
+                    cache_key,
+                    lambda: self._fetch_deployments(api_name),
+                    _TTL_DEPLOYMENTS,
+                )
+            return hit.value  # type: ignore[return-value]
 
-        raw_deps = self._client.list_deployments(api_name)
-        deployments = [map_deployment(d) for d in raw_deps]
+        deployments = self._fetch_deployments(api_name)
         self._cache.set(cache_key, deployments, ttl_seconds=_TTL_DEPLOYMENTS)
         return deployments
+
+    def _fetch_deployments(self, api_name: str) -> list[ApiDeployment]:
+        raw_deps = self._client.list_deployments(api_name)
+        return [map_deployment(d) for d in raw_deps]
 
     # ------------------------------------------------------------------
     # Cache warming
     # ------------------------------------------------------------------
 
     def warm_cache(self, page_size: int = 20) -> int:
-        """Pre-populate the Redis cache with fresh catalog data from APIC.
+        """Pre-populate the cache with fresh catalog data from APIC.
 
-        Busts the API list and environments cache entries so that the
-        subsequent fetch always goes to APIC, then stores the results.
-        Any previously cached entries for deleted APIs are overwritten with
-        the fresh list, and will expire naturally via TTL.
+        Fetches all pages of the API list and environments.  Unlike a
+        periodic nuke-and-refill, this only writes new entries; existing
+        entries that are still fresh are overwritten with updated data.
 
-        Warms **all pages** for the given *page_size* so that the full
-        catalog is in Redis before any user request arrives.  This method is
-        intended to be called at BFF startup and then periodically by the
-        background cache-warmer thread.
+        This method is intended to be called once at BFF startup so that
+        the first user requests hit a warm cache.  Ongoing freshness is
+        maintained by the stale-while-revalidate logic in each public
+        method.
 
         Parameters
         ----------
