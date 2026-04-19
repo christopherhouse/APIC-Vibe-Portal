@@ -9,6 +9,7 @@ import pytest
 from apic_vibe_portal_bff.clients.openai_client import (
     OpenAIClient,
     OpenAIClientError,
+    OpenAIContentFilterError,
     OpenAIRateLimitError,
     OpenAIUnavailableError,
 )
@@ -197,6 +198,40 @@ class TestChatCompletion:
             await client.chat_completion([{"role": "user", "content": "test"}])
 
     @pytest.mark.asyncio
+    async def test_chat_completion_content_filter_error(self, client):
+        from openai import BadRequestError
+
+        mock = _inject_mock_chat_client(client)
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.headers = {}
+        mock.chat.completions.create.side_effect = BadRequestError(
+            message="Content filter triggered",
+            response=mock_response,
+            body={
+                "error": {
+                    "message": (
+                        "The response was filtered due to the prompt "
+                        "triggering Azure OpenAI's content management policy."
+                    ),
+                    "type": None,
+                    "param": "prompt",
+                    "code": "content_filter",
+                    "status": 400,
+                    "innererror": {
+                        "code": "ResponsibleAIPolicyViolation",
+                        "content_filter_result": {
+                            "jailbreak": {"filtered": True, "detected": True},
+                        },
+                    },
+                }
+            },
+        )
+
+        with pytest.raises(OpenAIContentFilterError):
+            await client.chat_completion([{"role": "user", "content": "test"}])
+
+    @pytest.mark.asyncio
     async def test_chat_completion_generic_error(self, client):
         mock = _inject_mock_chat_client(client)
         mock.chat.completions.create.side_effect = RuntimeError("Unexpected")
@@ -264,6 +299,28 @@ class TestChatCompletionStream:
         mock.chat.completions.create.side_effect = RuntimeError("Stream failed")
 
         with pytest.raises(OpenAIClientError, match="Stream failed"):
+            _ = [chunk async for chunk in client.chat_completion_stream([{"role": "user", "content": "test"}])]
+
+    @pytest.mark.asyncio
+    async def test_stream_content_filter_error_raises(self, client):
+        from openai import BadRequestError
+
+        mock = _inject_mock_chat_client(client)
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.headers = {}
+        mock.chat.completions.create.side_effect = BadRequestError(
+            message="Content filter triggered",
+            response=mock_response,
+            body={
+                "error": {
+                    "code": "content_filter",
+                    "innererror": {"code": "ResponsibleAIPolicyViolation"},
+                }
+            },
+        )
+
+        with pytest.raises(OpenAIContentFilterError):
             _ = [chunk async for chunk in client.chat_completion_stream([{"role": "user", "content": "test"}])]
 
 
