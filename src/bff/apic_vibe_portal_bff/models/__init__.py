@@ -15,6 +15,13 @@ from apic_vibe_portal_bff.models.api_center import (
     PaginatedResponse,
     PaginationMeta,
 )
+from apic_vibe_portal_bff.models.chat import (
+    ChatHistoryResponse,
+    ChatMessage,
+    ChatRequest,
+    ChatResponse,
+    Citation,
+)
 from apic_vibe_portal_bff.models.search import (
     PaginationParams,
     SearchDocument,
@@ -39,6 +46,11 @@ __all__ = [
     "ApiLifecycle",
     "ApiSpecification",
     "ApiVersion",
+    "ChatHistoryResponse",
+    "ChatMessage",
+    "ChatRequest",
+    "ChatResponse",
+    "Citation",
     "Contact",
     "DeploymentServer",
     "EnvironmentKind",

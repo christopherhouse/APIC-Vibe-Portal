@@ -14,6 +14,12 @@ from apic_vibe_portal_bff.clients.ai_search_client import (
     AISearchUnavailableError,
 )
 from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient
+from apic_vibe_portal_bff.clients.openai_client import (
+    OpenAIClient,
+    OpenAIClientError,
+    OpenAIRateLimitError,
+    OpenAIUnavailableError,
+)
 from apic_vibe_portal_bff.clients.redis_cache_client import RedisCacheBackend
 
 __all__ = [
@@ -26,5 +32,9 @@ __all__ = [
     "ApiCenterClientError",
     "ApiCenterNotFoundError",
     "ApiCenterUnavailableError",
+    "OpenAIClient",
+    "OpenAIClientError",
+    "OpenAIRateLimitError",
+    "OpenAIUnavailableError",
     "RedisCacheBackend",
 ]
