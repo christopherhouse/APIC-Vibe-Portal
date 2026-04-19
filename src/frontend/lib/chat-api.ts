@@ -118,7 +118,7 @@ export async function streamChatMessage(options: {
           throw new Error(payload['error']);
         }
 
-        const event = payload as ChatStreamEvent;
+        const event = payload as unknown as ChatStreamEvent;
 
         if (event.type === 'start') {
           finalSessionId = event.sessionId;
