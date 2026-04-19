@@ -30,7 +30,7 @@ def configure_telemetry(*, connection_string: str | None = None) -> None:
             the ``APPLICATIONINSIGHTS_CONNECTION_STRING`` environment variable.
     """
     conn_str = connection_string or os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
-    if not conn_str:
+    if not conn_str or conn_str == "null":
         logger.debug("APPLICATIONINSIGHTS_CONNECTION_STRING not set — skipping OTel configuration")
         return
 

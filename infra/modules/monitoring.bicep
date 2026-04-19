@@ -72,10 +72,14 @@ output appInsightsId string = appInsights.id
 @description('Application Insights Name')
 output appInsightsName string = appInsights.name
 
+// NOTE: The instrumentation key and connection string are NOT secrets — they
+// only allow telemetry ingestion and do not grant read access to data.
+// Do NOT mark them @secure() because secure outputs are redacted by
+// `az deployment group show`, which prevents the deploy script from
+// passing them as Container App environment variables.
+
 @description('Application Insights Instrumentation Key')
-@secure()
 output appInsightsInstrumentationKey string = appInsights.properties.InstrumentationKey
 
 @description('Application Insights Connection String')
-@secure()
 output appInsightsConnectionString string = appInsights.properties.ConnectionString

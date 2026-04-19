@@ -12,7 +12,6 @@ param containerAppsEnvName string
 param logAnalyticsWorkspaceId string
 
 @description('Application Insights Connection String')
-@secure()
 param appInsightsConnectionString string
 
 @description('Resource tags')

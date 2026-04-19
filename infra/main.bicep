@@ -387,12 +387,13 @@ output indexerIdentityClientId string = indexerIdentity.outputs.clientId
 @description('Log Analytics Workspace ID')
 output logAnalyticsWorkspaceId string = monitoring.outputs.logAnalyticsWorkspaceId
 
+// NOTE: Connection string and instrumentation key are NOT secrets — they only
+// allow telemetry ingestion.  Do not mark @secure() or `az deployment group
+// show` will redact them, breaking the deploy script.
 @description('Application Insights Connection String')
-@secure()
 output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString
 
 @description('Application Insights Instrumentation Key')
-@secure()
 output appInsightsInstrumentationKey string = monitoring.outputs.appInsightsInstrumentationKey
 
 @description('Key Vault URI')
