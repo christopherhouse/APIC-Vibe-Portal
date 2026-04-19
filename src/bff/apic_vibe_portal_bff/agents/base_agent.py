@@ -63,5 +63,6 @@ class BaseAgent(ABC):
             Individual text chunks that together form the full response.
         """
         ...
-        # Trick to make the abstract method an async generator:
+        # Abstract async generators require a yield statement to be valid
+        # async generators. This is never reached in practice.
         yield  # pragma: no cover
