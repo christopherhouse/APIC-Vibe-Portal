@@ -31,7 +31,9 @@ def configure_telemetry(*, connection_string: str | None = None, environment: st
         environment: Runtime environment label added as a resource attribute.
     """
     conn_str = connection_string or os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
-    if not conn_str:
+    # Guard against the literal string "null" which can arrive when Bicep
+    # outputs are incorrectly marked @secure() and redacted by `az deployment group show`.
+    if not conn_str or conn_str == "null":
         logger.debug("APPLICATIONINSIGHTS_CONNECTION_STRING not set — skipping OTel configuration")
         return
 
