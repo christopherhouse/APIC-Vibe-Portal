@@ -38,6 +38,7 @@ param tags object = {
   Environment: environmentName
   Application: 'APIC-Vibe-Portal'
   ManagedBy: 'Bicep'
+  SecurityControl: 'Ignore'
 }
 
 // SKU settings (allow cheaper SKUs for dev)
