@@ -11,6 +11,8 @@ const config = {
   setupFilesAfterEnv: ['<rootDir>/__tests__/setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    // Mock react-markdown to avoid ESM issues in Jest
+    '^react-markdown$': '<rootDir>/__mocks__/react-markdown.tsx',
   },
   modulePathIgnorePatterns: ['<rootDir>/.next/'],
   testMatch: [
