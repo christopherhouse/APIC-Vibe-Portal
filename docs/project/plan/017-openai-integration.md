@@ -157,11 +157,11 @@ interface Citation {
 
 ### Status History
 
-| Date       | Status         | Author | Notes                                                                                                                                                                                                                |
-| ---------- | -------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| —          | 🔲 Not Started | —      | Task created                                                                                                                                                                                                         |
-| 2026-04-18 | ✅ Complete     | Copilot | Initial implementation with raw openai SDK, in-memory sessions, 68 new tests. |
-| 2026-04-18 | ✅ Complete     | Copilot | Refactored to Microsoft Agent Framework (MAF) 1.0.1. Uses MAF `OpenAIChatClient`, `@tool` for RAG, `CosmosHistoryProvider` for Cosmos DB chat history. 71 new tests, 484 total all green. |
+| Date       | Status         | Author  | Notes                                                                                                                                                                                     |
+| ---------- | -------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                                                                                                                                                              |
+| 2026-04-18 | ✅ Complete    | Copilot | Initial implementation with raw openai SDK, in-memory sessions, 68 new tests.                                                                                                             |
+| 2026-04-18 | ✅ Complete    | Copilot | Refactored to Microsoft Agent Framework (MAF) 1.0.1. Uses MAF `OpenAIChatClient`, `@tool` for RAG, `CosmosHistoryProvider` for Cosmos DB chat history. 71 new tests, 484 total all green. |
 
 ### Technical Decisions
 
