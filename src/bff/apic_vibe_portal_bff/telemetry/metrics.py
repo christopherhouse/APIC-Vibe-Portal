@@ -11,6 +11,8 @@ a no-op implementation).
 
 from __future__ import annotations
 
+from typing import cast
+
 from opentelemetry import metrics
 
 _METER_NAME = "apic.vibe.portal.bff"
@@ -32,14 +34,14 @@ def _histogram(name: str, description: str, unit: str) -> metrics.Histogram:
     """Return a cached :class:`metrics.Histogram`, creating it on first call."""
     if name not in _instruments:
         _instruments[name] = get_meter().create_histogram(name=name, description=description, unit=unit)
-    return _instruments[name]  # type: ignore[return-value]
+    return cast(metrics.Histogram, _instruments[name])
 
 
 def _counter(name: str, description: str, unit: str) -> metrics.Counter:
     """Return a cached :class:`metrics.Counter`, creating it on first call."""
     if name not in _instruments:
         _instruments[name] = get_meter().create_counter(name=name, description=description, unit=unit)
-    return _instruments[name]  # type: ignore[return-value]
+    return cast(metrics.Counter, _instruments[name])
 
 
 # ---------------------------------------------------------------------------
