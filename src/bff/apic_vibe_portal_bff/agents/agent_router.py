@@ -112,6 +112,11 @@ class AgentRouter:
     async def dispatch(self, request: AgentRequest) -> AgentResponse:
         """Route *request* and return the agent's response.
 
+        If the resolved agent is not registered (e.g. the Governance Agent is not
+        wired up yet), the router transparently falls back to
+        :attr:`~AgentName.API_DISCOVERY` before raising so that chat remains
+        available even when optional agents are absent.
+
         Parameters
         ----------
         request:
@@ -120,10 +125,18 @@ class AgentRouter:
         Raises
         ------
         ValueError
-            If no agent is registered for the resolved :class:`AgentName`.
+            If no agent is registered for the resolved :class:`AgentName` **and**
+            the fallback agent is also absent.
         """
         agent_name = self.route(request)
         agent = self._registry.get(agent_name)
+        if agent is None and agent_name != AgentName.API_DISCOVERY:
+            logger.warning(
+                "AgentRouter: no agent registered for %r; falling back to API_DISCOVERY",
+                agent_name,
+            )
+            agent_name = AgentName.API_DISCOVERY
+            agent = self._registry.get(agent_name)
         if agent is None:
             raise ValueError(f"No agent registered for name: {agent_name!r}")
         logger.info("AgentRouter dispatching to agent=%s session=%s", agent_name, request.session_id)
@@ -132,6 +145,9 @@ class AgentRouter:
     async def dispatch_stream(self, request: AgentRequest) -> AsyncGenerator[str]:
         """Route *request* and stream the agent's response.
 
+        Applies the same fallback logic as :meth:`dispatch`: if the resolved agent
+        is not registered, falls back to the Discovery Agent before raising.
+
         Parameters
         ----------
         request:
@@ -140,7 +156,8 @@ class AgentRouter:
         Raises
         ------
         ValueError
-            If no agent is registered for the resolved :class:`AgentName`.
+            If no agent is registered for the resolved :class:`AgentName` **and**
+            the fallback agent is also absent.
 
         Yields
         ------
@@ -149,6 +166,13 @@ class AgentRouter:
         """
         agent_name = self.route(request)
         agent = self._registry.get(agent_name)
+        if agent is None and agent_name != AgentName.API_DISCOVERY:
+            logger.warning(
+                "AgentRouter: no agent registered for %r; falling back to API_DISCOVERY",
+                agent_name,
+            )
+            agent_name = AgentName.API_DISCOVERY
+            agent = self._registry.get(agent_name)
         if agent is None:
             raise ValueError(f"No agent registered for name: {agent_name!r}")
         logger.info("AgentRouter streaming from agent=%s session=%s", agent_name, request.session_id)

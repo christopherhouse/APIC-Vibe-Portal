@@ -23,6 +23,20 @@ _CATEGORY_EMOJI: dict[GovernanceCategory, str] = {
 }
 
 
+def _fmt_score(score: float) -> str:
+    """Format a governance score for display without rounding artefacts.
+
+    Returns the score as an integer string when the value is whole (e.g. ``85``),
+    or with one decimal place when it is fractional (e.g. ``89.9``).
+
+    Using ``:.0f`` would round 89.9 → 90 and make the displayed score disagree
+    with the ``Good`` category label (threshold ≥ 90 → Excellent).  This helper
+    avoids that inconsistency while keeping clean output for whole-number scores.
+    """
+    rounded = round(score, 1)
+    return str(int(rounded)) if rounded == int(rounded) else f"{rounded:.1f}"
+
+
 def get_category_emoji(category: GovernanceCategory) -> str:
     """Return the emoji for a :class:`GovernanceCategory`.
 
@@ -56,7 +70,7 @@ def format_compliance_report(result: ComplianceResult) -> str:
     lines: list[str] = [
         f"## Governance Report: {result.api_name} (`{result.api_id}`)",
         "",
-        f"**Governance Score: {result.score:.0f} / 100 — {category_emoji} {result.category}**",
+        f"**Governance Score: {_fmt_score(result.score)} / 100 — {category_emoji} {result.category}**",
         "",
     ]
 
@@ -114,6 +128,6 @@ def format_score_summary(api_id: str, result: ComplianceResult) -> str:
     total_failing = len(result.failing_rules)
     return (
         f"**{result.api_name}** (`{api_id}`): "
-        f"Score {result.score:.0f}/100 — {category_emoji} {result.category} "
+        f"Score {_fmt_score(result.score)}/100 — {category_emoji} {result.category} "
         f"({total_failing} failing rule(s), {failing_critical} critical)"
     )

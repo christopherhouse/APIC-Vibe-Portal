@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -12,11 +13,53 @@ from apic_vibe_portal_bff.utils.logger import sanitize_for_log
 
 from ..base_agent import BaseAgent
 from ..types import AgentName, AgentRequest, AgentResponse
-from .handler import format_compliance_report, format_score_summary, get_category_emoji
+from .handler import _fmt_score, format_compliance_report, format_score_summary, get_category_emoji
 from .prompts import SYSTEM_PROMPT
 from .rules.compliance_checker import ComplianceChecker
 
 logger = logging.getLogger(__name__)
+
+
+class GovernanceSecurityTrimmingMiddleware:
+    """MAF ``FunctionMiddleware`` that enforces per-request ``accessible_api_ids`` security
+    trimming on single-API governance tool calls.
+
+    ``accessible_api_ids`` is read from ``context.kwargs``, which is populated
+    by passing ``function_invocation_kwargs={"accessible_api_ids": ...}`` to
+    :meth:`agent_framework.Agent.run`.
+
+    - ``None`` → admin bypass; all tool calls are permitted.
+    - Empty list → caller has no accessible APIs; all API Center calls are blocked.
+    - Non-empty list → only calls targeting an API in the list are permitted.
+
+    Batch tools (``list_non_compliant_apis``, ``compare_governance_scores``) enforce
+    access trimming directly in their tool bodies, where the full id set is available.
+    """
+
+    _SINGLE_API_TOOLS: frozenset[str] = frozenset(
+        {"check_api_compliance", "get_governance_score", "get_remediation_guidance"}
+    )
+
+    async def process(self, context: Any, call_next: Any) -> None:
+        """Intercept a governance tool call and enforce the access list."""
+        accessible_api_ids: list[str] | None = context.kwargs.get("accessible_api_ids", None)
+
+        # None = admin bypass: all tool calls are permitted
+        if accessible_api_ids is None:
+            await call_next()
+            return
+
+        if context.function.name in self._SINGLE_API_TOOLS:
+            args = context.arguments
+            api_id: str = (
+                getattr(args, "api_id", None) or (args.get("api_id") if isinstance(args, dict) else None) or ""
+            )
+            if api_id and api_id not in accessible_api_ids:
+                from agent_framework import MiddlewareTermination
+
+                raise MiddlewareTermination(result=f"Access denied: API '{api_id}' is not in your permitted API list.")
+
+        await call_next()
 
 
 class GovernanceAgent(BaseAgent):
@@ -60,6 +103,8 @@ class GovernanceAgent(BaseAgent):
         self._checker = checker or ComplianceChecker()
         self._history_provider = history_provider
         self._model = model
+        # Per-request thread-local storage — carries accessible_api_ids for security trimming
+        self._request_context: threading.local = threading.local()
         self._agent = self._create_agent()
 
     # ------------------------------------------------------------------
@@ -84,8 +129,20 @@ class GovernanceAgent(BaseAgent):
     def _fetch_api_data(self, api_id: str) -> dict[str, Any] | None:
         """Fetch API data from API Center, enriched with versions and deployments.
 
-        Returns ``None`` if the API cannot be found.
+        Returns ``None`` if the API cannot be found **or** if the current request
+        context has a non-``None`` ``accessible_api_ids`` list that does not include
+        *api_id* (security trimming).
         """
+        # Security trimming: block access to APIs outside the caller's permitted set.
+        # None means admin bypass (no filtering).
+        accessible_api_ids: list[str] | None = getattr(self._request_context, "accessible_api_ids", None)
+        if accessible_api_ids is not None and api_id not in accessible_api_ids:
+            logger.info(
+                "GovernanceAgent: access denied for API %s — not in accessible set",
+                sanitize_for_log(api_id),
+            )
+            return None
+
         try:
             api = dict(self._api_center.get_api(api_id))
         except Exception as exc:
@@ -182,10 +239,11 @@ class GovernanceAgent(BaseAgent):
             description=(
                 "List APIs that fail a specific governance rule. "
                 "Omit rule_id to list all APIs with at least one critical governance failure. "
-                "Returns API names, scores, and the failing rule."
+                "Returns API names, scores, and the failing rule(s). "
+                "Scans up to 50 APIs by default; increase limit if the catalog is larger."
             ),
         )
-        def list_non_compliant_apis(rule_id: str = "") -> str:
+        def list_non_compliant_apis(rule_id: str = "", limit: int = 50) -> str:
             """List non-compliant APIs, optionally filtered by rule.
 
             Parameters
@@ -193,7 +251,11 @@ class GovernanceAgent(BaseAgent):
             rule_id:
                 Optional rule ID to filter by (e.g. ``'metadata.description'``).
                 If empty, lists all APIs with critical failures.
+            limit:
+                Maximum number of APIs to scan (default 50).
             """
+            accessible_api_ids: list[str] | None = getattr(agent_self._request_context, "accessible_api_ids", None)
+
             try:
                 all_apis = agent_self._api_center.list_apis()
             except Exception as exc:
@@ -202,6 +264,13 @@ class GovernanceAgent(BaseAgent):
 
             if not all_apis:
                 return "No APIs found in the catalog."
+
+            # Security trimming: restrict to caller's permitted APIs before iteration
+            if accessible_api_ids is not None:
+                all_apis = [a for a in all_apis if a.get("name", "") in accessible_api_ids]
+
+            # Cap to limit after trimming to avoid overloading API Center
+            all_apis = all_apis[:limit]
 
             lines: list[str] = []
             found = False
@@ -222,8 +291,11 @@ class GovernanceAgent(BaseAgent):
                     matching = [r for r in result.failing_rules if r.rule_id == rule_id]
                     if matching:
                         found = True
+                        rule_name = matching[0].rule_name
                         lines.append(
-                            f"- **{result.api_name}** (`{api_id}`): Score {result.score:.0f}/100 — {result.category}"
+                            f"- **{result.api_name}** (`{api_id}`): "
+                            f"Score {_fmt_score(result.score)}/100 — {result.category} | "
+                            f"Failing: {rule_name}"
                         )
                 else:
                     # No rule filter — include APIs with any critical failure
@@ -232,7 +304,7 @@ class GovernanceAgent(BaseAgent):
                         failures = ", ".join(r.rule_name for r in result.critical_failures)
                         lines.append(
                             f"- **{result.api_name}** (`{api_id}`): "
-                            f"Score {result.score:.0f}/100 — {result.category} | "
+                            f"Score {_fmt_score(result.score)}/100 — {result.category} | "
                             f"Critical failures: {failures}"
                         )
 
@@ -344,7 +416,7 @@ class GovernanceAgent(BaseAgent):
                 cat_emoji = get_category_emoji(result.category)
                 lines.append(
                     f"| **{result.api_name}** (`{api_id}`) "
-                    f"| {result.score:.0f}/100 "
+                    f"| {_fmt_score(result.score)}/100 "
                     f"| {cat_emoji} {result.category} "
                     f"| {len(result.failing_rules)} "
                     f"| {len(result.critical_failures)} |"
@@ -362,7 +434,11 @@ class GovernanceAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     def _create_agent(self) -> Any:
-        """Create the MAF :class:`~agent_framework.Agent` wired with all five tools."""
+        """Create the MAF :class:`~agent_framework.Agent` wired with all five tools.
+
+        :class:`GovernanceSecurityTrimmingMiddleware` is registered as agent-level
+        middleware so it intercepts every single-API tool call without per-call setup.
+        """
         from agent_framework import Agent
 
         tools = [
@@ -382,6 +458,7 @@ class GovernanceAgent(BaseAgent):
             instructions=SYSTEM_PROMPT,
             tools=tools,
             context_providers=context_providers,
+            middleware=[GovernanceSecurityTrimmingMiddleware()],
             name="Governance & Compliance Agent",
             description=self.description,
         )
@@ -391,16 +468,37 @@ class GovernanceAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     async def run(self, request: AgentRequest) -> AgentResponse:
-        """Process a governance request through the MAF Agent and return a response."""
+        """Process a governance request through the MAF Agent and return a response.
+
+        Per-request security context is set on a thread-local before the MAF
+        ``Agent.run()`` call and cleaned up in a ``finally`` block so that
+        concurrent requests on different threads never bleed into each other.
+
+        Security trimming is enforced at two layers:
+
+        1. ``_fetch_api_data`` reads ``accessible_api_ids`` from the thread-local and
+           blocks any request for an ``api_id`` not in the permitted set.
+        2. :class:`GovernanceSecurityTrimmingMiddleware` (registered on the MAF agent)
+           receives ``accessible_api_ids`` via ``function_invocation_kwargs`` and blocks
+           API Center tool calls for non-permitted APIs as a defence-in-depth layer.
+        """
         from agent_framework import AgentSession
 
         effective_session_id = request.session_id or str(uuid.uuid4())
 
-        response = await self._agent.run(
-            messages=request.message,
-            session=AgentSession(session_id=effective_session_id),
-        )
-        response_text: str = self._extract_response_text(response)
+        # Initialise thread-local request context for security trimming
+        self._request_context.accessible_api_ids = request.accessible_api_ids
+
+        try:
+            response = await self._agent.run(
+                messages=request.message,
+                session=AgentSession(session_id=effective_session_id),
+                function_invocation_kwargs={"accessible_api_ids": request.accessible_api_ids},
+            )
+            response_text: str = self._extract_response_text(response)
+        finally:
+            if hasattr(self._request_context, "accessible_api_ids"):
+                delattr(self._request_context, "accessible_api_ids")
 
         return AgentResponse(
             agent_name=self.name,
@@ -423,11 +521,22 @@ class GovernanceAgent(BaseAgent):
     def _extract_response_text(self, response: Any) -> str:
         """Extract a plain-text string from a MAF agent response.
 
-        Handles ``str``, ``list[dict]`` (MAF message format), and objects
+        Handles ``str``, objects with a ``text`` attribute (production MAF
+        ``AgentResponse``), ``list[dict]`` (MAF message format), and objects
         with a ``content`` attribute.
+
+        Priority:
+        1. ``response.text`` (MAF ``AgentResponse`` attribute, production path)
+        2. Plain ``str`` (mock / test path where ``.text`` is absent)
+        3. ``list[dict]`` (MAF message list format)
+        4. ``response.content`` attribute fallback
         """
         if isinstance(response, str):
             return response
+        # Production: MAF AgentResponse has a .text attribute
+        response_text = getattr(response, "text", None)
+        if isinstance(response_text, str):
+            return response_text
         if isinstance(response, list):
             parts: list[str] = []
             for item in response:

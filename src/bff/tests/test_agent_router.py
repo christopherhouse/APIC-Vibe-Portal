@@ -325,6 +325,30 @@ class TestAgentRouterGovernanceDispatch:
             await router.dispatch(_make_request("Check compliance status"))
 
     @pytest.mark.asyncio
+    async def test_governance_query_falls_back_to_discovery_when_governance_not_registered(self):
+        """If governance agent is absent, governance queries fall back to Discovery."""
+        registry = AgentRegistry()
+        discovery_agent = _make_agent(name=AgentName.API_DISCOVERY, content="Discovery fallback")
+        registry.register(discovery_agent)
+
+        router = AgentRouter(registry)
+        response = await router.dispatch(_make_request("Check compliance for payments-api"))
+
+        assert response.agent_name == AgentName.API_DISCOVERY
+        assert response.content == "Discovery fallback"
+
+    @pytest.mark.asyncio
+    async def test_governance_stream_falls_back_to_discovery_when_governance_not_registered(self):
+        """Stream dispatch also falls back to Discovery when governance agent is absent."""
+        registry = AgentRegistry()
+        discovery_agent = _make_agent(name=AgentName.API_DISCOVERY, content="Streamed discovery fallback")
+        registry.register(discovery_agent)
+
+        router = AgentRouter(registry)
+        chunks = [chunk async for chunk in router.dispatch_stream(_make_request("Show governance report"))]
+        assert chunks == ["Streamed discovery fallback"]
+
+    @pytest.mark.asyncio
     async def test_governance_stream_dispatches_correctly(self):
         registry = AgentRegistry()
         governance_agent = _make_agent(name=AgentName.GOVERNANCE, content="Streamed governance")

@@ -378,6 +378,27 @@ class TestGovernanceAgentRun:
         call_kwargs = agent._agent.run.call_args
         assert call_kwargs.kwargs.get("messages") == "Show me compliance for weather-api"
 
+    @pytest.mark.asyncio
+    async def test_run_passes_accessible_api_ids_via_function_invocation_kwargs(self, agent):
+        """accessible_api_ids must reach the MAF middleware via function_invocation_kwargs."""
+        request = AgentRequest(
+            message="Check governance",
+            session_id="s1",
+            accessible_api_ids=["weather-api"],
+        )
+        await agent.run(request)
+        call_kwargs = agent._agent.run.call_args
+        kwargs = call_kwargs.kwargs
+        assert "function_invocation_kwargs" in kwargs
+        assert kwargs["function_invocation_kwargs"]["accessible_api_ids"] == ["weather-api"]
+
+    @pytest.mark.asyncio
+    async def test_run_cleans_up_thread_local_after_completion(self, agent):
+        """Thread-local accessible_api_ids must be cleared after run() returns."""
+        request = AgentRequest(message="Check governance", session_id="s1", accessible_api_ids=["api-a"])
+        await agent.run(request)
+        assert not hasattr(agent._request_context, "accessible_api_ids")
+
 
 # ---------------------------------------------------------------------------
 # GovernanceAgent.stream
@@ -401,6 +422,24 @@ class TestGovernanceAgentStream:
 class TestExtractResponseText:
     def test_returns_str_as_is(self, agent):
         assert agent._extract_response_text("Hello") == "Hello"
+
+    def test_extracts_text_attribute_before_content(self, agent):
+        """Production MAF AgentResponse: .text is checked before .content."""
+
+        class FakeResponse:
+            text = "Text attribute content"
+            content = "Content attribute (should not be used)"
+
+        assert agent._extract_response_text(FakeResponse()) == "Text attribute content"
+
+    def test_falls_back_to_content_when_text_is_none(self, agent):
+        """When .text is present but None, fall through to .content."""
+
+        class FakeResponseNoText:
+            text = None
+            content = "Content attribute"
+
+        assert agent._extract_response_text(FakeResponseNoText()) == "Content attribute"
 
     def test_extracts_from_list_of_dicts(self, agent):
         response = [{"role": "assistant", "content": "Hello from governance."}]
@@ -481,3 +520,134 @@ class TestHandlerHelpers:
         summary = format_score_summary("test-api", result)
         assert "test-api" in summary
         assert "Score" in summary or "/100" in summary
+
+
+# ---------------------------------------------------------------------------
+# _fmt_score helper
+# ---------------------------------------------------------------------------
+
+
+class TestFmtScore:
+    def test_whole_number_shows_no_decimal(self):
+        from apic_vibe_portal_bff.agents.governance_agent.handler import _fmt_score
+
+        assert _fmt_score(85.0) == "85"
+
+    def test_fractional_shows_one_decimal(self):
+        from apic_vibe_portal_bff.agents.governance_agent.handler import _fmt_score
+
+        assert _fmt_score(89.9) == "89.9"
+
+    def test_boundary_score_not_rounded_up(self):
+        """89.9 must not display as 90 (would conflict with Good category label)."""
+        from apic_vibe_portal_bff.agents.governance_agent.handler import _fmt_score
+
+        assert _fmt_score(89.9) == "89.9"
+        assert _fmt_score(89.9) != "90"
+
+    def test_zero_score(self):
+        from apic_vibe_portal_bff.agents.governance_agent.handler import _fmt_score
+
+        assert _fmt_score(0.0) == "0"
+
+    def test_max_score(self):
+        from apic_vibe_portal_bff.agents.governance_agent.handler import _fmt_score
+
+        assert _fmt_score(100.0) == "100"
+
+
+# ---------------------------------------------------------------------------
+# Security trimming
+# ---------------------------------------------------------------------------
+
+
+class TestGovernanceAgentSecurityTrimming:
+    def test_fetch_api_data_blocked_when_not_in_accessible_list(self, agent):
+        """_fetch_api_data returns None when api_id is not permitted."""
+        agent._request_context.accessible_api_ids = ["other-api"]
+        try:
+            result = agent._fetch_api_data("weather-api")
+            assert result is None
+        finally:
+            if hasattr(agent._request_context, "accessible_api_ids"):
+                delattr(agent._request_context, "accessible_api_ids")
+
+    def test_fetch_api_data_allowed_when_in_accessible_list(self, agent, mock_api_center):
+        """_fetch_api_data succeeds when api_id is in the permitted set."""
+        agent._request_context.accessible_api_ids = ["weather-api"]
+        try:
+            result = agent._fetch_api_data("weather-api")
+            assert result is not None
+        finally:
+            if hasattr(agent._request_context, "accessible_api_ids"):
+                delattr(agent._request_context, "accessible_api_ids")
+
+    def test_fetch_api_data_admin_bypass_when_no_context_set(self, agent, mock_api_center):
+        """None accessible_api_ids (admin) means no filtering."""
+        # No thread-local set — getattr returns None → bypass
+        result = agent._fetch_api_data("weather-api")
+        assert result is not None
+
+    def test_list_non_compliant_filters_by_accessible_api_ids(self, agent, mock_api_center):
+        """list_non_compliant_apis only scans APIs in the permitted set."""
+        # Only expose weather-api; bare-api must be excluded from the scan
+        agent._request_context.accessible_api_ids = ["weather-api"]
+        try:
+            tool_fn = agent._make_list_non_compliant_apis_tool()
+            result = tool_fn(rule_id="")
+            # bare-api is in list_apis() but not in accessible set
+            assert "bare-api" not in result
+        finally:
+            if hasattr(agent._request_context, "accessible_api_ids"):
+                delattr(agent._request_context, "accessible_api_ids")
+
+    def test_list_non_compliant_all_apis_visible_when_admin(self, agent, mock_api_center):
+        """When accessible_api_ids is None (admin), all APIs are scanned."""
+
+        def get_api_side_effect(api_id):
+            if api_id == "bare-api":
+                return dict(_MINIMAL_API)
+            return dict(_COMPLIANT_API)
+
+        mock_api_center.get_api.side_effect = get_api_side_effect
+        mock_api_center.list_api_versions.return_value = []
+        mock_api_center.list_deployments.return_value = []
+
+        # No thread-local set → admin bypass
+        tool_fn = agent._make_list_non_compliant_apis_tool()
+        result = tool_fn(rule_id="")
+        # bare-api has critical failures and is visible to admin
+        assert "bare-api" in result
+
+    def test_list_non_compliant_respects_limit(self, agent, mock_api_center):
+        """list_non_compliant_apis caps results to the provided limit."""
+        # 10 APIs in the catalog; limit=1 should only process the first one
+        many_apis = [{"name": f"api-{i}", "title": f"API {i}"} for i in range(10)]
+        mock_api_center.list_apis.return_value = many_apis
+
+        def get_api_side_effect(api_id):
+            return {"name": api_id, "title": api_id, "lifecycleStage": "Development"}
+
+        mock_api_center.get_api.side_effect = get_api_side_effect
+        mock_api_center.list_api_versions.return_value = []
+        mock_api_center.list_deployments.return_value = []
+
+        tool_fn = agent._make_list_non_compliant_apis_tool()
+        result = tool_fn(rule_id="", limit=1)
+        # Only "api-0" should have been processed; "api-9" should not appear
+        assert "api-9" not in result
+
+    def test_list_non_compliant_includes_failing_rule_name_when_rule_id_provided(self, agent, mock_api_center):
+        """When rule_id is given, the output includes the failing rule name."""
+
+        def get_api_side_effect(api_id):
+            return {"name": api_id, "title": api_id, "lifecycleStage": "Development", "description": ""}
+
+        mock_api_center.get_api.side_effect = get_api_side_effect
+        mock_api_center.list_api_versions.return_value = []
+        mock_api_center.list_deployments.return_value = []
+
+        tool_fn = agent._make_list_non_compliant_apis_tool()
+        result = tool_fn(rule_id="metadata.description")
+        # The output should mention the failing rule name (not just the rule_id)
+        assert "Failing:" in result or "Has Description" in result
