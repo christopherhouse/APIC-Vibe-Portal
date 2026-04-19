@@ -26,6 +26,7 @@ Admin users (``Portal.Admin`` role) always see all APIs regardless of policies.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -115,6 +116,16 @@ router = APIRouter(tags=["admin"])
 
 _ADMIN_ROLE = "Portal.Admin"
 
+# Pattern that matches characters that must not appear in log messages to
+# prevent log-injection attacks (newlines, carriage returns, and other ASCII
+# control characters).
+_LOG_UNSAFE = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _safe(value: str) -> str:
+    """Return *value* with control characters removed for safe log output."""
+    return _LOG_UNSAFE.sub("", value)
+
 
 def _get_svc() -> UserContextService:
     """Return the shared :class:`UserContextService` instance."""
@@ -163,7 +174,7 @@ def get_access_policy(
     try:
         policy = svc._repo.get_policy(api_name)  # noqa: SLF001
     except Exception as exc:
-        logger.exception("get_access_policy failed: api_name=%s", api_name)
+        logger.exception("get_access_policy failed: api_name=%s", _safe(api_name))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"code": "POLICY_ERROR", "message": str(exc)},
@@ -207,11 +218,11 @@ def upsert_access_policy(
         svc.invalidate_policy_cache()
         logger.info(
             "admin.upsert_access_policy",
-            extra={"api_name": api_name, "is_public": body.is_public, "group_count": len(body.allowed_groups)},
+            extra={"api_name": _safe(api_name), "is_public": body.is_public, "group_count": len(body.allowed_groups)},
         )
         return AccessPolicyResponse.from_document(saved)
     except Exception as exc:
-        logger.exception("upsert_access_policy failed: api_name=%s", api_name)
+        logger.exception("upsert_access_policy failed: api_name=%s", _safe(api_name))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"code": "POLICY_ERROR", "message": str(exc)},
@@ -244,11 +255,11 @@ def delete_access_policy(
                     "message": f"No access policy found for API '{api_name}'.",
                 },
             )
-        logger.info("admin.delete_access_policy", extra={"api_name": api_name})
+        logger.info("admin.delete_access_policy", extra={"api_name": _safe(api_name)})
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("delete_access_policy failed: api_name=%s", api_name)
+        logger.exception("delete_access_policy failed: api_name=%s", _safe(api_name))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"code": "POLICY_ERROR", "message": str(exc)},
