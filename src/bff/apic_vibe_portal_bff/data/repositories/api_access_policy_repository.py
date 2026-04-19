@@ -10,6 +10,7 @@ and cross-partition scans (list all policies) efficiently.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 _RU_CHARGE_HEADER = "x-ms-request-charge"
 
 
-def _make_simple_ru_hook(container_name: str, operation: str):  # type: ignore[return]
+def _make_simple_ru_hook(container_name: str, operation: str) -> Callable[[dict, Any], None]:
     """Return a response_hook that logs RU cost for a Cosmos operation."""
 
     def _hook(response_headers: dict, result: Any) -> None:  # noqa: ANN401
