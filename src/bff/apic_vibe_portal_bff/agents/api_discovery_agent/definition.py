@@ -267,7 +267,7 @@ class ApiDiscoveryAgent(BaseAgent):
             truncated = ""
             if len(spec_content) > _SPEC_MAX_CHARS:
                 spec_content = spec_content[:_SPEC_MAX_CHARS]
-                truncated = "\n\n... [truncated — request a specific section for more detail]"
+                truncated = "\n\n... [truncated — the full specification is longer than the display limit]"
 
             return f"# {api_id} v{actual_version} Specification\n\n```\n{spec_content}\n```{truncated}"
 
@@ -369,8 +369,10 @@ class ApiDiscoveryAgent(BaseAgent):
     def stream(self, request: AgentRequest) -> Generator[str]:
         """Stream the agent response as text chunks.
 
-        Delegates to :meth:`run` and yields the full response as a single
-        chunk.  Fine-grained streaming is handled at the chat service layer.
+        Delegates to :meth:`run` and yields the full response as a single chunk.
+        Token-level streaming is not currently supported because MAF's ``Agent.run()``
+        returns a complete response.  When MAF adds a ``run_stream()`` API, this method
+        should be updated to yield individual tokens for progressive user feedback.
         """
         response = self.run(request)
         if response.content:

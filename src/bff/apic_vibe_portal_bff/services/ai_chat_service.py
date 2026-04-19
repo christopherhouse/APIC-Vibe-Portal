@@ -662,7 +662,7 @@ class AIChatService:
                     id=str(uuid.uuid4()),
                     role="assistant",
                     content=agent_response.content,
-                    citations=agent_response.citations if agent_response.citations else None,
+                    citations=agent_response.citations or None,
                     timestamp=now,
                 ),
             )
@@ -749,11 +749,14 @@ class AIChatService:
                     session_id=session.session_id,
                     accessible_api_ids=accessible_api_ids,
                 )
-                full_content = ""
-                for chunk in self._agent_router.dispatch_stream(agent_request):
-                    if chunk:
-                        full_content += chunk
-                        yield f"data: {json.dumps({'type': 'content', 'content': chunk})}\n\n"
+                # Use dispatch() which returns the full AgentResponse including citations.
+                # dispatch_stream() internally calls run() too, so there is no streaming
+                # overhead saving — a single dispatch() call avoids the double invocation.
+                agent_response = self._agent_router.dispatch(agent_request)
+                full_content = agent_response.content
+                if full_content:
+                    yield f"data: {json.dumps({'type': 'content', 'content': full_content})}\n\n"
+                citations = agent_response.citations
             except Exception:
                 logger.exception("Agent streaming error mid-response")
                 error_payload = {
@@ -763,18 +766,6 @@ class AIChatService:
                 }
                 yield f"data: {json.dumps(error_payload)}\n\n"
                 return
-
-            # Re-run dispatch to get citations (agent path produces citations via run())
-            try:
-                agent_request_for_citations = AgentRequest(
-                    message=user_message,
-                    session_id=session.session_id,
-                    accessible_api_ids=accessible_api_ids,
-                )
-                agent_response = self._agent_router.dispatch(agent_request_for_citations)
-                citations = agent_response.citations
-            except Exception:
-                citations = None
 
             session.add_message("user", user_message)
             session.add_message("assistant", full_content)
