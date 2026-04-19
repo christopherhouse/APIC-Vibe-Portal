@@ -65,11 +65,13 @@ def _get_chat_service() -> AIChatService:
         if settings.cosmos_db_endpoint.strip():
             try:
                 from agent_framework.azure import CosmosHistoryProvider
+                from azure.identity import DefaultAzureCredential
 
                 history_provider = CosmosHistoryProvider(
                     endpoint=settings.cosmos_db_endpoint,
                     database_name=settings.cosmos_db_database_name,
                     container_name=settings.cosmos_db_chat_container,
+                    credential=DefaultAzureCredential(),
                 )
                 logger.info("Using MAF CosmosHistoryProvider for chat history")
             except Exception:

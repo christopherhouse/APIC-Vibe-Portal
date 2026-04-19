@@ -163,12 +163,12 @@ When adding new resources or modules:
 
 The default tags applied to all resources are:
 
-| Tag Name          | Value              | Purpose                            |
-| ----------------- | ------------------ | ---------------------------------- |
+| Tag Name          | Value                  | Purpose                               |
+| ----------------- | ---------------------- | ------------------------------------- |
 | `Environment`     | `dev`/`staging`/`prod` | Identifies the deployment environment |
-| `Application`     | `APIC-Vibe-Portal` | Identifies the owning application  |
-| `ManagedBy`       | `Bicep`            | Indicates IaC management           |
-| `SecurityControl` | `Ignore`           | Required security control marker   |
+| `Application`     | `APIC-Vibe-Portal`     | Identifies the owning application     |
+| `ManagedBy`       | `Bicep`                | Indicates IaC management              |
+| `SecurityControl` | `Ignore`               | Required security control marker      |
 
 ## Security
 
