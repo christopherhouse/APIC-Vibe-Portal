@@ -79,6 +79,7 @@ class OpenAIClient:
         self._api_version = api_version
         self._credential = credential or DefaultAzureCredential()
         self._client: Any | None = None
+        self._chat_client: Any | None = None
 
     def _get_client(self) -> Any:
         """Lazily create and return the MAF ``OpenAIChatClient``."""
@@ -92,6 +93,29 @@ class OpenAIClient:
                 credential=self._credential,
             )
         return self._client
+
+    def _get_chat_client(self) -> Any:
+        """Lazily create and return an ``AsyncAzureOpenAI`` client for chat completions.
+
+        MAF's ``OpenAIChatClient`` uses ``responses_mode=True`` which sets the
+        base URL to ``{endpoint}/openai/v1/`` — correct for the Responses API
+        but incorrect for the Chat Completions API (``/openai/deployments/...``).
+        This method creates a direct ``AsyncAzureOpenAI`` client that uses the
+        standard ``azure_endpoint`` parameter, producing correct URL paths for
+        the Chat Completions endpoint.
+        """
+        if self._chat_client is None:
+            from azure.identity import get_bearer_token_provider
+            from openai import AsyncAzureOpenAI
+
+            token_provider = get_bearer_token_provider(self._credential, _COGNITIVE_SERVICES_SCOPE)
+            self._chat_client = AsyncAzureOpenAI(
+                azure_endpoint=self._endpoint,
+                azure_deployment=self._deployment,
+                api_version=self._api_version,
+                azure_ad_token_provider=token_provider,
+            )
+        return self._chat_client
 
     def _get_token(self) -> str:
         """Obtain an Entra ID token for Azure Cognitive Services."""
@@ -134,8 +158,8 @@ class OpenAIClient:
         Returns a dict with keys: ``content``, ``usage``, ``finish_reason``.
         """
         try:
-            client = self._get_client()
-            response = await client.client.chat.completions.create(
+            client = self._get_chat_client()
+            response = await client.chat.completions.create(
                 model=self._deployment,
                 messages=messages,
                 temperature=temperature,
@@ -171,8 +195,8 @@ class OpenAIClient:
         The final chunk includes ``usage`` when available.
         """
         try:
-            client = self._get_client()
-            stream = await client.client.chat.completions.create(
+            client = self._get_chat_client()
+            stream = await client.chat.completions.create(
                 model=self._deployment,
                 messages=messages,
                 temperature=temperature,
@@ -217,6 +241,6 @@ class OpenAIClient:
     # ------------------------------------------------------------------
 
     def close(self) -> None:
-        """Close the underlying client."""
-        if self._client is not None:
-            self._client = None
+        """Close the underlying clients."""
+        self._client = None
+        self._chat_client = None

@@ -452,6 +452,9 @@ output foundryEndpoint string = foundryAgent.outputs.endpoint
 @description('Foundry Project Name')
 output foundryProjectName string = foundryAgent.outputs.projectName
 
+@description('Foundry Chat Deployment Name')
+output foundryChatDeploymentName string = foundryAgent.outputs.chatDeploymentName
+
 @description('Azure Cache for Redis hostname')
 output redisCacheHostName string = redisCache.outputs.hostName
 

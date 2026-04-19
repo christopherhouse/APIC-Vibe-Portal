@@ -46,10 +46,20 @@ def _inject_mock_client(client: OpenAIClient) -> MagicMock:
     via the MAF ``OpenAIChatClient.client`` property.
     """
     mock_maf_client = MagicMock()
-    # Use AsyncMock for the create method since it's awaited
-    mock_maf_client.client.chat.completions.create = AsyncMock()
     client._client = mock_maf_client
     return mock_maf_client
+
+
+def _inject_mock_chat_client(client: OpenAIClient) -> MagicMock:
+    """Inject a mock ``AsyncAzureOpenAI`` chat client into the wrapper.
+
+    The mock simulates ``chat_client.chat.completions.create(...)``
+    which is the direct ``AsyncAzureOpenAI`` client used for chat completions.
+    """
+    mock_chat_client = MagicMock()
+    mock_chat_client.chat.completions.create = AsyncMock()
+    client._chat_client = mock_chat_client
+    return mock_chat_client
 
 
 def _mock_completion_response(
@@ -127,8 +137,8 @@ class TestTokenAcquisition:
 class TestChatCompletion:
     @pytest.mark.asyncio
     async def test_successful_chat_completion(self, client):
-        mock = _inject_mock_client(client)
-        mock.client.chat.completions.create.return_value = _mock_completion_response(
+        mock = _inject_mock_chat_client(client)
+        mock.chat.completions.create.return_value = _mock_completion_response(
             content="Hello! I can help you find APIs.",
         )
 
@@ -146,8 +156,8 @@ class TestChatCompletion:
 
     @pytest.mark.asyncio
     async def test_chat_completion_empty_content(self, client):
-        mock = _inject_mock_client(client)
-        mock.client.chat.completions.create.return_value = _mock_completion_response(content=None)
+        mock = _inject_mock_chat_client(client)
+        mock.chat.completions.create.return_value = _mock_completion_response(content=None)
 
         result = await client.chat_completion([{"role": "user", "content": "test"}])
         assert result["content"] == ""
@@ -156,11 +166,11 @@ class TestChatCompletion:
     async def test_chat_completion_rate_limit_error(self, client):
         from openai import RateLimitError
 
-        mock = _inject_mock_client(client)
+        mock = _inject_mock_chat_client(client)
         mock_response = MagicMock()
         mock_response.status_code = 429
         mock_response.headers = {}
-        mock.client.chat.completions.create.side_effect = RateLimitError(
+        mock.chat.completions.create.side_effect = RateLimitError(
             message="Rate limit exceeded",
             response=mock_response,
             body=None,
@@ -173,11 +183,11 @@ class TestChatCompletion:
     async def test_chat_completion_server_error(self, client):
         from openai import InternalServerError
 
-        mock = _inject_mock_client(client)
+        mock = _inject_mock_chat_client(client)
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.headers = {}
-        mock.client.chat.completions.create.side_effect = InternalServerError(
+        mock.chat.completions.create.side_effect = InternalServerError(
             message="Internal server error",
             response=mock_response,
             body=None,
@@ -188,16 +198,16 @@ class TestChatCompletion:
 
     @pytest.mark.asyncio
     async def test_chat_completion_generic_error(self, client):
-        mock = _inject_mock_client(client)
-        mock.client.chat.completions.create.side_effect = RuntimeError("Unexpected")
+        mock = _inject_mock_chat_client(client)
+        mock.chat.completions.create.side_effect = RuntimeError("Unexpected")
 
         with pytest.raises(OpenAIClientError, match="Unexpected"):
             await client.chat_completion([{"role": "user", "content": "test"}])
 
     @pytest.mark.asyncio
     async def test_chat_completion_no_usage(self, client):
-        mock = _inject_mock_client(client)
-        mock.client.chat.completions.create.return_value = _mock_completion_response(usage_present=False)
+        mock = _inject_mock_chat_client(client)
+        mock.chat.completions.create.return_value = _mock_completion_response(usage_present=False)
 
         result = await client.chat_completion([{"role": "user", "content": "test"}])
         assert result["usage"]["prompt_tokens"] == 0
@@ -213,7 +223,7 @@ class TestChatCompletion:
 class TestChatCompletionStream:
     @pytest.mark.asyncio
     async def test_stream_yields_content(self, client):
-        mock = _inject_mock_client(client)
+        mock = _inject_mock_chat_client(client)
 
         # Create stream chunks
         chunk1 = MagicMock()
@@ -239,7 +249,7 @@ class TestChatCompletionStream:
             for c in [chunk1, chunk2, chunk3]:
                 yield c
 
-        mock.client.chat.completions.create.return_value = async_stream()
+        mock.chat.completions.create.return_value = async_stream()
 
         chunks = [chunk async for chunk in client.chat_completion_stream([{"role": "user", "content": "test"}])]
         assert len(chunks) == 3
@@ -250,8 +260,8 @@ class TestChatCompletionStream:
 
     @pytest.mark.asyncio
     async def test_stream_error_raises(self, client):
-        mock = _inject_mock_client(client)
-        mock.client.chat.completions.create.side_effect = RuntimeError("Stream failed")
+        mock = _inject_mock_chat_client(client)
+        mock.chat.completions.create.side_effect = RuntimeError("Stream failed")
 
         with pytest.raises(OpenAIClientError, match="Stream failed"):
             _ = [chunk async for chunk in client.chat_completion_stream([{"role": "user", "content": "test"}])]
@@ -265,12 +275,16 @@ class TestChatCompletionStream:
 class TestClientLifecycle:
     def test_close_releases_client(self, client):
         _inject_mock_client(client)
+        _inject_mock_chat_client(client)
         assert client._client is not None
+        assert client._chat_client is not None
 
         client.close()
         assert client._client is None
+        assert client._chat_client is None
 
     def test_close_when_not_initialized(self, client):
         # Should not raise
         client.close()
         assert client._client is None
+        assert client._chat_client is None
