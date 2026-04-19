@@ -82,8 +82,9 @@ def configure_logging(*, log_level: str = "INFO", environment: str = "developmen
 
     # Suppress noisy loggers
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-    logging.getLogger("azure.identity").setLevel(logging.WARNING)
-    logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
+    # Silence Azure SDK HTTP-request chatter (covers azure.identity,
+    # azure.cosmos, azure.core.pipeline, and any future SDK).
+    logging.getLogger("azure").setLevel(logging.WARNING)
 
 
 def sanitize_for_log(value: str) -> str:

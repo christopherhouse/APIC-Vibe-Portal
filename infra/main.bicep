@@ -38,6 +38,7 @@ param tags object = {
   Environment: environmentName
   Application: 'APIC-Vibe-Portal'
   ManagedBy: 'Bicep'
+  SecurityControl: 'Ignore'
 }
 
 // SKU settings (allow cheaper SKUs for dev)
@@ -450,6 +451,9 @@ output foundryEndpoint string = foundryAgent.outputs.endpoint
 
 @description('Foundry Project Name')
 output foundryProjectName string = foundryAgent.outputs.projectName
+
+@description('Foundry Chat Deployment Name')
+output foundryChatDeploymentName string = foundryAgent.outputs.chatDeploymentName
 
 @description('Azure Cache for Redis hostname')
 output redisCacheHostName string = redisCache.outputs.hostName

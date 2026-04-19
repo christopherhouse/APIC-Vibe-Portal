@@ -16,11 +16,17 @@ class TestConfigureLogging:
 
     def test_suppresses_azure_identity(self) -> None:
         configure_logging(log_level="INFO")
-        assert logging.getLogger("azure.identity").level == logging.WARNING
+        assert logging.getLogger("azure.identity").getEffectiveLevel() >= logging.WARNING
 
     def test_suppresses_azure_http_logging_policy(self) -> None:
         configure_logging(log_level="INFO")
-        assert logging.getLogger("azure.core.pipeline.policies.http_logging_policy").level == logging.WARNING
+        http_policy_logger = logging.getLogger("azure.core.pipeline.policies.http_logging_policy")
+        assert http_policy_logger.getEffectiveLevel() >= logging.WARNING
+
+    def test_suppresses_azure_root_logger(self) -> None:
+        """All Azure SDK sub-loggers are silenced via the 'azure' root logger."""
+        configure_logging(log_level="INFO")
+        assert logging.getLogger("azure").level == logging.WARNING
 
     def test_root_logger_level(self) -> None:
         configure_logging(log_level="DEBUG")

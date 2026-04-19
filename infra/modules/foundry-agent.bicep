@@ -36,6 +36,22 @@ param privateEndpointSubnetId string
 @description('Disable local (key-based) authentication in favour of RBAC (recommended)')
 param disableLocalAuth bool = true
 
+@description('Chat model deployment name')
+param chatDeploymentName string = 'gpt-4o'
+
+@description('Chat model name (Azure OpenAI model identifier)')
+param chatModelName string = 'gpt-4o'
+
+@description('Chat model version')
+param chatModelVersion string = '2024-11-20'
+
+@description('Chat deployment SKU name')
+@allowed(['Standard', 'GlobalStandard', 'ProvisionedManaged'])
+param chatDeploymentSkuName string = 'GlobalStandard'
+
+@description('Chat deployment capacity (in thousands of tokens per minute)')
+param chatDeploymentCapacity int = 80
+
 @description('Resource tags')
 param tags object
 
@@ -68,6 +84,23 @@ resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   }
 }
 
+// Chat model deployment (gpt-4o)
+resource chatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+  parent: foundryAccount
+  name: chatDeploymentName
+  sku: {
+    name: chatDeploymentSkuName
+    capacity: chatDeploymentCapacity
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: chatModelName
+      version: chatModelVersion
+    }
+  }
+}
+
 // Foundry Project (attached to account)
 resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
   parent: foundryAccount
@@ -78,6 +111,9 @@ resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-0
     type: 'SystemAssigned'
   }
   properties: {}
+  dependsOn: [
+    chatDeployment
+  ]
 }
 
 // RBAC: Grant managed identity "Cognitive Services OpenAI User" role
@@ -180,3 +216,6 @@ output projectId string = foundryProject.id
 
 @description('Foundry project name')
 output projectName string = foundryProject.name
+
+@description('Chat model deployment name')
+output chatDeploymentName string = chatDeployment.name
