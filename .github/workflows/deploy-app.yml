@@ -249,6 +249,7 @@ jobs:
           echo "api-center-endpoint=$(echo $DEPLOYMENT | jq -r '.apiCenterEndpoint.value')" >> $GITHUB_OUTPUT
           echo "cosmos-db-endpoint=$(echo $DEPLOYMENT | jq -r '.cosmosDbEndpoint.value')" >> $GITHUB_OUTPUT
           echo "cosmos-db-database-name=$(echo $DEPLOYMENT | jq -r '.cosmosDbDatabaseName.value')" >> $GITHUB_OUTPUT
+          echo "appinsights-connection-string=$(echo $DEPLOYMENT | jq -r '.appInsightsConnectionString.value')" >> $GITHUB_OUTPUT
 
           # Extract identity outputs from deployment
           FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
@@ -316,14 +317,14 @@ jobs:
             --bff-identity-resource-id "${{ steps.infra.outputs.bff-identity-resource-id }}" \
             --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }}" \
-            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }}" \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
+            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }} \
             --indexer-image-tag ${{ needs.build-and-push-indexer.outputs.image-tag }} \
             --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
             --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
-            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }}"
+            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}"
 
   deploy-staging:
     name: Deploy to Staging
@@ -370,6 +371,7 @@ jobs:
           echo "api-center-endpoint=$(echo $DEPLOYMENT | jq -r '.apiCenterEndpoint.value')" >> $GITHUB_OUTPUT
           echo "cosmos-db-endpoint=$(echo $DEPLOYMENT | jq -r '.cosmosDbEndpoint.value')" >> $GITHUB_OUTPUT
           echo "cosmos-db-database-name=$(echo $DEPLOYMENT | jq -r '.cosmosDbDatabaseName.value')" >> $GITHUB_OUTPUT
+          echo "appinsights-connection-string=$(echo $DEPLOYMENT | jq -r '.appInsightsConnectionString.value')" >> $GITHUB_OUTPUT
 
           # Extract identity outputs from deployment
           FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
@@ -437,14 +439,14 @@ jobs:
             --bff-identity-resource-id "${{ steps.infra.outputs.bff-identity-resource-id }}" \
             --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }}" \
-            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }}" \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
+            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }} \
             --indexer-image-tag ${{ needs.build-and-push-indexer.outputs.image-tag }} \
             --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
             --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
-            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }}"
+            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}"
 
   deploy-prod:
     name: Deploy to Production
@@ -491,6 +493,7 @@ jobs:
           echo "api-center-endpoint=$(echo $DEPLOYMENT | jq -r '.apiCenterEndpoint.value')" >> $GITHUB_OUTPUT
           echo "cosmos-db-endpoint=$(echo $DEPLOYMENT | jq -r '.cosmosDbEndpoint.value')" >> $GITHUB_OUTPUT
           echo "cosmos-db-database-name=$(echo $DEPLOYMENT | jq -r '.cosmosDbDatabaseName.value')" >> $GITHUB_OUTPUT
+          echo "appinsights-connection-string=$(echo $DEPLOYMENT | jq -r '.appInsightsConnectionString.value')" >> $GITHUB_OUTPUT
 
           # Extract identity outputs from deployment
           FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
@@ -558,11 +561,11 @@ jobs:
             --bff-identity-resource-id "${{ steps.infra.outputs.bff-identity-resource-id }}" \
             --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
             --redis-host ${{ steps.infra.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }}" \
-            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }}" \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
+            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
             --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }} \
             --indexer-image-tag ${{ needs.build-and-push-indexer.outputs.image-tag }} \
             --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
             --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
-            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }}"
+            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}"
