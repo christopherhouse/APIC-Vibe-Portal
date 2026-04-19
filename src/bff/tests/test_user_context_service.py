@@ -17,7 +17,7 @@ Tests cover:
 from __future__ import annotations
 
 import time
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -534,13 +534,16 @@ class TestAIChatServiceSecurityFilter:
         assert citations == []
         mock_search.search.assert_not_called()
 
-    def test_chat_passes_accessible_ids_to_retrieve_context(self):
+    @pytest.mark.asyncio
+    async def test_chat_passes_accessible_ids_to_retrieve_context(self):
         mock_openai = MagicMock()
-        mock_openai.chat_completion.return_value = {
-            "content": "Here is the answer.",
-            "finish_reason": "stop",
-            "usage": {"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70},
-        }
+        mock_openai.chat_completion = AsyncMock(
+            return_value={
+                "content": "Here is the answer.",
+                "finish_reason": "stop",
+                "usage": {"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70},
+            }
+        )
         mock_search = MagicMock()
         mock_search.search.return_value = {
             "results": [
@@ -559,7 +562,7 @@ class TestAIChatServiceSecurityFilter:
         from apic_vibe_portal_bff.services.ai_chat_service import AIChatService
 
         svc = AIChatService(openai_client=mock_openai, search_client=mock_search, model="gpt-4o")
-        svc.chat("What APIs do we have?", accessible_api_ids=["weather-api"])
+        await svc.chat("What APIs do we have?", accessible_api_ids=["weather-api"])
 
         call_kwargs = mock_search.search.call_args.kwargs
         assert call_kwargs.get("filter_expression") is not None

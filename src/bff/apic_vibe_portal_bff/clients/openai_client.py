@@ -119,10 +119,10 @@ class OpenAIClient:
         raise OpenAIClientError(str(exc)) from exc
 
     # ------------------------------------------------------------------
-    # Chat completion (sync wrapper for backward compat)
+    # Chat completion (async)
     # ------------------------------------------------------------------
 
-    def chat_completion(
+    async def chat_completion(
         self,
         messages: list[dict[str, str]],
         *,
@@ -135,7 +135,7 @@ class OpenAIClient:
         """
         try:
             client = self._get_client()
-            response = client.client.chat.completions.create(
+            response = await client.client.chat.completions.create(
                 model=self._deployment,
                 messages=messages,
                 temperature=temperature,
@@ -158,7 +158,7 @@ class OpenAIClient:
             self._handle_error(exc, "chat_completion")
             return {}  # unreachable
 
-    def chat_completion_stream(
+    async def chat_completion_stream(
         self,
         messages: list[dict[str, str]],
         *,
@@ -172,7 +172,7 @@ class OpenAIClient:
         """
         try:
             client = self._get_client()
-            stream = client.client.chat.completions.create(
+            stream = await client.client.chat.completions.create(
                 model=self._deployment,
                 messages=messages,
                 temperature=temperature,
@@ -180,7 +180,7 @@ class OpenAIClient:
                 stream=True,
                 stream_options={"include_usage": True},
             )
-            for chunk in stream:
+            async for chunk in stream:
                 if not chunk.choices:
                     # Final chunk with usage only
                     if chunk.usage:

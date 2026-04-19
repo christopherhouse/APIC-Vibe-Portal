@@ -21,7 +21,7 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from threading import Lock
 from typing import Any
@@ -601,7 +601,7 @@ class AIChatService:
     # Chat (synchronous)
     # ------------------------------------------------------------------
 
-    def chat(
+    async def chat(
         self, user_message: str, session_id: str | None = None, accessible_api_ids: list[str] | None = None
     ) -> ChatResponse:
         """Process a chat message through the RAG pipeline.
@@ -636,7 +636,7 @@ class AIChatService:
         estimated = estimate_messages_tokens(messages, self._model)
 
         # 4. Generate
-        result = self._openai.chat_completion(messages, max_tokens=1024)
+        result = await self._openai.chat_completion(messages, max_tokens=1024)
 
         # 5. Emit metrics
         self._emit_token_metrics(estimated, result.get("usage", {}))
@@ -663,12 +663,12 @@ class AIChatService:
     # Chat (streaming)
     # ------------------------------------------------------------------
 
-    def chat_stream(
+    async def chat_stream(
         self,
         user_message: str,
         session_id: str | None = None,
         accessible_api_ids: list[str] | None = None,
-    ) -> Generator[str]:
+    ) -> AsyncGenerator[str]:
         """Stream a chat response as SSE events.
 
         Parameters
@@ -708,7 +708,7 @@ class AIChatService:
         yield f"data: {json.dumps({'type': 'start', 'sessionId': session.session_id})}\n\n"
 
         try:
-            for chunk in self._openai.chat_completion_stream(messages, max_tokens=1024):
+            async for chunk in self._openai.chat_completion_stream(messages, max_tokens=1024):
                 content = chunk.get("content", "")
                 if content:
                     full_content += content
