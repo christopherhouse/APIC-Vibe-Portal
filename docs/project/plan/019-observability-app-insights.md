@@ -194,10 +194,10 @@ Define an App Insights workbook or dashboard covering:
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
-| 2026-04-19 | ✅ Complete | @copilot | BFF `telemetry/` module (OTel setup, custom metrics, token metrics, middleware), indexer telemetry, frontend App Insights SDK + typed tracking helpers, 43 new tests (32 BFF + 11 frontend) |
+| Date       | Status         | Author   | Notes                                                                                                                                                                                       |
+| ---------- | -------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —        | Task created                                                                                                                                                                                |
+| 2026-04-19 | ✅ Complete    | @copilot | BFF `telemetry/` module (OTel setup, custom metrics, token metrics, middleware), indexer telemetry, frontend App Insights SDK + typed tracking helpers, 43 new tests (32 BFF + 11 frontend) |
 
 ### Technical Decisions
 

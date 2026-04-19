@@ -150,8 +150,7 @@ describe('track-events', () => {
 
     // Should not throw
     expect(() =>
-      trackSearchPerformed({ query: 'test', resultCount: 0, durationMs: 0 }),
+      trackSearchPerformed({ query: 'test', resultCount: 0, durationMs: 0 })
     ).not.toThrow();
   });
 });
-

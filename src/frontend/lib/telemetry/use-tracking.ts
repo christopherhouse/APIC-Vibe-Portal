@@ -49,7 +49,7 @@ export function useTracking(): { track: TrackingHelpers } {
       specDownloaded: trackSpecDownloaded,
       error: trackError,
     }),
-    [],
+    []
   );
 
   return { track };

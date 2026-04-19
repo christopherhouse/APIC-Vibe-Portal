@@ -71,9 +71,7 @@ export function initAppInsights(connectionString: string): void {
     window.addEventListener('unhandledrejection', (event) => {
       appInsights?.trackException({
         exception: new Error(
-          event.reason instanceof Error
-            ? event.reason.message
-            : String(event.reason),
+          event.reason instanceof Error ? event.reason.message : String(event.reason)
         ),
         properties: { type: 'unhandledrejection' },
       });

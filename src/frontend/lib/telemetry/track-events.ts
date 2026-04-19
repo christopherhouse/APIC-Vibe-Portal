@@ -45,10 +45,7 @@ export function trackApiViewed(params: {
 }
 
 /** Track a chat message sent by the user. */
-export function trackChatMessageSent(params: {
-  messageLength: number;
-  sessionId: string;
-}): void {
+export function trackChatMessageSent(params: { messageLength: number; sessionId: string }): void {
   getAppInsights()?.trackEvent({
     name: 'chat_message_sent',
     properties: {
@@ -59,10 +56,7 @@ export function trackChatMessageSent(params: {
 }
 
 /** Track a catalog/search filter being applied. */
-export function trackFilterApplied(params: {
-  filterType: string;
-  filterValue: string;
-}): void {
+export function trackFilterApplied(params: { filterType: string; filterValue: string }): void {
   getAppInsights()?.trackEvent({
     name: 'filter_applied',
     properties: {
@@ -73,10 +67,7 @@ export function trackFilterApplied(params: {
 }
 
 /** Track an API spec download. */
-export function trackSpecDownloaded(params: {
-  apiId: string;
-  format: string;
-}): void {
+export function trackSpecDownloaded(params: { apiId: string; format: string }): void {
   getAppInsights()?.trackEvent({
     name: 'spec_downloaded',
     properties: {
@@ -87,9 +78,6 @@ export function trackSpecDownloaded(params: {
 }
 
 /** Track a caught application error with optional context. */
-export function trackError(
-  error: Error,
-  properties?: Record<string, string>,
-): void {
+export function trackError(error: Error, properties?: Record<string, string>): void {
   getAppInsights()?.trackException({ exception: error, properties });
 }
