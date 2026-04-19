@@ -102,9 +102,9 @@ Update `ai_chat_service.py` (from task 017):
 
 ### Status History
 
-| Date       | Status         | Author  | Notes                                            |
-| ---------- | -------------- | ------- | ------------------------------------------------ |
-| —          | 🔲 Not Started | —       | Task created                                     |
+| Date       | Status         | Author  | Notes                                                                                                    |
+| ---------- | -------------- | ------- | -------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                                                                             |
 | 2026-04-19 | ✅ Complete    | Copilot | Full implementation: UserContextService, policy repo, admin router, service-level trimming, 52 new tests |
 
 ### Technical Decisions

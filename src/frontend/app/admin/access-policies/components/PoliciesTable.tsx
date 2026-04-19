@@ -76,11 +76,7 @@ export default function PoliciesTable({
         </TableHead>
         <TableBody>
           {policies.map((policy) => (
-            <TableRow
-              key={policy.apiName}
-              hover
-              data-testid={`policy-row-${policy.apiName}`}
-            >
+            <TableRow key={policy.apiName} hover data-testid={`policy-row-${policy.apiName}`}>
               <TableCell>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
                   {policy.apiName}

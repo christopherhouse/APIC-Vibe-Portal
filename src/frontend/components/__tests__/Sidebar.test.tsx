@@ -15,8 +15,14 @@ jest.mock('next/navigation', () => ({
 import Sidebar from '../layout/Sidebar';
 
 const noUser = { isAuthenticated: true, user: null };
-const regularUser = { isAuthenticated: true, user: { name: 'Dev', email: 'd@x.com', id: 'u1', roles: ['Portal.User'] } };
-const adminUser = { isAuthenticated: true, user: { name: 'Admin', email: 'a@x.com', id: 'u2', roles: ['Portal.Admin'] } };
+const regularUser = {
+  isAuthenticated: true,
+  user: { name: 'Dev', email: 'd@x.com', id: 'u1', roles: ['Portal.User'] },
+};
+const adminUser = {
+  isAuthenticated: true,
+  user: { name: 'Admin', email: 'a@x.com', id: 'u2', roles: ['Portal.Admin'] },
+};
 
 describe('Sidebar', () => {
   beforeEach(() => jest.clearAllMocks());

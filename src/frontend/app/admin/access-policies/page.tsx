@@ -61,9 +61,10 @@ export default function AccessPoliciesPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Success / error toast
-  const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' } | null>(
-    null
-  );
+  const [snackbar, setSnackbar] = useState<{
+    message: string;
+    severity: 'success' | 'error';
+  } | null>(null);
 
   // ---------------------------------------------------------------------------
   // Data loading
@@ -173,7 +174,11 @@ export default function AccessPoliciesPage() {
   return (
     <Container maxWidth="xl" sx={{ py: 2 }}>
       {/* Page header */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3, alignItems: { sm: 'center' } }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{ mb: 3, alignItems: { sm: 'center' } }}
+      >
         <Box sx={{ flex: 1 }}>
           <Typography variant="h4" component="h1" gutterBottom>
             API Access Policies

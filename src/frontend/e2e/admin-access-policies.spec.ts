@@ -131,10 +131,7 @@ async function mockCatalogRoute(page: Page) {
 }
 
 /** Mock all admin access-policy BFF routes. */
-async function mockAdminRoutes(
-  page: Page,
-  policies: AccessPolicy[] = MOCK_POLICIES
-) {
+async function mockAdminRoutes(page: Page, policies: AccessPolicy[] = MOCK_POLICIES) {
   // GET /api/admin/access-policies → list
   await page.route('**/api/admin/access-policies', async (route) => {
     if (route.request().method() === 'GET') {

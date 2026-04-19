@@ -47,9 +47,7 @@ export async function upsertAccessPolicy(
 
 /** Delete the access policy for an API (makes the API public again). */
 export async function deleteAccessPolicy(apiName: string): Promise<void> {
-  return apiClient.delete<void>(
-    `/api/admin/access-policies/${encodeURIComponent(apiName)}`
-  );
+  return apiClient.delete<void>(`/api/admin/access-policies/${encodeURIComponent(apiName)}`);
 }
 
 /** Force immediate refresh of the in-memory policy cache on the BFF. */

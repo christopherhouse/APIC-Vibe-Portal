@@ -43,32 +43,42 @@ describe('PoliciesTable', () => {
   });
 
   it('renders a row for each policy', () => {
-    render(<PoliciesTable policies={mockPolicies} isLoading={false} onEdit={noop} onDelete={noop} />);
+    render(
+      <PoliciesTable policies={mockPolicies} isLoading={false} onEdit={noop} onDelete={noop} />
+    );
     expect(screen.getByTestId('policy-row-petstore-api')).toBeInTheDocument();
     expect(screen.getByTestId('policy-row-public-api')).toBeInTheDocument();
     expect(screen.getByTestId('policy-row-locked-api')).toBeInTheDocument();
   });
 
   it('shows Public chip for isPublic policies', () => {
-    render(<PoliciesTable policies={mockPolicies} isLoading={false} onEdit={noop} onDelete={noop} />);
+    render(
+      <PoliciesTable policies={mockPolicies} isLoading={false} onEdit={noop} onDelete={noop} />
+    );
     expect(screen.getByText('Public')).toBeInTheDocument();
   });
 
   it('shows Restricted chip for group-restricted policies', () => {
-    render(<PoliciesTable policies={mockPolicies} isLoading={false} onEdit={noop} onDelete={noop} />);
+    render(
+      <PoliciesTable policies={mockPolicies} isLoading={false} onEdit={noop} onDelete={noop} />
+    );
     // petstore-api and locked-api are restricted
     const restrictedChips = screen.getAllByText('Restricted');
     expect(restrictedChips.length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows groups as chips for restricted policies', () => {
-    render(<PoliciesTable policies={mockPolicies} isLoading={false} onEdit={noop} onDelete={noop} />);
+    render(
+      <PoliciesTable policies={mockPolicies} isLoading={false} onEdit={noop} onDelete={noop} />
+    );
     expect(screen.getByText('grp-1')).toBeInTheDocument();
     expect(screen.getByText('grp-2')).toBeInTheDocument();
   });
 
   it('shows inaccessible warning for locked API', () => {
-    render(<PoliciesTable policies={mockPolicies} isLoading={false} onEdit={noop} onDelete={noop} />);
+    render(
+      <PoliciesTable policies={mockPolicies} isLoading={false} onEdit={noop} onDelete={noop} />
+    );
     expect(screen.getByText(/No groups — API inaccessible/)).toBeInTheDocument();
   });
 
@@ -82,7 +92,9 @@ describe('PoliciesTable', () => {
   });
 
   it('calls onDelete when delete button is clicked', () => {
-    render(<PoliciesTable policies={mockPolicies} isLoading={false} onEdit={noop} onDelete={noop} />);
+    render(
+      <PoliciesTable policies={mockPolicies} isLoading={false} onEdit={noop} onDelete={noop} />
+    );
     const deleteButton = screen.getByTestId('delete-policy-petstore-api');
     deleteButton.click();
     expect(noop).toHaveBeenCalledWith(mockPolicies[0]);
