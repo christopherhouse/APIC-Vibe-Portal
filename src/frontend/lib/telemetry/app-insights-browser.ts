@@ -12,7 +12,7 @@
 
 'use client';
 
-import { ApplicationInsights } from '@microsoft/applicationinsights-web';
+import { ApplicationInsights, DistributedTracingModes } from '@microsoft/applicationinsights-web';
 
 let appInsights: ApplicationInsights | null = null;
 let initialized = false;
@@ -36,7 +36,7 @@ export function getAppInsights(): ApplicationInsights | null {
       enableCorsCorrelation: true,
       enableRequestHeaderTracking: true,
       enableResponseHeaderTracking: true,
-      distributedTracingMode: 2, // W3C Trace Context
+      distributedTracingMode: DistributedTracingModes.W3C,
       disableFetchTracking: false,
       autoTrackPageVisitTime: true,
     },

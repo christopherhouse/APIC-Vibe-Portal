@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppRouterCacheProvider>
           <ThemeProvider theme={theme}>
             <CssBaseline />
-            <Suspense>
+            <Suspense fallback={null}>
               <TelemetryProvider />
             </Suspense>
             <AuthProvider>
