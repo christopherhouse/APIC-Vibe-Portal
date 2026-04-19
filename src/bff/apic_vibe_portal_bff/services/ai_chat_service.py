@@ -367,6 +367,12 @@ class AIChatService:
     - A ``HistoryProvider`` for conversation persistence (defaults to
       ``InMemoryHistoryProvider``; use ``CosmosHistoryProvider`` in prod)
 
+    When an ``agent_router`` is supplied, the :meth:`chat` and
+    :meth:`chat_stream` methods delegate to it, routing the request through
+    the full multi-agent system (currently the API Discovery Agent).  When
+    ``agent_router`` is ``None`` (default), the service falls back to the
+    direct RAG + OpenAI path for backward compatibility.
+
     Parameters
     ----------
     openai_client:
@@ -378,6 +384,9 @@ class AIChatService:
     history_provider:
         MAF ``HistoryProvider`` for conversation persistence.  Defaults to
         ``InMemoryHistoryProvider`` when ``None``.
+    agent_router:
+        Optional :class:`~apic_vibe_portal_bff.agents.agent_router.AgentRouter`
+        to delegate chat requests through the agent system.
     prompt_price_per_1k:
         Per-1K-token price for prompt tokens (for cost estimation).
     completion_price_per_1k:
@@ -391,6 +400,7 @@ class AIChatService:
         *,
         model: str = "gpt-4o",
         history_provider: Any | None = None,
+        agent_router: Any | None = None,
         prompt_price_per_1k: float = _DEFAULT_PROMPT_PRICE_PER_1K,
         completion_price_per_1k: float = _DEFAULT_COMPLETION_PRICE_PER_1K,
     ) -> None:
@@ -400,6 +410,7 @@ class AIChatService:
         self._prompt_price = prompt_price_per_1k
         self._completion_price = completion_price_per_1k
         self._sessions = SessionManager()
+        self._agent_router = agent_router
 
         # Create the MAF search tool
         self._search_tool = _create_search_tool(search_client, model)
@@ -606,6 +617,10 @@ class AIChatService:
     ) -> ChatResponse:
         """Process a chat message through the RAG pipeline.
 
+        When an ``agent_router`` is configured, the request is dispatched
+        through the agent system (API Discovery Agent with tool calling).
+        Otherwise the service falls back to the direct RAG + OpenAI path.
+
         Parameters
         ----------
         user_message:
@@ -626,6 +641,33 @@ class AIChatService:
         if not session.check_rate_limit():
             raise ChatRateLimitError(session.session_id)
 
+        # --- Agent path ---------------------------------------------------
+        if self._agent_router is not None:
+            from apic_vibe_portal_bff.agents.types import AgentRequest
+
+            agent_request = AgentRequest(
+                message=user_message,
+                session_id=session.session_id,
+                accessible_api_ids=accessible_api_ids,
+            )
+            agent_response = self._agent_router.dispatch(agent_request)
+
+            session.add_message("user", user_message)
+            session.add_message("assistant", agent_response.content)
+
+            now = _utc_iso_now()
+            return ChatResponse(
+                sessionId=session.session_id,
+                message=ChatMessage(
+                    id=str(uuid.uuid4()),
+                    role="assistant",
+                    content=agent_response.content,
+                    citations=agent_response.citations if agent_response.citations else None,
+                    timestamp=now,
+                ),
+            )
+
+        # --- Direct RAG path (fallback) ------------------------------------
         # 1. Retrieve context (with security filter)
         context, citations = self._retrieve_context(user_message, accessible_api_ids)
 
@@ -671,6 +713,10 @@ class AIChatService:
     ) -> Generator[str]:
         """Stream a chat response as SSE events.
 
+        When an ``agent_router`` is configured, the request is dispatched
+        through the agent system and the response is emitted as a single
+        SSE event sequence.  Otherwise the direct streaming path is used.
+
         Parameters
         ----------
         user_message:
@@ -691,6 +737,65 @@ class AIChatService:
             yield f"data: {json.dumps({'error': 'Rate limit exceeded', 'sessionId': session.session_id})}\n\n"
             return
 
+        # --- Agent path ---------------------------------------------------
+        if self._agent_router is not None:
+            from apic_vibe_portal_bff.agents.types import AgentRequest
+
+            yield f"data: {json.dumps({'type': 'start', 'sessionId': session.session_id})}\n\n"
+
+            try:
+                agent_request = AgentRequest(
+                    message=user_message,
+                    session_id=session.session_id,
+                    accessible_api_ids=accessible_api_ids,
+                )
+                full_content = ""
+                for chunk in self._agent_router.dispatch_stream(agent_request):
+                    if chunk:
+                        full_content += chunk
+                        yield f"data: {json.dumps({'type': 'content', 'content': chunk})}\n\n"
+            except Exception:
+                logger.exception("Agent streaming error mid-response")
+                error_payload = {
+                    "type": "error",
+                    "error": "An internal error occurred",
+                    "sessionId": session.session_id,
+                }
+                yield f"data: {json.dumps(error_payload)}\n\n"
+                return
+
+            # Re-run dispatch to get citations (agent path produces citations via run())
+            try:
+                agent_request_for_citations = AgentRequest(
+                    message=user_message,
+                    session_id=session.session_id,
+                    accessible_api_ids=accessible_api_ids,
+                )
+                agent_response = self._agent_router.dispatch(agent_request_for_citations)
+                citations = agent_response.citations
+            except Exception:
+                citations = None
+
+            session.add_message("user", user_message)
+            session.add_message("assistant", full_content)
+
+            now = _utc_iso_now()
+            message_id = str(uuid.uuid4())
+            final_event = {
+                "type": "end",
+                "message": {
+                    "id": message_id,
+                    "role": "assistant",
+                    "content": full_content,
+                    "citations": [c.model_dump() for c in citations] if citations else None,
+                    "timestamp": now,
+                },
+                "sessionId": session.session_id,
+            }
+            yield f"data: {json.dumps(final_event)}\n\n"
+            return
+
+        # --- Direct RAG path (fallback) ------------------------------------
         # 1. Retrieve context (with security filter)
         context, citations = self._retrieve_context(user_message, accessible_api_ids)
 
