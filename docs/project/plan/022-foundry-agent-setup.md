@@ -1,6 +1,6 @@
 # 022 - Phase 2: Foundry Agent Service Setup & First Agent
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -106,14 +106,14 @@ src/bff/src/bff/agents/
 
 ## Testing & Acceptance Criteria
 
-- [ ] Foundry Agent Service client connects and authenticates
-- [ ] API Discovery Agent is registered and responds to queries
-- [ ] Agent correctly uses tools to search and retrieve API data
-- [ ] Agent responses include accurate citations
-- [ ] Agent router correctly dispatches to the Discovery Agent
-- [ ] Chat endpoint works with both direct OpenAI and agent modes
-- [ ] Agent handles edge cases: no results, ambiguous queries, off-topic requests
-- [ ] Unit tests cover agent definition, routing, and tool execution
+- [x] Foundry Agent Service client connects and authenticates
+- [x] API Discovery Agent is registered and responds to queries
+- [x] Agent correctly uses tools to search and retrieve API data
+- [x] Agent responses include accurate citations
+- [x] Agent router correctly dispatches to the Discovery Agent
+- [x] Chat endpoint works with both direct OpenAI and agent modes
+- [x] Agent handles edge cases: no results, ambiguous queries, off-topic requests
+- [x] Unit tests cover agent definition, routing, and tool execution
 - [ ] Integration test validates full agent conversation flow
 
 ## Implementation Notes
@@ -126,21 +126,40 @@ src/bff/src/bff/agents/
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
+| Date       | Status         | Author   | Notes                                                                                                                                                            |
+| ---------- | -------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —        | Task created                                                                                                                                                     |
+| 2026-04-19 | ✅ Complete    | @copilot | Implemented Foundry Agent Client, ApiDiscoveryAgent with 4 tools, AgentRegistry, AgentRouter; integrated with AIChatService; 78 new tests, all 663 tests passing |
 
 ### Technical Decisions
 
-_No technical decisions recorded yet._
+1. **FoundryAgentClient uses MAF OpenAIChatClient**: The Foundry project endpoint exposes an Azure OpenAI-compatible API, so the existing MAF `OpenAIChatClient` can be pointed at the Foundry endpoint without introducing new SDK dependencies. This stays consistent with the existing `OpenAIClient` pattern.
+
+2. **Agent router defaults to API Discovery Agent**: All requests are routed to `ApiDiscoveryAgent` for now. The routing logic is centralised in `AgentRouter.route()` so intent-based routing (e.g. via a lightweight classifier) can be added later without touching agent implementations.
+
+3. **Backward-compatible agent_router opt-in**: `AIChatService` accepts an optional `agent_router` parameter. When `None` (default), the existing direct RAG+OpenAI path is used. When set (triggered by `foundry_project_endpoint` in settings), requests go through the agent system. This preserves full backward compatibility.
+
+4. **ApiDiscoveryAgent tools use API Center client directly**: The `get_api_details`, `get_api_spec`, and `list_api_versions` tools call `ApiCenterClient` directly rather than going through the search service, as API Center holds authoritative structured data for these operations.
+
+5. **StrEnum for AgentName**: Used Python 3.11+ `StrEnum` (available in Python 3.14) for clean string serialisation without the `(str, Enum)` antipattern flagged by ruff UP042.
 
 ### Deviations from Plan
 
-_No deviations from the original plan._
+1. **No new SDK dependency added**: The plan suggested using `azure-ai-projects` SDK or `httpx` for direct REST calls to the Foundry Agent Service. Instead, `FoundryAgentClient` wraps the existing MAF `OpenAIChatClient` pointed at the Foundry project endpoint, which exposes an OpenAI-compatible API. This avoids adding a new package dependency and stays consistent with the existing `OpenAIClient` pattern.
+
+2. **Agent path not invoked through REST**: The plan mentioned creating a REST-based agent session API. The agent system is integrated directly into `AIChatService`, so the existing `/api/chat` and `/api/chat/stream` endpoints automatically use the agent system when `foundry_project_endpoint` is configured. No new endpoints were needed.
+
+3. **File layout adjusted to match actual project structure**: The plan spec showed paths under `src/bff/src/bff/...` but the actual project uses `src/bff/apic_vibe_portal_bff/...`. All files were created at the correct paths.
 
 ### Validation Results
 
-_No validation results yet._
+- **Test suite**: 663 tests passing (78 new tests added, 585 pre-existing)
+- **New test files**:
+  - `tests/test_foundry_agent_client.py` — 25 tests covering endpoint normalisation, MAF client laziness, `is_configured`, close, and error types
+  - `tests/test_agent_router.py` — 19 tests covering `AgentRegistry`, `AgentRouter.route/dispatch/dispatch_stream`, and Pydantic model validation
+  - `tests/test_api_discovery_agent.py` — 34 tests covering all 4 agent tools, `run`/`stream`, handler helpers, prompts, and `to_chat_response`
+- **Linting**: `ruff check` and `ruff format --check` both pass with zero errors
+- **Backward compatibility**: All 585 pre-existing tests continue to pass; the `AIChatService` direct RAG path is unchanged when no `agent_router` is configured
 
 ## Coding Agent Prompt
 

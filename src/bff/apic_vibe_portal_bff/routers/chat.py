@@ -77,11 +77,44 @@ def _get_chat_service() -> AIChatService:
             except Exception:
                 logger.exception("Failed to initialise CosmosHistoryProvider — falling back to InMemoryHistoryProvider")
 
+        # Wire up the agent router if a Foundry project endpoint is configured
+        agent_router = None
+        if settings.foundry_project_endpoint.strip():
+            try:
+                from apic_vibe_portal_bff.agents.agent_registry import AgentRegistry
+                from apic_vibe_portal_bff.agents.agent_router import AgentRouter
+                from apic_vibe_portal_bff.agents.api_discovery_agent.definition import ApiDiscoveryAgent
+                from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient
+                from apic_vibe_portal_bff.clients.foundry_agent_client import FoundryAgentClient
+
+                foundry_client = FoundryAgentClient(
+                    project_endpoint=settings.foundry_project_endpoint,
+                    deployment=settings.openai_chat_deployment,
+                )
+                api_center_client = ApiCenterClient(
+                    base_url=settings.api_center_endpoint,
+                    workspace_name=settings.api_center_workspace_name,
+                )
+                discovery_agent = ApiDiscoveryAgent(
+                    maf_client=foundry_client.get_maf_client(),
+                    search_client=search_client,
+                    api_center_client=api_center_client,
+                    history_provider=history_provider,
+                    model=settings.openai_chat_deployment,
+                )
+                registry = AgentRegistry()
+                registry.register(discovery_agent)
+                agent_router = AgentRouter(registry)
+                logger.info("Agent router initialised with Foundry endpoint=%s", settings.foundry_project_endpoint)
+            except Exception:
+                logger.exception("Failed to initialise agent router — agent-based chat will be unavailable")
+
         _service_instance = AIChatService(
             openai_client=openai_client,
             search_client=search_client,
             model=settings.openai_chat_deployment,
             history_provider=history_provider,
+            agent_router=agent_router,
         )
     return _service_instance
 

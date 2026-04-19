@@ -94,6 +94,17 @@ class Settings(BaseSettings):
         description="Cosmos DB container name for API access policies (security trimming)",
     )
 
+    # --- Azure AI Foundry Agent Service ---------------------------------
+    foundry_project_endpoint: str = Field(
+        default="",
+        description=(
+            "Azure AI Foundry project endpoint URL "
+            "(e.g. https://my-foundry.api.azureml.ms). "
+            "When set, agent requests are routed through the Foundry Agent Service "
+            "instead of direct Azure OpenAI."
+        ),
+    )
+
     # --- Entra ID (authentication) ---------------------------------------
     bff_entra_tenant_id: str = Field(default="", description="Entra ID (Azure AD) tenant ID")
     bff_entra_client_id: str = Field(default="", description="Entra ID client (audience) ID for the BFF API")
