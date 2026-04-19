@@ -126,10 +126,10 @@ src/bff/src/bff/agents/
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
-| 2026-04-19 | ✅ Complete | @copilot | Implemented Foundry Agent Client, ApiDiscoveryAgent with 4 tools, AgentRegistry, AgentRouter; integrated with AIChatService; 78 new tests, all 663 tests passing |
+| Date       | Status         | Author   | Notes                                                                                                                                                            |
+| ---------- | -------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —        | Task created                                                                                                                                                     |
+| 2026-04-19 | ✅ Complete    | @copilot | Implemented Foundry Agent Client, ApiDiscoveryAgent with 4 tools, AgentRegistry, AgentRouter; integrated with AIChatService; 78 new tests, all 663 tests passing |
 
 ### Technical Decisions
 
