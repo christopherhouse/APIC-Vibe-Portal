@@ -10,15 +10,69 @@ from apic_vibe_portal_bff.agents.types import AgentName, AgentRequest, AgentResp
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Governance intent keywords
+# ---------------------------------------------------------------------------
+
+# Lower-cased keywords that indicate a governance-related user intent.
+# Matching is performed on the full lower-cased user message.
+_GOVERNANCE_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "governance",
+        "compliance",
+        "compliant",
+        "non-compliant",
+        "noncompliant",
+        "non compliant",
+        "governance score",
+        "governance report",
+        "governance status",
+        "governance check",
+        "governance issue",
+        "governance issues",
+        "remediat",
+        "sunset date",
+        "metadata completeness",
+        "api standards",
+        "api policy",
+        "api policies",
+        "policy violation",
+        "policy check",
+        "rule violation",
+        "failing rule",
+        "failing rules",
+        "passes governance",
+        "fails governance",
+        "governance rule",
+        "governance rules",
+    }
+)
+
+
+def _is_governance_intent(message: str) -> bool:
+    """Return ``True`` if *message* appears to be a governance-related query.
+
+    Uses a keyword-based heuristic so that simple discovery queries are not
+    accidentally routed to the Governance Agent.  The check is intentionally
+    broad to avoid missing governance queries; the Governance Agent itself will
+    handle any ambiguous messages gracefully.
+    """
+    lower = message.lower()
+    return any(kw in lower for kw in _GOVERNANCE_KEYWORDS)
+
 
 class AgentRouter:
     """Routes incoming :class:`~apic_vibe_portal_bff.agents.types.AgentRequest` objects
     to the correct registered agent.
 
-    Currently all requests are routed to :attr:`~apic_vibe_portal_bff.agents.types.AgentName.API_DISCOVERY`.
-    The routing logic is intentionally centralised here so that intent-based
-    routing (e.g. via a classifier LLM call) can be added in a future task
-    without touching agent implementations.
+    Routing strategy:
+
+    1. If the user message contains governance-related keywords, route to the
+       :attr:`~apic_vibe_portal_bff.agents.types.AgentName.GOVERNANCE` agent.
+    2. All other requests are routed to the
+       :attr:`~apic_vibe_portal_bff.agents.types.AgentName.API_DISCOVERY` agent.
+
+    Ambiguous queries default to the Discovery Agent.
 
     Parameters
     ----------
@@ -47,9 +101,8 @@ class AgentRouter:
         :class:`AgentName`
             The name of the agent that should handle the request.
         """
-        # For now all requests are routed to the API Discovery Agent.
-        # Future: analyse ``request.message`` with a lightweight classifier
-        # to route to specialised agents (security, governance, analytics, …).
+        if _is_governance_intent(request.message):
+            return AgentName.GOVERNANCE
         return AgentName.API_DISCOVERY
 
     # ------------------------------------------------------------------

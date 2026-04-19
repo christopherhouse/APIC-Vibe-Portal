@@ -14,6 +14,7 @@ class AgentName(StrEnum):
     """Known agent identifiers registered in the :class:`AgentRegistry`."""
 
     API_DISCOVERY = "api_discovery"
+    GOVERNANCE = "governance"
 
 
 class AgentRequest(BaseModel):
