@@ -138,3 +138,23 @@ def get_cost_estimated_histogram() -> metrics.Histogram:
         description="Estimated cost based on token pricing",
         unit="USD",
     )
+
+
+# ---------------------------------------------------------------------------
+# Cosmos DB RU metrics
+# ---------------------------------------------------------------------------
+
+
+def get_cosmos_ru_histogram() -> metrics.Histogram:
+    """Histogram for Cosmos DB query Request Unit (RU) cost.
+
+    Attributes:
+        ``container``: Cosmos DB container name.
+        ``operation``: Operation type (``read``, ``create``, ``replace``,
+            ``delete``, ``query``).
+    """
+    return get_meter().create_histogram(
+        name="apic.cosmos.ru_cost",
+        description="Cosmos DB operation Request Unit (RU) cost",
+        unit="{RU}",
+    )

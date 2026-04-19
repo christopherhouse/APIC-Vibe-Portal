@@ -67,6 +67,7 @@ class TestMetricsInstrumentFactories:
             ("get_tokens_completion_histogram", "apic.llm.tokens.completion", "{token}", "histogram"),
             ("get_tokens_total_histogram", "apic.llm.tokens.total", "{token}", "histogram"),
             ("get_cost_estimated_histogram", "apic.llm.cost.estimated", "USD", "histogram"),
+            ("get_cosmos_ru_histogram", "apic.cosmos.ru_cost", "{RU}", "histogram"),
         ],
     )
     def test_instrument_factory_uses_correct_name_and_unit(
