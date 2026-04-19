@@ -129,10 +129,10 @@ app/chat/
 
 ### Status History
 
-| Date       | Status      | Author  | Notes                                                             |
-| ---------- | ----------- | ------- | ----------------------------------------------------------------- |
-| —          | 🔲 Not Started | —    | Task created                                                      |
-| 2026-04-19 | ✅ Complete | copilot | Full chat UI implemented with all components, tests, and e2e spec |
+| Date       | Status         | Author  | Notes                                                             |
+| ---------- | -------------- | ------- | ----------------------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                                      |
+| 2026-04-19 | ✅ Complete    | copilot | Full chat UI implemented with all components, tests, and e2e spec |
 
 ### Technical Decisions
 

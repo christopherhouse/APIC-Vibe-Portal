@@ -3,7 +3,9 @@
 /**
  * ChatCitations — renders citation chips below an assistant message.
  *
- * Each citation links to the referenced API detail page.
+ * - Relative `/catalog/<id>` URLs → in-app router navigation
+ * - Absolute http/https URLs → `<a target="_blank" rel="noopener noreferrer">`
+ * - All other schemes (javascript:, data:, etc.) → rendered as non-clickable chips
  */
 
 import Chip from '@mui/material/Chip';
@@ -19,16 +21,29 @@ export interface ChatCitationsProps {
 }
 
 /**
- * Extract a catalog API id from a citation URL if it follows the pattern
- * `/catalog/<id>` or contains the API id as the last path segment.
+ * Extract a catalog API id from a citation URL **only** when the URL is
+ * relative (starts with `/`).  Absolute URLs that happen to contain
+ * `/catalog/` are treated as external — not as in-app links — to prevent
+ * spoofing.
  */
-function extractApiId(url: string): string | null {
+function extractInternalApiId(url: string): string | null {
+  // Only treat as internal if it's a relative path (starts with `/` but NOT `//`).
+  // Protocol-relative URLs (//host/path) would bypass the scheme guard, so reject them too.
+  if (!url.startsWith('/') || url.startsWith('//')) return null;
+  const match = url.match(/\/catalog\/([^/?#]+)/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Return `true` only for safe absolute http / https URLs.
+ * Any other scheme (javascript:, data:, etc.) is rejected.
+ */
+function isSafeExternalUrl(url: string): boolean {
   try {
-    const parsed = new URL(url, 'http://localhost');
-    const match = parsed.pathname.match(/\/catalog\/([^/]+)/);
-    return match ? match[1] : null;
+    const { protocol } = new URL(url);
+    return protocol === 'http:' || protocol === 'https:';
   } catch {
-    return null;
+    return false;
   }
 }
 
@@ -44,15 +59,50 @@ export default function ChatCitations({ citations }: ChatCitationsProps) {
       </Typography>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
         {citations.map((citation, idx) => {
-          const apiId = citation.url ? extractApiId(citation.url) : null;
-          const href = apiId ? `/catalog/${apiId}` : (citation.url ?? '#');
+          const url = citation.url ?? '';
+          const internalApiId = extractInternalApiId(url);
+          const isExternal = !internalApiId && isSafeExternalUrl(url);
 
-          const handleClick = () => {
-            if (href !== '#') {
-              router.push(href);
-            }
-          };
+          if (internalApiId) {
+            // Internal catalog link — navigate within the SPA
+            return (
+              <Tooltip key={idx} title={citation.content ?? citation.title} placement="top" arrow>
+                <Chip
+                  icon={<LinkIcon />}
+                  label={citation.title}
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                  clickable
+                  onClick={() => router.push(`/catalog/${internalApiId}`)}
+                  data-testid={`citation-chip-${idx}`}
+                />
+              </Tooltip>
+            );
+          }
 
+          if (isExternal) {
+            // External link — open in a new tab safely
+            return (
+              <Tooltip key={idx} title={citation.content ?? citation.title} placement="top" arrow>
+                <Chip
+                  icon={<LinkIcon />}
+                  label={citation.title}
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                  clickable
+                  component="a"
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid={`citation-chip-${idx}`}
+                />
+              </Tooltip>
+            );
+          }
+
+          // No valid URL or unsafe scheme — render as non-clickable chip
           return (
             <Tooltip key={idx} title={citation.content ?? citation.title} placement="top" arrow>
               <Chip
@@ -60,9 +110,6 @@ export default function ChatCitations({ citations }: ChatCitationsProps) {
                 label={citation.title}
                 size="small"
                 variant="outlined"
-                color="primary"
-                clickable={href !== '#'}
-                onClick={handleClick}
                 data-testid={`citation-chip-${idx}`}
               />
             </Tooltip>

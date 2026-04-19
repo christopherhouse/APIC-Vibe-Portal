@@ -8,8 +8,7 @@
  */
 
 import type { ChatMessage } from '@apic-vibe-portal/shared';
-import { getMsalInstance } from '@/lib/auth/auth-provider';
-import { getBffApiScope } from '@/lib/auth/msal-config';
+import { getAuthToken } from '@/lib/api-client';
 
 /** SSE event types emitted by the BFF streaming endpoint. */
 export type ChatStreamEventType = 'start' | 'content' | 'end' | 'error';
@@ -26,7 +25,7 @@ export interface ChatStreamContentEvent {
 
 export interface ChatStreamEndEvent {
   type: 'end';
-  message: ChatMessage;
+  message: ChatMessage & { citations: null | ChatMessage['citations'] };
   sessionId: string;
 }
 
@@ -41,23 +40,6 @@ export type ChatStreamEvent =
   | ChatStreamContentEvent
   | ChatStreamEndEvent
   | ChatStreamErrorEvent;
-
-/** Acquire an access token for BFF requests. */
-async function getAuthToken(): Promise<string | undefined> {
-  try {
-    const msalInstance = getMsalInstance();
-    const account = msalInstance.getActiveAccount();
-    if (!account) return undefined;
-    const bffApiScope = getBffApiScope();
-    const result = await msalInstance.acquireTokenSilent({
-      scopes: bffApiScope ? [bffApiScope] : ['openid', 'profile', 'email'],
-      account,
-    });
-    return result.accessToken;
-  } catch {
-    return undefined;
-  }
-}
 
 /** Build auth headers for BFF requests. */
 async function buildAuthHeaders(): Promise<Record<string, string>> {
@@ -123,12 +105,20 @@ export async function streamChatMessage(options: {
         if (!line.startsWith('data: ')) continue;
 
         const dataStr = line.slice(6);
-        let event: ChatStreamEvent;
+        let payload: Record<string, unknown>;
         try {
-          event = JSON.parse(dataStr) as ChatStreamEvent;
+          payload = JSON.parse(dataStr) as Record<string, unknown>;
         } catch {
           continue;
         }
+
+        // Handle payloads that carry an `error` key regardless of `type`
+        // (e.g. the BFF rate-limit path emits {"error":"...","sessionId":"..."} without a type).
+        if (typeof payload['error'] === 'string' && payload['type'] === undefined) {
+          throw new Error(payload['error']);
+        }
+
+        const event = payload as ChatStreamEvent;
 
         if (event.type === 'start') {
           finalSessionId = event.sessionId;
@@ -136,7 +126,11 @@ export async function streamChatMessage(options: {
         } else if (event.type === 'content') {
           onToken(event.content);
         } else if (event.type === 'end') {
-          finalMessage = event.message;
+          // Normalize citations: null (BFF serialisation) → undefined (shared type contract)
+          finalMessage = {
+            ...event.message,
+            citations: event.message.citations ?? undefined,
+          };
           finalSessionId = event.sessionId;
         } else if (event.type === 'error') {
           throw new Error(event.error ?? 'Chat stream encountered an error');

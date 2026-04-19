@@ -20,10 +20,17 @@ export interface ChatMessageListProps {
 
 export default function ChatMessageList({ messages, isStreaming }: ChatMessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const previousMessageCountRef = useRef(messages.length);
 
-  // Auto-scroll to the latest message
+  // Scroll to the bottom on new messages.
+  // During streaming (frequent token updates to the last message) use 'auto' to avoid
+  // repeated smooth-scroll animations that cause jank.
+  // On a discrete new message addition, use 'smooth' for a polished feel.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const hasNewMessage = messages.length > previousMessageCountRef.current;
+    const behavior: ScrollBehavior = !isStreaming && hasNewMessage ? 'smooth' : 'auto';
+    bottomRef.current?.scrollIntoView({ behavior });
+    previousMessageCountRef.current = messages.length;
   }, [messages, isStreaming]);
 
   return (
