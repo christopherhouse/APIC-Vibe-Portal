@@ -17,6 +17,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth/use-auth';
+import { useSidebarContext } from '@/lib/sidebar-context';
 import SearchBar from './SearchBar';
 
 function getInitials(name: string): string {
@@ -30,6 +31,7 @@ function getInitials(name: string): string {
 
 export default function Header() {
   const { isAuthenticated, user, login, logout, isLoading } = useAuth();
+  const { toggle: toggleSidebar } = useSidebarContext();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
 
@@ -55,7 +57,13 @@ export default function Header() {
       }}
     >
       <Toolbar>
-        <IconButton color="inherit" aria-label="toggle navigation" edge="start" sx={{ mr: 2 }}>
+        <IconButton
+          color="inherit"
+          aria-label="toggle navigation"
+          edge="start"
+          sx={{ mr: 2 }}
+          onClick={toggleSidebar}
+        >
           <MenuIcon />
         </IconButton>
         <Typography variant="h6" noWrap component="div" sx={{ whiteSpace: 'nowrap' }}>

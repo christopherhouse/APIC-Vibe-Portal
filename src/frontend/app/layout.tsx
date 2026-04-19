@@ -10,6 +10,7 @@ import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import Footer from '@/components/layout/Footer';
 import { ChatProvider } from '@/lib/chat-context';
+import { SidebarProvider } from '@/lib/sidebar-context';
 import ChatSidePanel from '@/app/chat/components/ChatSidePanel';
 import TelemetryProvider from '@/components/TelemetryProvider';
 import './globals.css';
@@ -31,25 +32,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Suspense>
             <AuthProvider>
               <ChatProvider>
-                <Box sx={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
-                  <Header />
-                  <Box sx={{ display: 'flex', flex: 1 }}>
-                    <Sidebar />
-                    <Box
-                      component="main"
-                      sx={{
-                        flexGrow: 1,
-                        p: 3,
-                        mt: 'var(--header-height)',
-                        minHeight: `calc(100vh - var(--header-height) - var(--footer-height))`,
-                      }}
-                    >
-                      {children}
+                <SidebarProvider>
+                  <Box sx={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
+                    <Header />
+                    <Box sx={{ display: 'flex', flex: 1 }}>
+                      <Sidebar />
+                      <Box
+                        component="main"
+                        sx={{
+                          flexGrow: 1,
+                          p: 3,
+                          mt: 'var(--header-height)',
+                          minHeight: `calc(100vh - var(--header-height) - var(--footer-height))`,
+                        }}
+                      >
+                        {children}
+                      </Box>
                     </Box>
+                    <Footer />
+                    <ChatSidePanel />
                   </Box>
-                  <Footer />
-                  <ChatSidePanel />
-                </Box>
+                </SidebarProvider>
               </ChatProvider>
             </AuthProvider>
           </ThemeProvider>

@@ -21,6 +21,12 @@ jest.mock('@/hooks/use-autocomplete', () => ({
   useAutocomplete: () => ({ suggestions: [], isLoading: false, error: null }),
 }));
 
+// Mock sidebar context
+const mockToggleSidebar = jest.fn();
+jest.mock('@/lib/sidebar-context', () => ({
+  useSidebarContext: () => ({ isOpen: true, toggle: mockToggleSidebar }),
+}));
+
 import Header from '../layout/Header';
 
 describe('Header Auth UI', () => {
@@ -126,5 +132,19 @@ describe('Header Auth UI', () => {
 
     render(<Header />);
     expect(screen.getByText('APIC Vibe Portal')).toBeInTheDocument();
+  });
+
+  it('calls sidebar toggle when hamburger button is clicked', () => {
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: false,
+      isLoading: false,
+      user: null,
+      login: mockLogin,
+      logout: mockLogout,
+    });
+
+    render(<Header />);
+    fireEvent.click(screen.getByRole('button', { name: /toggle navigation/i }));
+    expect(mockToggleSidebar).toHaveBeenCalledTimes(1);
   });
 });

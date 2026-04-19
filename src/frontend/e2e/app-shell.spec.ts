@@ -43,4 +43,26 @@ test.describe('Application Shell', () => {
     await page.goto('/');
     await expect(page.getByText(/apic vibe portal.*powered by azure api center/i)).toBeVisible();
   });
+
+  test('hamburger button collapses and expands the sidebar', async ({ page }) => {
+    await page.goto('/');
+
+    // Sidebar starts expanded — nav labels are visible
+    await expect(page.getByText('Home')).toBeVisible();
+    await expect(page.getByText('API Catalog')).toBeVisible();
+
+    // Click hamburger to collapse
+    await page.getByRole('button', { name: /toggle navigation/i }).click();
+
+    // Nav labels should no longer be visible (collapsed to icon-only)
+    await expect(page.getByText('Home')).not.toBeVisible();
+    await expect(page.getByText('API Catalog')).not.toBeVisible();
+
+    // Click hamburger again to expand
+    await page.getByRole('button', { name: /toggle navigation/i }).click();
+
+    // Nav labels should be visible again
+    await expect(page.getByText('Home')).toBeVisible();
+    await expect(page.getByText('API Catalog')).toBeVisible();
+  });
 });
