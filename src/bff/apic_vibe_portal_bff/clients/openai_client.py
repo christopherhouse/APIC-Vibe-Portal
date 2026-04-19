@@ -40,6 +40,17 @@ class OpenAIRateLimitError(OpenAIClientError):
         super().__init__(detail, status_code=429)
 
 
+class OpenAIContentFilterError(OpenAIClientError):
+    """Raised when the prompt is rejected by Azure OpenAI content filtering."""
+
+    _DEFAULT_MESSAGE = (
+        "Your message was flagged by the content safety filter. Please rephrase your message and try again."
+    )
+
+    def __init__(self, detail: str = "") -> None:
+        super().__init__(detail or self._DEFAULT_MESSAGE, status_code=400)
+
+
 class OpenAIUnavailableError(OpenAIClientError):
     """Raised when the Azure OpenAI service is unavailable."""
 
@@ -139,8 +150,28 @@ class OpenAIClient:
             )
             if status >= 500:
                 raise OpenAIUnavailableError(str(exc)) from exc
+            # Detect Azure OpenAI content filter rejections
+            if self._is_content_filter_error(exc):
+                logger.warning("Content filter triggered: %s", context)
+                raise OpenAIContentFilterError() from exc
             raise OpenAIClientError(str(exc), status_code=status) from exc
         raise OpenAIClientError(str(exc)) from exc
+
+    @staticmethod
+    def _is_content_filter_error(exc: Exception) -> bool:
+        """Return ``True`` if *exc* represents an Azure content-filter rejection."""
+        body = getattr(exc, "body", None)
+        if isinstance(body, dict):
+            error = body.get("error") if isinstance(body.get("error"), dict) else body
+            code = error.get("code", "")
+            if code == "content_filter":
+                return True
+            inner = error.get("innererror") or {}
+            if isinstance(inner, dict) and inner.get("code") == "ResponsibleAIPolicyViolation":
+                return True
+        # Fallback: check string representation
+        exc_str = str(exc)
+        return "content_filter" in exc_str or "ResponsibleAIPolicyViolation" in exc_str
 
     # ------------------------------------------------------------------
     # Chat completion (async)

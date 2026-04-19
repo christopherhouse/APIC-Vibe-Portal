@@ -146,6 +146,22 @@ class TestChatEndpoint:
         )
         assert response.status_code == 500
 
+    @patch("apic_vibe_portal_bff.middleware.auth.validate_token")
+    async def test_chat_content_filter_error(self, mock_validate, chat_client, mock_chat_service):
+        from apic_vibe_portal_bff.clients.openai_client import OpenAIContentFilterError
+
+        mock_validate.return_value = _MOCK_USER
+        mock_chat_service.chat.side_effect = OpenAIContentFilterError()
+        response = await chat_client.post(
+            "/api/chat",
+            json={"message": "Bad prompt"},
+            headers=_AUTH_HEADERS,
+        )
+        assert response.status_code == 400
+        body = response.json()
+        assert body["error"]["code"] == "CONTENT_FILTER"
+        assert "content safety filter" in body["error"]["message"].lower()
+
 
 # ---------------------------------------------------------------------------
 # POST /api/chat/stream

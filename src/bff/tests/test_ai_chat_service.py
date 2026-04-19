@@ -363,6 +363,24 @@ class TestAIChatServiceStream:
         # Should NOT have an "end" event
         assert not any('"type": "end"' in e for e in events)
 
+    @pytest.mark.asyncio
+    async def test_stream_content_filter_yields_specific_error(self, service, mock_openai):
+        """If content filter triggers, a user-friendly error message is emitted."""
+        from apic_vibe_portal_bff.clients.openai_client import OpenAIContentFilterError
+
+        async def content_filter_stream(*args, **kwargs):
+            raise OpenAIContentFilterError()
+            yield  # pragma: no cover — makes this an async generator
+
+        mock_openai.chat_completion_stream = content_filter_stream
+        events = [e async for e in service.chat_stream("Jailbreak attempt")]
+        error_events = [e for e in events if '"type": "error"' in e]
+        assert len(error_events) == 1
+        # Should contain the user-friendly content filter message, not generic
+        assert "content safety filter" in error_events[0].lower()
+        assert "rephrase" in error_events[0].lower()
+        assert "internal error" not in error_events[0].lower()
+
 
 class TestAIChatServiceHistory:
     def test_get_history_empty(self, service):
@@ -665,3 +683,15 @@ class TestAIChatServiceWithAgentRouter:
         mock_agent_router.dispatch.side_effect = RuntimeError("Agent exploded")
         events = [e async for e in agent_service.chat_stream("Find APIs", session_id="sess-err")]
         assert any('"type": "error"' in e for e in events)
+
+    @pytest.mark.asyncio
+    async def test_stream_agent_content_filter_yields_specific_error(self, agent_service, mock_agent_router):
+        from apic_vibe_portal_bff.clients.openai_client import OpenAIContentFilterError
+
+        mock_agent_router.dispatch.side_effect = OpenAIContentFilterError()
+        events = [e async for e in agent_service.chat_stream("Jailbreak", session_id="sess-cf")]
+        error_events = [e for e in events if '"type": "error"' in e]
+        assert len(error_events) == 1
+        assert "content safety filter" in error_events[0].lower()
+        assert "rephrase" in error_events[0].lower()
+        assert "internal error" not in error_events[0].lower()
