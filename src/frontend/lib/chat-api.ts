@@ -139,7 +139,7 @@ export async function streamChatMessage(options: {
           finalMessage = event.message;
           finalSessionId = event.sessionId;
         } else if (event.type === 'error') {
-          throw new Error(event.error ?? 'Streaming error');
+          throw new Error(event.error ?? 'Chat stream encountered an error');
         }
       }
     }
