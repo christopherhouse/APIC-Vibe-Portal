@@ -24,6 +24,8 @@ from apic_vibe_portal_bff.routers import api_catalog, chat, health, search
 from apic_vibe_portal_bff.routers.api_catalog import CatalogApiError, catalog_api_error_handler
 from apic_vibe_portal_bff.routers.chat import ChatApiError, chat_api_error_handler
 from apic_vibe_portal_bff.routers.search import SearchApiError, search_api_error_handler
+from apic_vibe_portal_bff.telemetry.middleware import OTelEnrichmentMiddleware
+from apic_vibe_portal_bff.telemetry.otel_setup import configure_telemetry
 from apic_vibe_portal_bff.utils.logger import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -47,7 +49,10 @@ def _run_startup_cache_warm() -> None:
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """FastAPI lifespan handler — starts the startup cache-warm thread."""
+    """FastAPI lifespan handler — configures telemetry and starts the cache-warm thread."""
+    settings = get_settings()
+    configure_telemetry(environment=settings.environment)
+
     thread = threading.Thread(
         target=_run_startup_cache_warm,
         daemon=True,
@@ -74,6 +79,7 @@ def create_app() -> FastAPI:
     # --- Middleware (outermost → innermost) --------------------------------
     # Order matters: the first middleware added is outermost (processes first).
     app.add_middleware(ErrorHandlerMiddleware, debug=(settings.environment == "development"))
+    app.add_middleware(OTelEnrichmentMiddleware)
     app.add_middleware(RequestLoggerMiddleware)
     app.add_middleware(AuthMiddleware)
 

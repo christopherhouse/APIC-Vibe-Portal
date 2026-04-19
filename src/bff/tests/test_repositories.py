@@ -53,7 +53,11 @@ class TestBaseRepositoryCRUD:
         repo = BaseRepository(container, "userId")
 
         result = repo.create({"id": "1", "userId": "u1"})
-        container.create_item.assert_called_once_with(body={"id": "1", "userId": "u1"}, partition_key="u1")
+        container.create_item.assert_called_once()
+        call_kwargs = container.create_item.call_args.kwargs
+        assert call_kwargs["body"] == {"id": "1", "userId": "u1"}
+        assert call_kwargs["partition_key"] == "u1"
+        assert callable(call_kwargs.get("response_hook"))
         assert result["id"] == "1"
 
     def test_create_raises_on_missing_partition_key(self):
@@ -78,7 +82,11 @@ class TestBaseRepositoryCRUD:
         result = repo.find_by_id("1", "u1")
         assert result is not None
         assert result["id"] == "1"
-        container.read_item.assert_called_once_with(item="1", partition_key="u1")
+        container.read_item.assert_called_once()
+        call_kwargs = container.read_item.call_args.kwargs
+        assert call_kwargs["item"] == "1"
+        assert call_kwargs["partition_key"] == "u1"
+        assert callable(call_kwargs.get("response_hook"))
 
     def test_find_by_id_returns_none_for_missing(self):
         from azure.cosmos.exceptions import CosmosResourceNotFoundError
@@ -103,7 +111,12 @@ class TestBaseRepositoryCRUD:
 
         doc = {"id": "1", "userId": "u1", "title": "updated"}
         result = repo.update(doc)
-        container.replace_item.assert_called_once_with(item="1", body=doc, partition_key="u1")
+        container.replace_item.assert_called_once()
+        call_kwargs = container.replace_item.call_args.kwargs
+        assert call_kwargs["item"] == "1"
+        assert call_kwargs["body"] == doc
+        assert call_kwargs["partition_key"] == "u1"
+        assert callable(call_kwargs.get("response_hook"))
         assert result["title"] == "updated"
 
     def test_update_raises_on_missing_partition_key(self):
@@ -125,7 +138,11 @@ class TestBaseRepositoryCRUD:
         repo = BaseRepository(container, "userId")
 
         assert repo.hard_delete("1", "u1") is True
-        container.delete_item.assert_called_once_with(item="1", partition_key="u1")
+        container.delete_item.assert_called_once()
+        call_kwargs = container.delete_item.call_args.kwargs
+        assert call_kwargs["item"] == "1"
+        assert call_kwargs["partition_key"] == "u1"
+        assert callable(call_kwargs.get("response_hook"))
 
     def test_hard_delete_returns_false_when_not_found(self):
         from azure.cosmos.exceptions import CosmosResourceNotFoundError
@@ -293,3 +310,113 @@ class TestAnalyticsRepository:
         assert len(result.items) == 1
         query = container.query_items.call_args.kwargs.get("query") or container.query_items.call_args[1].get("query")
         assert "timestamp DESC" in query
+
+
+# ---------------------------------------------------------------------------
+# RU metric emission tests
+# ---------------------------------------------------------------------------
+
+
+class TestCosmosRuMetrics:
+    """Verify that RU cost is emitted for each Cosmos operation via response_hook."""
+
+    def setup_method(self) -> None:
+        import apic_vibe_portal_bff.telemetry.metrics as m
+
+        m._meter = None
+        m._instruments.clear()
+
+    def _make_mock_meter_with_histogram(self) -> tuple[MagicMock, MagicMock]:
+        import apic_vibe_portal_bff.telemetry.metrics as m
+
+        mock_meter = MagicMock()
+        mock_histogram = MagicMock()
+        mock_meter.create_histogram.return_value = mock_histogram
+        mock_meter.create_counter.return_value = MagicMock()
+        m._meter = mock_meter
+        return mock_meter, mock_histogram
+
+    def _invoke_hook(self, container_mock: MagicMock, method_name: str, ru_charge: float) -> None:
+        """Call the response_hook that was passed to the given container method."""
+        call_kwargs = getattr(container_mock, method_name).call_args.kwargs
+        hook = call_kwargs["response_hook"]
+        hook({"x-ms-request-charge": str(ru_charge)}, {})
+
+    def test_create_emits_ru_metric(self) -> None:
+        _, mock_histogram = self._make_mock_meter_with_histogram()
+        container = _make_container_mock("chat-sessions")
+        container.create_item.return_value = {"id": "1", "userId": "u1"}
+        repo = BaseRepository(container, "userId")
+
+        repo.create({"id": "1", "userId": "u1"})
+        self._invoke_hook(container, "create_item", 5.72)
+
+        mock_histogram.record.assert_called_once_with(5.72, {"container": "chat-sessions", "operation": "create"})
+
+    def test_read_emits_ru_metric(self) -> None:
+        _, mock_histogram = self._make_mock_meter_with_histogram()
+        container = _make_container_mock("chat-sessions")
+        container.read_item.return_value = {"id": "1", "userId": "u1"}
+        repo = BaseRepository(container, "userId")
+
+        repo.find_by_id("1", "u1")
+        self._invoke_hook(container, "read_item", 1.0)
+
+        mock_histogram.record.assert_called_once_with(1.0, {"container": "chat-sessions", "operation": "read"})
+
+    def test_replace_emits_ru_metric(self) -> None:
+        _, mock_histogram = self._make_mock_meter_with_histogram()
+        container = _make_container_mock("chat-sessions")
+        container.replace_item.return_value = {"id": "1", "userId": "u1"}
+        repo = BaseRepository(container, "userId")
+
+        repo.update({"id": "1", "userId": "u1"})
+        self._invoke_hook(container, "replace_item", 10.5)
+
+        mock_histogram.record.assert_called_once_with(10.5, {"container": "chat-sessions", "operation": "replace"})
+
+    def test_delete_emits_ru_metric(self) -> None:
+        _, mock_histogram = self._make_mock_meter_with_histogram()
+        container = _make_container_mock("chat-sessions")
+        repo = BaseRepository(container, "userId")
+
+        repo.hard_delete("1", "u1")
+        self._invoke_hook(container, "delete_item", 6.25)
+
+        mock_histogram.record.assert_called_once_with(6.25, {"container": "chat-sessions", "operation": "delete"})
+
+    def test_query_emits_ru_metric(self) -> None:
+        _, mock_histogram = self._make_mock_meter_with_histogram()
+        container = _make_container_mock("chat-sessions")
+        container.query_items.return_value = _make_pager([{"id": "1", "userId": "u1"}])
+        repo = BaseRepository(container, "userId")
+
+        repo.find_by_partition_key("u1")
+        self._invoke_hook(container, "query_items", 3.14)
+
+        mock_histogram.record.assert_called_once_with(3.14, {"container": "chat-sessions", "operation": "query"})
+
+    def test_ru_hook_tolerates_missing_header(self) -> None:
+        """Response hook should not raise when the RU header is absent."""
+        _, mock_histogram = self._make_mock_meter_with_histogram()
+        container = _make_container_mock("chat-sessions")
+        container.create_item.return_value = {"id": "1", "userId": "u1"}
+        repo = BaseRepository(container, "userId")
+
+        repo.create({"id": "1", "userId": "u1"})
+        hook = container.create_item.call_args.kwargs["response_hook"]
+        # Missing header — should be a no-op, not an exception
+        hook({}, {})
+        mock_histogram.record.assert_not_called()
+
+    def test_ru_hook_tolerates_non_numeric_header(self) -> None:
+        """Response hook should not raise when the RU header is not a valid float."""
+        _, mock_histogram = self._make_mock_meter_with_histogram()
+        container = _make_container_mock("chat-sessions")
+        container.create_item.return_value = {"id": "1", "userId": "u1"}
+        repo = BaseRepository(container, "userId")
+
+        repo.create({"id": "1", "userId": "u1"})
+        hook = container.create_item.call_args.kwargs["response_hook"]
+        hook({"x-ms-request-charge": "not-a-number"}, {})
+        mock_histogram.record.assert_not_called()

@@ -12,6 +12,7 @@ purges it after the configured retention period.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -27,6 +28,39 @@ TTL_SECONDS = {
     "governance-snapshots": 730 * 86400,  # ~2 years
     "analytics-events": 365 * 86400,  # 1 year
 }
+
+_RU_CHARGE_HEADER = "x-ms-request-charge"
+
+
+def _make_ru_hook(container_name: str, operation: str) -> Callable[[dict, Any], None]:
+    """Return a Cosmos SDK ``response_hook`` that emits an RU cost metric.
+
+    Args:
+        container_name: Name of the Cosmos DB container (used as an attribute).
+        operation: Logical operation label (``read``, ``create``, ``replace``,
+            ``delete``, ``query``).
+
+    Returns:
+        A two-argument callable suitable for passing as ``response_hook`` to
+        any Cosmos SDK data-plane method.
+    """
+
+    def _hook(response_headers: dict, result: Any) -> None:  # noqa: ANN401
+        try:
+            charge_str = response_headers.get(_RU_CHARGE_HEADER)
+            if charge_str is None:
+                return
+            charge = float(charge_str)
+            from apic_vibe_portal_bff.telemetry.metrics import get_cosmos_ru_histogram
+
+            get_cosmos_ru_histogram().record(
+                charge,
+                {"container": container_name, "operation": operation},
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
+    return _hook
 
 
 class PaginatedResult:
@@ -100,7 +134,11 @@ class BaseRepository:
         """Insert a new document.  Returns the created document (with Cosmos metadata)."""
         partition_key = self._get_required_partition_key(document)
         logger.debug("Creating document %s in %s", document.get("id"), self._container.id)
-        return self._container.create_item(body=document, partition_key=partition_key)
+        return self._container.create_item(
+            body=document,
+            partition_key=partition_key,
+            response_hook=_make_ru_hook(self._container.id, "create"),
+        )
 
     def find_by_id(self, item_id: str, partition_key: str) -> dict | None:
         """Point-read a single document by ID and partition key.
@@ -108,7 +146,11 @@ class BaseRepository:
         Returns ``None`` when the document does not exist or is soft-deleted.
         """
         try:
-            doc = self._container.read_item(item=item_id, partition_key=partition_key)
+            doc = self._container.read_item(
+                item=item_id,
+                partition_key=partition_key,
+                response_hook=_make_ru_hook(self._container.id, "read"),
+            )
         except CosmosResourceNotFoundError:
             return None
 
@@ -145,6 +187,7 @@ class BaseRepository:
             parameters=parameters,
             partition_key=partition_key,
             max_item_count=max_items,
+            response_hook=_make_ru_hook(self._container.id, "query"),
         )
 
         page = pager.by_page(continuation_token)
@@ -161,7 +204,12 @@ class BaseRepository:
         """Replace an existing document (full replace)."""
         pk_value = self._get_required_partition_key(document)
         logger.debug("Updating document %s in %s", document.get("id"), self._container.id)
-        return self._container.replace_item(item=document["id"], body=document, partition_key=pk_value)
+        return self._container.replace_item(
+            item=document["id"],
+            body=document,
+            partition_key=pk_value,
+            response_hook=_make_ru_hook(self._container.id, "replace"),
+        )
 
     def soft_delete(self, item_id: str, partition_key: str) -> dict | None:
         """Mark a document as soft-deleted and set a Cosmos DB TTL for automatic purge.
@@ -184,7 +232,11 @@ class BaseRepository:
     def hard_delete(self, item_id: str, partition_key: str) -> bool:
         """Permanently remove a document.  Returns ``True`` on success."""
         try:
-            self._container.delete_item(item=item_id, partition_key=partition_key)
+            self._container.delete_item(
+                item=item_id,
+                partition_key=partition_key,
+                response_hook=_make_ru_hook(self._container.id, "delete"),
+            )
             return True
         except CosmosResourceNotFoundError:
             return False

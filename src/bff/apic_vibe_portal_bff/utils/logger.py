@@ -11,8 +11,24 @@ from __future__ import annotations
 
 import logging
 import sys
+from typing import Any
 
 import structlog
+
+
+def _add_otel_trace_context(logger: Any, method: str, event_dict: dict[str, Any]) -> dict[str, Any]:
+    """Inject the current OTel trace_id and span_id into the log record."""
+    try:
+        from opentelemetry import trace as otel_trace
+
+        span = otel_trace.get_current_span()
+        ctx = span.get_span_context()
+        if ctx and ctx.is_valid:
+            event_dict["trace_id"] = format(ctx.trace_id, "032x")
+            event_dict["span_id"] = format(ctx.span_id, "016x")
+    except Exception:  # noqa: BLE001
+        pass
+    return event_dict
 
 
 def configure_logging(*, log_level: str = "INFO", environment: str = "development") -> None:
@@ -31,6 +47,7 @@ def configure_logging(*, log_level: str = "INFO", environment: str = "developmen
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.UnicodeDecoder(),
+        _add_otel_trace_context,
     ]
 
     if environment == "development":

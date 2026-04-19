@@ -13,6 +13,9 @@ const config = {
     '^@/(.*)$': '<rootDir>/$1',
     // Mock react-markdown to avoid ESM issues in Jest
     '^react-markdown$': '<rootDir>/__mocks__/react-markdown.tsx',
+    // Mock App Insights browser SDK (requires browser globals not available in Jest)
+    '^@microsoft/applicationinsights-web$':
+      '<rootDir>/__mocks__/@microsoft/applicationinsights-web.ts',
   },
   modulePathIgnorePatterns: ['<rootDir>/.next/'],
   testMatch: [
