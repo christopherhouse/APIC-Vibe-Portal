@@ -50,7 +50,7 @@ param chatModelVersion string = '2024-11-20'
 param chatDeploymentSkuName string = 'GlobalStandard'
 
 @description('Chat deployment capacity (in thousands of tokens per minute)')
-param chatDeploymentCapacity int = 30
+param chatDeploymentCapacity int = 80
 
 @description('Resource tags')
 param tags object
