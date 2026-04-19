@@ -11,7 +11,6 @@ DELETE /api/chat/history     — Clear conversation history for a session
 from __future__ import annotations
 
 import logging
-import re
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
@@ -27,16 +26,9 @@ from apic_vibe_portal_bff.models.chat import (
     ChatResponse,
 )
 from apic_vibe_portal_bff.services.ai_chat_service import AIChatService, ChatRateLimitError
+from apic_vibe_portal_bff.utils.logger import sanitize_for_log
 
 logger = logging.getLogger(__name__)
-
-# Pattern to strip control characters that could inject log lines
-_CONTROL_CHARS = re.compile(r"[\r\n\x00-\x1f\x7f-\x9f]+")
-
-
-def _sanitize(value: str) -> str:
-    """Sanitize a string for safe inclusion in log entries."""
-    return _CONTROL_CHARS.sub(" ", value)
 
 
 # ---------------------------------------------------------------------------
@@ -167,8 +159,8 @@ def chat(
     except ChatRateLimitError:
         _raise_error(429, "RATE_LIMIT_EXCEEDED", "Too many messages. Please wait before sending another.")
     except OpenAIClientError as exc:
-        safe_error = _sanitize(str(exc))
-        safe_session = _sanitize(request.session_id or "")
+        safe_error = sanitize_for_log(str(exc))
+        safe_session = sanitize_for_log(request.session_id or "")
         logger.error(
             "Chat failed — status=%s error=%s",
             exc.status_code,

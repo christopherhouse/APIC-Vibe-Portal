@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import time
 import uuid
 from collections.abc import Generator
@@ -30,11 +29,9 @@ from typing import Any
 from apic_vibe_portal_bff.clients.ai_search_client import AISearchClient, AISearchClientError
 from apic_vibe_portal_bff.clients.openai_client import OpenAIClient
 from apic_vibe_portal_bff.models.chat import ChatMessage, ChatResponse, Citation
+from apic_vibe_portal_bff.utils.logger import sanitize_for_log
 
 logger = logging.getLogger(__name__)
-
-# Pattern to strip control characters that could inject log lines
-_CONTROL_CHARS = re.compile(r"[\r\n\x00-\x1f\x7f-\x9f]+")
 
 
 # ---------------------------------------------------------------------------
@@ -751,7 +748,7 @@ class AIChatService:
             except Exception:
                 logger.exception(
                     "Failed to clear history from provider for session %s",
-                    _CONTROL_CHARS.sub(" ", session_id),
+                    sanitize_for_log(session_id),
                 )
         return deleted
 
