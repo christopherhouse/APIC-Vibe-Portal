@@ -36,7 +36,7 @@ class IndexerSettings(BaseSettings):
 
     # --- Runtime ---------------------------------------------------------
     log_level: str = Field(default="INFO", description="Logging level")
-    appinsights_connection_string: str = Field(
+    applicationinsights_connection_string: str = Field(
         default="",
         description="Application Insights connection string for OpenTelemetry export",
     )

@@ -81,7 +81,7 @@ def run() -> None:
 
     # Initialise telemetry before any Azure SDK calls so that all outbound
     # HTTP spans are captured automatically.
-    configure_telemetry(connection_string=settings.appinsights_connection_string or None)
+    configure_telemetry(connection_string=settings.applicationinsights_connection_string or None)
 
     tracer = get_tracer()
     log = structlog.get_logger()
