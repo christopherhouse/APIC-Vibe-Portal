@@ -54,72 +54,78 @@ async function mockChatStream(
 test.describe('Chat Page', () => {
   test('renders the /chat page with heading and input', async ({ page }) => {
     await page.goto('/chat');
+    const main = page.locator('main');
 
-    await expect(page.getByRole('heading', { name: /AI Assistant/i })).toBeVisible();
-    await expect(page.getByTestId('chat-input')).toBeVisible();
-    await expect(page.getByTestId('send-button')).toBeVisible();
+    await expect(main.getByRole('heading', { name: /AI Assistant/i })).toBeVisible();
+    await expect(main.getByTestId('chat-input')).toBeVisible();
+    await expect(main.getByTestId('send-button')).toBeVisible();
   });
 
   test('shows suggested starter prompts on empty conversation', async ({ page }) => {
     await page.goto('/chat');
+    const main = page.locator('main');
 
-    await expect(page.getByTestId('chat-suggestions')).toBeVisible();
-    await expect(page.getByText('Show me APIs in production')).toBeVisible();
-    await expect(page.getByText('Which APIs support GraphQL?')).toBeVisible();
+    await expect(main.getByTestId('chat-suggestions')).toBeVisible();
+    await expect(main.getByText('Show me APIs in production')).toBeVisible();
+    await expect(main.getByText('Which APIs support GraphQL?')).toBeVisible();
   });
 
   test('clicking a suggested prompt sends the message', async ({ page }) => {
     await mockChatStream(page, { content: 'Here are production APIs.' });
     await page.goto('/chat');
+    const main = page.locator('main');
 
-    await page.getByText('Show me APIs in production').click();
+    await main.getByText('Show me APIs in production').click();
 
     // The prompt should appear as a user message
-    await expect(page.getByText('Show me APIs in production')).toBeVisible();
+    await expect(main.getByText('Show me APIs in production')).toBeVisible();
     // The suggestions should disappear
-    await expect(page.getByTestId('chat-suggestions')).not.toBeVisible({ timeout: 5000 });
+    await expect(main.getByTestId('chat-suggestions')).not.toBeVisible({ timeout: 5000 });
   });
 
   test('user can type and send a message', async ({ page }) => {
     await mockChatStream(page, { content: 'I found 5 payment APIs.' });
     await page.goto('/chat');
+    const main = page.locator('main');
 
-    const input = page.getByTestId('chat-input');
+    const input = main.getByTestId('chat-input');
     await input.fill('What payment APIs are available?');
-    await page.getByTestId('send-button').click();
+    await main.getByTestId('send-button').click();
 
     // User message should be visible
-    await expect(page.getByText('What payment APIs are available?')).toBeVisible();
+    await expect(main.getByText('What payment APIs are available?')).toBeVisible();
 
     // Assistant response should appear
-    await expect(page.getByText(/I found 5 payment APIs/)).toBeVisible({ timeout: 10000 });
+    await expect(main.getByText(/I found 5 payment APIs/)).toBeVisible({ timeout: 10000 });
   });
 
   test('send button is disabled when input is empty', async ({ page }) => {
     await page.goto('/chat');
+    const main = page.locator('main');
 
-    const sendButton = page.getByTestId('send-button');
+    const sendButton = main.getByTestId('send-button');
     await expect(sendButton).toBeDisabled();
 
     // After typing something it should be enabled
-    await page.getByTestId('chat-input').fill('Hello');
+    await main.getByTestId('chat-input').fill('Hello');
     await expect(sendButton).not.toBeDisabled();
   });
 
   test('"New conversation" button resets the chat', async ({ page }) => {
     await mockChatStream(page, { content: 'Hello there!' });
     await page.goto('/chat');
+    const main = page.locator('main');
 
     // Send a message to create some conversation history
-    await page.getByTestId('chat-input').fill('Hi');
-    await page.getByTestId('send-button').click();
-    await expect(page.getByText('Hi')).toBeVisible();
+    await main.getByTestId('chat-input').fill('Hi');
+    await main.getByTestId('send-button').click();
+    await expect(main.getByText('Hi')).toBeVisible();
 
     // Click new conversation button
-    await page.getByTestId('new-conversation-button').click();
+    await main.getByTestId('new-conversation-button').click();
 
     // Suggestions should reappear (conversation reset)
-    await expect(page.getByTestId('chat-suggestions')).toBeVisible({ timeout: 5000 });
+    await expect(main.getByTestId('chat-suggestions')).toBeVisible({ timeout: 5000 });
   });
 });
 
@@ -156,9 +162,10 @@ test.describe('Chat Side Panel', () => {
     await page.getByTestId('chat-fab').click();
 
     // Panel should be visible with AI Assistant heading
-    await expect(page.getByText('AI Assistant')).toBeVisible({ timeout: 5000 });
+    const panel = page.getByTestId('chat-side-panel');
+    await expect(panel.getByText('AI Assistant')).toBeVisible({ timeout: 5000 });
     // Chat input should also be visible in the panel
-    await expect(page.getByTestId('chat-input')).toBeVisible();
+    await expect(panel.getByTestId('chat-input')).toBeVisible();
   });
 
   test('panel chat persists conversation when navigating between pages', async ({ page }) => {
@@ -178,17 +185,21 @@ test.describe('Chat Side Panel', () => {
     // Open the panel on catalog page and send a message
     await page.goto('/catalog');
     await page.getByTestId('chat-fab').click();
-    await page.getByTestId('chat-input').fill('What REST APIs are there?');
-    await page.getByTestId('send-button').click();
+    const panel = page.getByTestId('chat-side-panel');
+    await panel.getByTestId('chat-input').fill('What REST APIs are there?');
+    await panel.getByTestId('send-button').click();
 
     // Wait for the user message to appear
-    await expect(page.getByText('What REST APIs are there?')).toBeVisible({ timeout: 5000 });
+    await expect(panel.getByText('What REST APIs are there?')).toBeVisible({ timeout: 5000 });
 
-    // Navigate to a different page
-    await page.goto('/chat');
+    // Navigate to chat page via client-side navigation (preserves React state)
+    const mainNav = page.getByRole('navigation', { name: /main navigation/i });
+    await mainNav.getByText('AI Assistant').click();
+    await expect(page).toHaveURL(/\/chat/);
+    const main = page.locator('main');
 
     // The conversation should have persisted (message history in context)
     // The chat page shows message history from context
-    await expect(page.getByText('What REST APIs are there?')).toBeVisible({ timeout: 5000 });
+    await expect(main.getByText('What REST APIs are there?')).toBeVisible({ timeout: 5000 });
   });
 });

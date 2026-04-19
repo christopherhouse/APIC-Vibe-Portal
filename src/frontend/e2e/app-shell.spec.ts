@@ -26,17 +26,19 @@ test.describe('Application Shell', () => {
 
   test('sidebar navigation is visible with main nav items', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('navigation', { name: /main navigation/i })).toBeVisible();
-    await expect(page.getByText('Home')).toBeVisible();
-    await expect(page.getByText('API Catalog')).toBeVisible();
-    await expect(page.getByText('AI Assistant')).toBeVisible();
+    const mainNav = page.getByRole('navigation', { name: /main navigation/i });
+    await expect(mainNav).toBeVisible();
+    await expect(mainNav.getByText('Home')).toBeVisible();
+    await expect(mainNav.getByText('API Catalog')).toBeVisible();
+    await expect(mainNav.getByText('AI Assistant')).toBeVisible();
   });
 
   test('sidebar shows secondary nav items', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('navigation', { name: /secondary navigation/i })).toBeVisible();
-    await expect(page.getByText('Settings')).toBeVisible();
-    await expect(page.getByText('Help')).toBeVisible();
+    const secondaryNav = page.getByRole('navigation', { name: /secondary navigation/i });
+    await expect(secondaryNav).toBeVisible();
+    await expect(secondaryNav.getByText('Settings')).toBeVisible();
+    await expect(secondaryNav.getByText('Help')).toBeVisible();
   });
 
   test('footer is visible with copyright text', async ({ page }) => {

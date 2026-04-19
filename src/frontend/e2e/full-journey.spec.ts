@@ -308,8 +308,8 @@ test.describe('Full MVP User Journey', () => {
     // Step 3: Browse the API catalog
     // -----------------------------------------------------------------------
     await expect(page.getByRole('heading', { name: /api catalog/i })).toBeVisible();
-    await expect(page.getByText('Test API 1')).toBeVisible();
-    await expect(page.getByText('Test API 2')).toBeVisible();
+    await expect(page.getByText('Test API 1', { exact: true })).toBeVisible();
+    await expect(page.getByText('Test API 2', { exact: true })).toBeVisible();
 
     // -----------------------------------------------------------------------
     // Step 4: Filter by Production lifecycle
@@ -318,16 +318,16 @@ test.describe('Full MVP User Journey', () => {
     await expect(page).toHaveURL(/lifecycle=production/);
 
     // At least the first production API should remain visible
-    await expect(page.getByText('Test API 1')).toBeVisible();
+    await expect(page.getByText('Test API 1', { exact: true })).toBeVisible();
 
     // Clear the filter by navigating to /catalog
     await page.goto('/catalog');
-    await expect(page.getByText('Test API 1')).toBeVisible();
+    await expect(page.getByText('Test API 1', { exact: true })).toBeVisible();
 
     // -----------------------------------------------------------------------
     // Step 5: Click an API card to navigate to detail
     // -----------------------------------------------------------------------
-    await page.getByText('Test API 1').click();
+    await page.getByText('Test API 1', { exact: true }).click();
     await expect(page).toHaveURL(/\/catalog\/api-1/);
     await expect(page.getByRole('heading', { name: 'Test API 1' })).toBeVisible();
 
@@ -362,14 +362,14 @@ test.describe('Full MVP User Journey', () => {
     await searchInput.fill('Test API');
     await searchInput.press('Enter');
 
-    await expect(page).toHaveURL(/\/search\?q=Test\+API/);
+    await expect(page).toHaveURL(/\/search\?q=Test(\+|%20)API/);
     await expect(page.getByRole('heading', { name: /search/i })).toBeVisible();
 
     // -----------------------------------------------------------------------
     // Step 8: View search results and click a result
     // -----------------------------------------------------------------------
-    await expect(page.getByTestId('search-result-1')).toBeVisible({ timeout: 5000 });
-    await page.getByTestId('search-result-1').click();
+    await expect(page.getByTestId('search-result-api-1')).toBeVisible({ timeout: 5000 });
+    await page.getByTestId('search-result-api-1').click();
 
     // Should navigate to the first result's detail page
     await expect(page).toHaveURL(/\/catalog\//);
@@ -384,14 +384,15 @@ test.describe('Full MVP User Journey', () => {
     await page.getByTestId('chat-fab').click();
 
     // Panel opens
-    await expect(page.getByText('AI Assistant')).toBeVisible({ timeout: 5000 });
+    const panel = page.getByTestId('chat-side-panel');
+    await expect(panel.getByText('AI Assistant')).toBeVisible({ timeout: 5000 });
 
     // Send a message in the side panel
-    await page.getByTestId('chat-input').fill('Which APIs are available in production?');
-    await page.getByTestId('send-button').click();
+    await panel.getByTestId('chat-input').fill('Which APIs are available in production?');
+    await panel.getByTestId('send-button').click();
 
     // User message appears
-    await expect(page.getByText('Which APIs are available in production?')).toBeVisible({
+    await expect(panel.getByText('Which APIs are available in production?')).toBeVisible({
       timeout: 5000,
     });
 
@@ -399,15 +400,16 @@ test.describe('Full MVP User Journey', () => {
     // Step 10: Navigate to full chat page
     // -----------------------------------------------------------------------
     await page.goto('/chat');
-    await expect(page.getByRole('heading', { name: /AI Assistant/i })).toBeVisible();
-    await expect(page.getByTestId('chat-input')).toBeVisible();
+    const main = page.locator('main');
+    await expect(main.getByRole('heading', { name: /AI Assistant/i })).toBeVisible();
+    await expect(main.getByTestId('chat-input')).toBeVisible();
 
     // Send a message on the full chat page
-    await page.getByTestId('chat-input').fill('What payment APIs are available?');
-    await page.getByTestId('send-button').click();
+    await main.getByTestId('chat-input').fill('What payment APIs are available?');
+    await main.getByTestId('send-button').click();
 
     // Assistant response should appear
-    await expect(page.getByText(/I found several APIs matching your query/i)).toBeVisible({
+    await expect(main.getByText(/I found several APIs matching your query/i)).toBeVisible({
       timeout: 10000,
     });
 
@@ -440,15 +442,15 @@ test.describe('Full MVP User Journey', () => {
     await expect(page).toHaveURL(/\/search\?q=API/);
 
     // Results should be visible
-    await expect(page.getByTestId('search-result-1')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('search-result-api-1')).toBeVisible({ timeout: 5000 });
 
     // Apply a lifecycle filter
     await page.getByLabel('Filter by Production').click();
     await expect(page).toHaveURL(/lifecycle=production/);
 
     // Click the first result
-    await expect(page.getByTestId('search-result-1')).toBeVisible({ timeout: 5000 });
-    await page.getByTestId('search-result-1').click();
+    await expect(page.getByTestId('search-result-api-1')).toBeVisible({ timeout: 5000 });
+    await page.getByTestId('search-result-api-1').click();
 
     // Should navigate to API detail
     await expect(page).toHaveURL(/\/catalog\//);
@@ -458,22 +460,23 @@ test.describe('Full MVP User Journey', () => {
     await setupAllMocks(page);
     await setMockUser(page, MOCK_USER);
     await page.goto('/chat');
+    const main = page.locator('main');
 
     // Starter prompts should be visible
-    await expect(page.getByTestId('chat-suggestions')).toBeVisible();
+    await expect(main.getByTestId('chat-suggestions')).toBeVisible();
 
     // Click a starter prompt
-    await page.getByText('Show me APIs in production').click();
+    await main.getByText('Show me APIs in production').click();
 
     // The prompt appears as a user message
-    await expect(page.getByText('Show me APIs in production')).toBeVisible();
+    await expect(main.getByText('Show me APIs in production')).toBeVisible();
 
     // AI responds
-    await expect(page.getByText(/I found several APIs matching your query/i)).toBeVisible({
+    await expect(main.getByText(/I found several APIs matching your query/i)).toBeVisible({
       timeout: 10000,
     });
 
     // Suggestions should be hidden after first message
-    await expect(page.getByTestId('chat-suggestions')).not.toBeVisible({ timeout: 5000 });
+    await expect(main.getByTestId('chat-suggestions')).not.toBeVisible({ timeout: 5000 });
   });
 });
