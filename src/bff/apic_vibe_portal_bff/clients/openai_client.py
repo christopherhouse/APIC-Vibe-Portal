@@ -162,16 +162,15 @@ class OpenAIClient:
         """Return ``True`` if *exc* represents an Azure content-filter rejection."""
         body = getattr(exc, "body", None)
         if isinstance(body, dict):
-            error = body.get("error") if isinstance(body.get("error"), dict) else body
+            error_value = body.get("error")
+            error = error_value if isinstance(error_value, dict) else body
             code = error.get("code", "")
             if code == "content_filter":
                 return True
             inner = error.get("innererror") or {}
             if isinstance(inner, dict) and inner.get("code") == "ResponsibleAIPolicyViolation":
                 return True
-        # Fallback: check string representation
-        exc_str = str(exc)
-        return "content_filter" in exc_str or "ResponsibleAIPolicyViolation" in exc_str
+        return False
 
     # ------------------------------------------------------------------
     # Chat completion (async)
