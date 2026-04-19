@@ -1,6 +1,6 @@
 # 018 - Phase 1 MVP: AI Chat Interface (Frontend)
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -129,21 +129,42 @@ app/chat/
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
+| Date       | Status         | Author  | Notes                                                             |
+| ---------- | -------------- | ------- | ----------------------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                                      |
+| 2026-04-19 | ✅ Complete    | copilot | Full chat UI implemented with all components, tests, and e2e spec |
 
 ### Technical Decisions
 
-_No technical decisions recorded yet._
+- **react-markdown** added as a dependency for proper markdown rendering of assistant messages (code blocks, lists, bold/italic). A lightweight Jest mock is used in unit tests to avoid ESM compatibility issues.
+- **ChatProvider** context wraps the root layout so conversation state persists across all page navigations (catalog → chat → back).
+- **SSE streaming** is consumed via `fetch()` + `ReadableStream` in `lib/chat-api.ts`. Tokens are applied incrementally to a message placeholder via React state.
+- **Floating Action Button (FAB)** is used for the embedded side panel toggle, fixed bottom-right, visible on all pages.
+- **Persistent drawer** (`variant="persistent"`) used for the side panel on desktop; **temporary** drawer used on mobile for a full-screen overlay experience.
+- **`slotProps.htmlInput`** used instead of deprecated `inputProps` for MUI v9 TextField.
+- **`sx={{ textAlign: 'center' }}`** used instead of the deprecated `textAlign` prop on Typography in MUI v9.
 
 ### Deviations from Plan
 
-_No deviations from the original plan._
+- The typing indicator is shown only when the last assistant message is an empty placeholder (content `""`), rather than as a separate component before the placeholder appears. This is simpler and avoids race conditions.
+- The `ChatSidePanel` uses a MUI `Drawer` with `variant="persistent"` on desktop (instead of a purely custom slide-in), which integrates better with the MUI layout system.
+- Citation URLs that are not `/catalog/<id>` paths are navigated to directly via `router.push()` rather than treated as external links (consistent with SPA navigation).
 
 ### Validation Results
 
-_No validation results yet._
+- **Unit tests**: 44 tests across 8 test files — all pass (`npm run test --workspace=@apic-vibe-portal/frontend -- --testPathPattern="chat"`)
+- **Build**: `npm run build --workspace=@apic-vibe-portal/frontend` succeeds; `/chat` route renders as a static page
+- **Lint**: `npm run lint --workspace=@apic-vibe-portal/frontend` passes with zero errors
+- **Format**: `npm run format:check` passes with zero warnings
+- **E2E tests**: Playwright tests added in `src/frontend/e2e/chat.spec.ts` covering:
+  - Chat page rendering and heading
+  - Suggested starter prompts display and selection
+  - Typing and sending messages
+  - Send button disabled state
+  - New conversation reset
+  - FAB visibility on catalog page
+  - Panel open/close via FAB
+  - Conversation persistence across navigation
 
 ## Coding Agent Prompt
 

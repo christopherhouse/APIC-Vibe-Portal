@@ -33,7 +33,7 @@ export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
  * Acquire an access token from MSAL for the BFF API.
  * Returns `undefined` when no active account exists or token acquisition fails.
  */
-async function getAuthToken(): Promise<string | undefined> {
+export async function getAuthToken(): Promise<string | undefined> {
   try {
     const msalInstance = getMsalInstance();
     const account = msalInstance.getActiveAccount();
