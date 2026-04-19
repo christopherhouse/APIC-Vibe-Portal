@@ -23,6 +23,22 @@ _CATEGORY_EMOJI: dict[GovernanceCategory, str] = {
 }
 
 
+def get_category_emoji(category: GovernanceCategory) -> str:
+    """Return the emoji for a :class:`GovernanceCategory`.
+
+    Parameters
+    ----------
+    category:
+        The governance category to look up.
+
+    Returns
+    -------
+    str
+        A single emoji character representing the category.
+    """
+    return _CATEGORY_EMOJI.get(category, "")
+
+
 def format_compliance_report(result: ComplianceResult) -> str:
     """Format a :class:`ComplianceResult` as a human-readable markdown report.
 
@@ -36,7 +52,7 @@ def format_compliance_report(result: ComplianceResult) -> str:
     str
         Markdown-formatted governance compliance report.
     """
-    category_emoji = _CATEGORY_EMOJI.get(result.category, "")
+    category_emoji = get_category_emoji(result.category)
     lines: list[str] = [
         f"## Governance Report: {result.api_name} (`{result.api_id}`)",
         "",
@@ -72,7 +88,6 @@ def format_compliance_report(result: ComplianceResult) -> str:
         lines.append("")
         _severity_order = {RuleSeverity.CRITICAL: 0, RuleSeverity.WARNING: 1, RuleSeverity.INFO: 2}
         for i, r in enumerate(sorted(failing, key=lambda x: _severity_order[x.severity]), start=1):
-            emoji = _SEVERITY_EMOJI.get(r.severity, "")
             lines.append(f"{i}. **[{r.severity.capitalize()}]** {r.remediation}")
         lines.append("")
 
@@ -94,7 +109,7 @@ def format_score_summary(api_id: str, result: ComplianceResult) -> str:
     str
         Single-line markdown summary.
     """
-    category_emoji = _CATEGORY_EMOJI.get(result.category, "")
+    category_emoji = get_category_emoji(result.category)
     failing_critical = len(result.critical_failures)
     total_failing = len(result.failing_rules)
     return (

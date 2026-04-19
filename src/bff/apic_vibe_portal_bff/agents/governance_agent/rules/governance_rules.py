@@ -212,16 +212,6 @@ def _auth_mentioned_in_description(api: dict[str, Any]) -> bool:
     return any(kw in desc for kw in _AUTH_KEYWORDS)
 
 
-def _has_security_contact(api: dict[str, Any]) -> bool:
-    contacts = api.get("contacts", []) or []
-    for c in contacts:
-        name = (c.get("name", "") or "").lower()
-        email = (c.get("email", "") or "").lower()
-        if "security" in name or "security" in email:
-            return True
-    return False
-
-
 def _has_external_docs(api: dict[str, Any]) -> bool:
     docs = api.get("externalDocs", []) or []
     return len(docs) > 0

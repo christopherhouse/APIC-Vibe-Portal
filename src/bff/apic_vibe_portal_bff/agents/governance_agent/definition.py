@@ -12,7 +12,7 @@ from apic_vibe_portal_bff.utils.logger import sanitize_for_log
 
 from ..base_agent import BaseAgent
 from ..types import AgentName, AgentRequest, AgentResponse
-from .handler import format_compliance_report, format_score_summary
+from .handler import format_compliance_report, format_score_summary, get_category_emoji
 from .prompts import SYSTEM_PROMPT
 from .rules.compliance_checker import ComplianceChecker
 
@@ -341,9 +341,7 @@ class GovernanceAgent(BaseAgent):
 
                 result = agent_self._checker.check_api(api)
                 found_any = True
-                from apic_vibe_portal_bff.agents.governance_agent.handler import _CATEGORY_EMOJI  # noqa: PLC0415
-
-                cat_emoji = _CATEGORY_EMOJI.get(result.category, "")
+                cat_emoji = get_category_emoji(result.category)
                 lines.append(
                     f"| **{result.api_name}** (`{api_id}`) "
                     f"| {result.score:.0f}/100 "

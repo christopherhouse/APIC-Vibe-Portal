@@ -17,7 +17,6 @@ from apic_vibe_portal_bff.agents.governance_agent.rules.governance_rules import 
     _has_external_docs,
     _has_license,
     _has_meaningful_title,
-    _has_security_contact,
     _has_specification,
     _has_tags,
     _has_version,
@@ -289,23 +288,6 @@ class TestAuthMentionedInDescription:
 
     def test_fails_with_missing_description(self):
         assert _auth_mentioned_in_description({}) is False
-
-
-class TestHasSecurityContact:
-    def test_passes_with_security_in_name(self):
-        api = {"contacts": [{"name": "Security Team", "email": "sec@example.com"}]}
-        assert _has_security_contact(api) is True
-
-    def test_passes_with_security_in_email(self):
-        api = {"contacts": [{"name": "Platform", "email": "security@example.com"}]}
-        assert _has_security_contact(api) is True
-
-    def test_fails_with_no_security_contact(self):
-        api = {"contacts": [{"name": "Payments Team", "email": "payments@example.com"}]}
-        assert _has_security_contact(api) is False
-
-    def test_fails_with_no_contacts(self):
-        assert _has_security_contact({"contacts": []}) is False
 
 
 class TestHasExternalDocs:

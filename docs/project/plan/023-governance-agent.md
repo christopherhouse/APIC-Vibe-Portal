@@ -133,15 +133,15 @@ Update `agent_router.py` to:
 
 ### Deviations from Plan
 
-- **`_has_security_contact` rule not included in DEFAULT_RULES** — The plan mentioned "security contact" as a rule but this was scoped to a lighter version (`security.auth_in_description`) which checks whether the API description mentions the auth method. A separate security-contact rule was implemented as a predicate function but not added as a default rule (it's not referenced in the DEFAULT_RULES list) to keep the rule set focused.
 - **File layout** — The plan specified `src/bff/src/bff/agents/…` (duplicated path) but the actual codebase uses `src/bff/apic_vibe_portal_bff/agents/…`. The correct path was used.
 - **Tests in `tests/` directory** — The plan showed tests in `governance_agent/tests/`. The existing project convention places all tests in `src/bff/tests/`, which was followed.
+- **No standalone `_has_security_contact` predicate** — The plan mentioned a "security contact" rule. Instead, the security category uses `security.auth_in_description` (checking whether the description mentions the auth method), which is more universally applicable and testable.
 
 ### Validation Results
 
-- **Test suite**: 862 tests passing (199 new tests added: 88 governance rules, 61 compliance checker, 52 governance agent, 18 agent router governance routing)
+- **Test suite**: 858 tests passing (195 new tests added: 84 governance rules, 61 compliance checker, 52 governance agent, 18 agent router governance routing)
 - **New test files**:
-  - `tests/test_governance_rules.py` — 88 tests covering all 13 rule predicates, `GovernanceRule.evaluate()`, `DEFAULT_RULES` invariants
+  - `tests/test_governance_rules.py` — 84 tests covering all 13 rule predicates, `GovernanceRule.evaluate()`, `DEFAULT_RULES` invariants
   - `tests/test_compliance_checker.py` — 61 tests covering score calculation, categorisation, `ComplianceResult` properties, and `get_rule()`
   - `tests/test_governance_agent.py` — 52 tests covering all 5 agent tools, `run`/`stream`, `_fetch_api_data`, `_extract_response_text`, prompts, and handler helpers
 - **Updated test file**:
