@@ -12,6 +12,7 @@ import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import Tooltip from '@mui/material/Tooltip';
 import HomeIcon from '@mui/icons-material/Home';
 import ApiIcon from '@mui/icons-material/Api';
 import ChatIcon from '@mui/icons-material/Chat';
@@ -19,8 +20,10 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import SecurityIcon from '@mui/icons-material/Security';
 import { useAuth } from '@/lib/auth/use-auth';
+import { useSidebarContext } from '@/lib/sidebar-context';
 
 const DRAWER_WIDTH = 240;
+const MINI_DRAWER_WIDTH = 56;
 const ADMIN_ROLE = 'Portal.Admin';
 
 interface NavItem {
@@ -50,8 +53,44 @@ const adminNavItems: NavItem[] = [
   },
 ];
 
+function NavItemButton({
+  item,
+  selected,
+  collapsed,
+}: {
+  item: NavItem;
+  selected: boolean;
+  collapsed: boolean;
+}) {
+  const button = (
+    <ListItemButton
+      component={Link}
+      href={item.href}
+      prefetch={item.prefetch}
+      selected={selected}
+      sx={{ justifyContent: collapsed ? 'center' : 'initial', px: collapsed ? 1.5 : 2 }}
+    >
+      <ListItemIcon sx={{ minWidth: collapsed ? 'auto' : 40 }}>{item.icon}</ListItemIcon>
+      {!collapsed && <ListItemText primary={item.label} />}
+    </ListItemButton>
+  );
+
+  return (
+    <ListItem disablePadding>
+      {collapsed ? (
+        <Tooltip title={item.label} placement="right">
+          {button}
+        </Tooltip>
+      ) : (
+        button
+      )}
+    </ListItem>
+  );
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
+  const { isOpen } = useSidebarContext();
   const { user } = useAuth();
   const isAdmin = Boolean(user?.roles.includes(ADMIN_ROLE));
 
@@ -59,67 +98,70 @@ export default function Sidebar() {
     <Drawer
       variant="permanent"
       sx={{
-        width: DRAWER_WIDTH,
+        width: isOpen ? DRAWER_WIDTH : MINI_DRAWER_WIDTH,
         flexShrink: 0,
+        transition: (theme) =>
+          theme.transitions.create('width', {
+            easing: theme.transitions.easing.sharp,
+            duration: isOpen
+              ? theme.transitions.duration.enteringScreen
+              : theme.transitions.duration.leavingScreen,
+          }),
         '& .MuiDrawer-paper': {
-          width: DRAWER_WIDTH,
+          width: isOpen ? DRAWER_WIDTH : MINI_DRAWER_WIDTH,
           boxSizing: 'border-box',
+          overflowX: 'hidden',
+          transition: (theme) =>
+            theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: isOpen
+                ? theme.transitions.duration.enteringScreen
+                : theme.transitions.duration.leavingScreen,
+            }),
         },
       }}
     >
       <Toolbar />
       <List component="nav" aria-label="main navigation">
         {mainNavItems.map((item) => (
-          <ListItem key={item.label} disablePadding>
-            <ListItemButton
-              component={Link}
-              href={item.href}
-              prefetch={item.prefetch}
-              selected={pathname === item.href}
-            >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} />
-            </ListItemButton>
-          </ListItem>
+          <NavItemButton
+            key={item.label}
+            item={item}
+            selected={pathname === item.href}
+            collapsed={!isOpen}
+          />
         ))}
       </List>
       <Divider />
       <List component="nav" aria-label="secondary navigation">
         {secondaryNavItems.map((item) => (
-          <ListItem key={item.label} disablePadding>
-            <ListItemButton
-              component={Link}
-              href={item.href}
-              prefetch={item.prefetch}
-              selected={pathname === item.href}
-            >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} />
-            </ListItemButton>
-          </ListItem>
+          <NavItemButton
+            key={item.label}
+            item={item}
+            selected={pathname === item.href}
+            collapsed={!isOpen}
+          />
         ))}
       </List>
 
       {isAdmin && (
         <>
           <Divider />
-          <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
-            <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-              Admin
-            </Typography>
-          </Box>
+          {isOpen && (
+            <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+              <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                Admin
+              </Typography>
+            </Box>
+          )}
           <List component="nav" aria-label="admin navigation">
             {adminNavItems.map((item) => (
-              <ListItem key={item.label} disablePadding>
-                <ListItemButton
-                  component={Link}
-                  href={item.href}
-                  selected={pathname.startsWith(item.href)}
-                >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.label} />
-                </ListItemButton>
-              </ListItem>
+              <NavItemButton
+                key={item.label}
+                item={item}
+                selected={pathname.startsWith(item.href)}
+                collapsed={!isOpen}
+              />
             ))}
           </List>
         </>
