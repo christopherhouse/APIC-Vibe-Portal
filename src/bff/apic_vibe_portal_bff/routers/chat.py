@@ -146,7 +146,7 @@ router = APIRouter(tags=["chat"])
     response_model=ChatResponse,
     dependencies=[Depends(require_any_role(_ALLOWED_ROLES))],
 )
-def chat(
+async def chat(
     request: ChatRequest,
     service: AIChatService = Depends(_get_chat_service),  # noqa: B008
     accessible_api_ids: list[str] | None = Depends(make_accessible_ids_dep()),  # noqa: B008
@@ -158,7 +158,7 @@ def chat(
     cannot reference inaccessible APIs.
     """
     try:
-        return service.chat(
+        return await service.chat(
             user_message=request.message,
             session_id=request.session_id,
             accessible_api_ids=accessible_api_ids,
@@ -186,7 +186,7 @@ def chat(
     "/api/chat/stream",
     dependencies=[Depends(require_any_role(_ALLOWED_ROLES))],
 )
-def chat_stream(
+async def chat_stream(
     request: ChatRequest,
     service: AIChatService = Depends(_get_chat_service),  # noqa: B008
     accessible_api_ids: list[str] | None = Depends(make_accessible_ids_dep()),  # noqa: B008

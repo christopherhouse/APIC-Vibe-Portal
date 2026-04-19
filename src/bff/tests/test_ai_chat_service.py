@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -26,17 +26,20 @@ from apic_vibe_portal_bff.services.ai_chat_service import (
 
 @pytest.fixture
 def mock_openai():
-    """Return a mock OpenAI client."""
+    """Return a mock OpenAI client with async methods."""
     client = MagicMock()
-    client.chat_completion.return_value = {
-        "content": "The Weather API provides real-time weather data.",
-        "finish_reason": "stop",
-        "usage": {
-            "prompt_tokens": 100,
-            "completion_tokens": 30,
-            "total_tokens": 130,
-        },
-    }
+    client.chat_completion = AsyncMock(
+        return_value={
+            "content": "The Weather API provides real-time weather data.",
+            "finish_reason": "stop",
+            "usage": {
+                "prompt_tokens": 100,
+                "completion_tokens": 30,
+                "total_tokens": 130,
+            },
+        }
+    )
+    client.chat_completion_stream = MagicMock()
     return client
 
 
@@ -232,63 +235,72 @@ class TestSessionManager:
 
 
 class TestAIChatServiceChat:
-    def test_chat_returns_response(self, service, mock_openai, mock_search):
-        result = service.chat("What APIs are available?")
+    @pytest.mark.asyncio
+    async def test_chat_returns_response(self, service, mock_openai, mock_search):
+        result = await service.chat("What APIs are available?")
         assert isinstance(result, ChatResponse)
         assert result.message.role == "assistant"
         assert result.message.content == "The Weather API provides real-time weather data."
         assert result.session_id is not None
 
-    def test_chat_includes_citations(self, service):
-        result = service.chat("Tell me about the Weather API")
+    @pytest.mark.asyncio
+    async def test_chat_includes_citations(self, service):
+        result = await service.chat("Tell me about the Weather API")
         assert result.message.citations is not None
         assert len(result.message.citations) > 0
         assert any("Weather API" in c.title for c in result.message.citations)
 
-    def test_chat_with_session_id(self, service):
-        r1 = service.chat("Hello", session_id="sess-1")
-        r2 = service.chat("Follow up", session_id="sess-1")
+    @pytest.mark.asyncio
+    async def test_chat_with_session_id(self, service):
+        r1 = await service.chat("Hello", session_id="sess-1")
+        r2 = await service.chat("Follow up", session_id="sess-1")
         assert r1.session_id == "sess-1"
         assert r2.session_id == "sess-1"
 
-    def test_chat_calls_search(self, service, mock_search):
-        service.chat("Find me APIs")
+    @pytest.mark.asyncio
+    async def test_chat_calls_search(self, service, mock_search):
+        await service.chat("Find me APIs")
         mock_search.search.assert_called_once()
         call_kwargs = mock_search.search.call_args
         assert call_kwargs.kwargs.get("query_type") == "semantic"
 
-    def test_chat_calls_openai(self, service, mock_openai):
-        service.chat("Hello")
+    @pytest.mark.asyncio
+    async def test_chat_calls_openai(self, service, mock_openai):
+        await service.chat("Hello")
         mock_openai.chat_completion.assert_called_once()
 
-    def test_chat_with_no_search_results(self, service, mock_search):
+    @pytest.mark.asyncio
+    async def test_chat_with_no_search_results(self, service, mock_search):
         mock_search.search.return_value = {"results": [], "count": 0, "facets": None}
-        result = service.chat("Something obscure")
+        result = await service.chat("Something obscure")
         assert isinstance(result, ChatResponse)
         assert result.message.citations is None or len(result.message.citations) == 0
 
-    def test_chat_search_failure_continues(self, service, mock_search):
+    @pytest.mark.asyncio
+    async def test_chat_search_failure_continues(self, service, mock_search):
         from apic_vibe_portal_bff.clients.ai_search_client import AISearchClientError
 
         mock_search.search.side_effect = AISearchClientError("Search down")
-        result = service.chat("Hello")
+        result = await service.chat("Hello")
         # Should still return a response, just without citations
         assert isinstance(result, ChatResponse)
 
-    def test_chat_rate_limit(self, service):
+    @pytest.mark.asyncio
+    async def test_chat_rate_limit(self, service):
         # Exhaust the rate limit
         session = service.session_manager.get_or_create("rate-test")
         for _ in range(_RATE_LIMIT_PER_SESSION):
             session.check_rate_limit()
         # Next chat should raise
         with pytest.raises(ChatRateLimitError):
-            service.chat("One more", session_id="rate-test")
+            await service.chat("One more", session_id="rate-test")
 
 
 class TestAIChatServiceStream:
-    def test_stream_yields_events(self, service, mock_openai):
-        mock_openai.chat_completion_stream.return_value = iter(
-            [
+    @pytest.mark.asyncio
+    async def test_stream_yields_events(self, service, mock_openai):
+        async def mock_stream(*args, **kwargs):
+            for item in [
                 {"content": "Hello", "finish_reason": None},
                 {"content": " world", "finish_reason": "stop"},
                 {
@@ -296,44 +308,51 @@ class TestAIChatServiceStream:
                     "finish_reason": None,
                     "usage": {"prompt_tokens": 50, "completion_tokens": 10, "total_tokens": 60},
                 },
-            ]
-        )
+            ]:
+                yield item
 
-        events = list(service.chat_stream("Hello"))
+        mock_openai.chat_completion_stream = mock_stream
+
+        events = [e async for e in service.chat_stream("Hello")]
         # Should have: start, content, content, end
         assert any('"type": "start"' in e for e in events)
         assert any('"type": "content"' in e for e in events)
         assert any('"type": "end"' in e for e in events)
 
-    def test_stream_includes_session_id(self, service, mock_openai):
-        mock_openai.chat_completion_stream.return_value = iter(
-            [
+    @pytest.mark.asyncio
+    async def test_stream_includes_session_id(self, service, mock_openai):
+        async def mock_stream(*args, **kwargs):
+            for item in [
                 {"content": "Test", "finish_reason": "stop"},
-            ]
-        )
+            ]:
+                yield item
 
-        events = list(service.chat_stream("Hello", session_id="stream-sess"))
+        mock_openai.chat_completion_stream = mock_stream
+
+        events = [e async for e in service.chat_stream("Hello", session_id="stream-sess")]
         start_event = [e for e in events if '"type": "start"' in e][0]
         assert '"stream-sess"' in start_event
 
-    def test_stream_rate_limit_returns_error(self, service):
+    @pytest.mark.asyncio
+    async def test_stream_rate_limit_returns_error(self, service):
         session = service.session_manager.get_or_create("stream-rl")
         for _ in range(_RATE_LIMIT_PER_SESSION):
             session.check_rate_limit()
 
-        events = list(service.chat_stream("Too fast", session_id="stream-rl"))
+        events = [e async for e in service.chat_stream("Too fast", session_id="stream-rl")]
         assert len(events) == 1
         assert '"error"' in events[0]
 
-    def test_stream_mid_stream_error_yields_error_event(self, service, mock_openai):
+    @pytest.mark.asyncio
+    async def test_stream_mid_stream_error_yields_error_event(self, service, mock_openai):
         """If streaming raises mid-response, a safe SSE error event is emitted."""
 
-        def failing_stream(*args, **kwargs):
+        async def failing_stream(*args, **kwargs):
             yield {"content": "Partial", "finish_reason": None}
             raise RuntimeError("Connection dropped")
 
-        mock_openai.chat_completion_stream.return_value = failing_stream()
-        events = list(service.chat_stream("Hello"))
+        mock_openai.chat_completion_stream = failing_stream
+        events = [e async for e in service.chat_stream("Hello")]
         # Should have: start, content (partial), error
         assert any('"type": "start"' in e for e in events)
         error_events = [e for e in events if '"type": "error"' in e]
@@ -350,16 +369,18 @@ class TestAIChatServiceHistory:
         messages = service.get_history("no-such-session")
         assert messages == []
 
-    def test_get_history_after_chat(self, service):
-        service.chat("Hello", session_id="hist-1")
+    @pytest.mark.asyncio
+    async def test_get_history_after_chat(self, service):
+        await service.chat("Hello", session_id="hist-1")
         messages = service.get_history("hist-1")
         assert len(messages) == 2  # user + assistant
         assert messages[0].role == "user"
         assert messages[1].role == "assistant"
 
-    def test_get_history_returns_stable_ids(self, service):
+    @pytest.mark.asyncio
+    async def test_get_history_returns_stable_ids(self, service):
         """Consecutive get_history calls return the same IDs and timestamps."""
-        service.chat("Hello", session_id="stable-1")
+        await service.chat("Hello", session_id="stable-1")
         msgs1 = service.get_history("stable-1")
         msgs2 = service.get_history("stable-1")
         assert len(msgs1) == len(msgs2) == 2
@@ -367,15 +388,17 @@ class TestAIChatServiceHistory:
             assert m1.id == m2.id
             assert m1.timestamp == m2.timestamp
 
-    def test_clear_history(self, service):
-        service.chat("Hello", session_id="clear-1")
+    @pytest.mark.asyncio
+    async def test_clear_history(self, service):
+        await service.chat("Hello", session_id="clear-1")
         assert service.clear_history("clear-1") is True
         assert service.get_history("clear-1") == []
 
     def test_clear_nonexistent(self, service):
         assert service.clear_history("nope") is False
 
-    def test_clear_history_calls_provider_clear(self, mock_openai, mock_search):
+    @pytest.mark.asyncio
+    async def test_clear_history_calls_provider_clear(self, mock_openai, mock_search):
         """clear_history should also call the history provider's clear method."""
         mock_provider = MagicMock()
         mock_provider.clear = MagicMock()
@@ -384,7 +407,7 @@ class TestAIChatServiceHistory:
             search_client=mock_search,
             history_provider=mock_provider,
         )
-        svc.chat("Hello", session_id="prov-clear")
+        await svc.chat("Hello", session_id="prov-clear")
         svc.clear_history("prov-clear")
         mock_provider.clear.assert_called_once_with("prov-clear")
 

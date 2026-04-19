@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -46,6 +46,8 @@ def _inject_mock_client(client: OpenAIClient) -> MagicMock:
     via the MAF ``OpenAIChatClient.client`` property.
     """
     mock_maf_client = MagicMock()
+    # Use AsyncMock for the create method since it's awaited
+    mock_maf_client.client.chat.completions.create = AsyncMock()
     client._client = mock_maf_client
     return mock_maf_client
 
@@ -123,7 +125,8 @@ class TestTokenAcquisition:
 
 
 class TestChatCompletion:
-    def test_successful_chat_completion(self, client):
+    @pytest.mark.asyncio
+    async def test_successful_chat_completion(self, client):
         mock = _inject_mock_client(client)
         mock.client.chat.completions.create.return_value = _mock_completion_response(
             content="Hello! I can help you find APIs.",
@@ -133,7 +136,7 @@ class TestChatCompletion:
             {"role": "system", "content": "You are an assistant."},
             {"role": "user", "content": "What APIs are available?"},
         ]
-        result = client.chat_completion(messages)
+        result = await client.chat_completion(messages)
 
         assert result["content"] == "Hello! I can help you find APIs."
         assert result["finish_reason"] == "stop"
@@ -141,14 +144,16 @@ class TestChatCompletion:
         assert result["usage"]["completion_tokens"] == 20
         assert result["usage"]["total_tokens"] == 70
 
-    def test_chat_completion_empty_content(self, client):
+    @pytest.mark.asyncio
+    async def test_chat_completion_empty_content(self, client):
         mock = _inject_mock_client(client)
         mock.client.chat.completions.create.return_value = _mock_completion_response(content=None)
 
-        result = client.chat_completion([{"role": "user", "content": "test"}])
+        result = await client.chat_completion([{"role": "user", "content": "test"}])
         assert result["content"] == ""
 
-    def test_chat_completion_rate_limit_error(self, client):
+    @pytest.mark.asyncio
+    async def test_chat_completion_rate_limit_error(self, client):
         from openai import RateLimitError
 
         mock = _inject_mock_client(client)
@@ -162,9 +167,10 @@ class TestChatCompletion:
         )
 
         with pytest.raises(OpenAIRateLimitError):
-            client.chat_completion([{"role": "user", "content": "test"}])
+            await client.chat_completion([{"role": "user", "content": "test"}])
 
-    def test_chat_completion_server_error(self, client):
+    @pytest.mark.asyncio
+    async def test_chat_completion_server_error(self, client):
         from openai import InternalServerError
 
         mock = _inject_mock_client(client)
@@ -178,20 +184,22 @@ class TestChatCompletion:
         )
 
         with pytest.raises(OpenAIUnavailableError):
-            client.chat_completion([{"role": "user", "content": "test"}])
+            await client.chat_completion([{"role": "user", "content": "test"}])
 
-    def test_chat_completion_generic_error(self, client):
+    @pytest.mark.asyncio
+    async def test_chat_completion_generic_error(self, client):
         mock = _inject_mock_client(client)
         mock.client.chat.completions.create.side_effect = RuntimeError("Unexpected")
 
         with pytest.raises(OpenAIClientError, match="Unexpected"):
-            client.chat_completion([{"role": "user", "content": "test"}])
+            await client.chat_completion([{"role": "user", "content": "test"}])
 
-    def test_chat_completion_no_usage(self, client):
+    @pytest.mark.asyncio
+    async def test_chat_completion_no_usage(self, client):
         mock = _inject_mock_client(client)
         mock.client.chat.completions.create.return_value = _mock_completion_response(usage_present=False)
 
-        result = client.chat_completion([{"role": "user", "content": "test"}])
+        result = await client.chat_completion([{"role": "user", "content": "test"}])
         assert result["usage"]["prompt_tokens"] == 0
         assert result["usage"]["completion_tokens"] == 0
         assert result["usage"]["total_tokens"] == 0
@@ -203,7 +211,8 @@ class TestChatCompletion:
 
 
 class TestChatCompletionStream:
-    def test_stream_yields_content(self, client):
+    @pytest.mark.asyncio
+    async def test_stream_yields_content(self, client):
         mock = _inject_mock_client(client)
 
         # Create stream chunks
@@ -225,21 +234,27 @@ class TestChatCompletionStream:
         chunk3.usage.completion_tokens = 10
         chunk3.usage.total_tokens = 60
 
-        mock.client.chat.completions.create.return_value = [chunk1, chunk2, chunk3]
+        # Return an async iterator
+        async def async_stream():
+            for c in [chunk1, chunk2, chunk3]:
+                yield c
 
-        chunks = list(client.chat_completion_stream([{"role": "user", "content": "test"}]))
+        mock.client.chat.completions.create.return_value = async_stream()
+
+        chunks = [chunk async for chunk in client.chat_completion_stream([{"role": "user", "content": "test"}])]
         assert len(chunks) == 3
         assert chunks[0]["content"] == "Hello"
         assert chunks[1]["content"] == " world"
         assert chunks[1]["finish_reason"] == "stop"
         assert chunks[2]["usage"]["total_tokens"] == 60
 
-    def test_stream_error_raises(self, client):
+    @pytest.mark.asyncio
+    async def test_stream_error_raises(self, client):
         mock = _inject_mock_client(client)
         mock.client.chat.completions.create.side_effect = RuntimeError("Stream failed")
 
         with pytest.raises(OpenAIClientError, match="Stream failed"):
-            list(client.chat_completion_stream([{"role": "user", "content": "test"}]))
+            _ = [chunk async for chunk in client.chat_completion_stream([{"role": "user", "content": "test"}])]
 
 
 # ---------------------------------------------------------------------------
