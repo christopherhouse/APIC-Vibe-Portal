@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from apic_vibe_portal_bff.agents.api_discovery_agent.definition import ApiDiscoveryAgent
+from apic_vibe_portal_bff.agents.api_discovery_agent.definition import ApiDiscoveryAgent, SecurityTrimmingMiddleware
 from apic_vibe_portal_bff.agents.api_discovery_agent.handler import (
     build_chat_response,
     extract_citations_from_results,
@@ -120,25 +121,76 @@ class TestApiDiscoveryAgentRun:
     def test_run_uses_maf_agent(self, agent):
         request = AgentRequest(message="What APIs do you have?", session_id="sess-1")
         agent.run(request)
-        agent._agent.run.assert_called_once_with(message="What APIs do you have?", session_id="sess-1")
+        agent._agent.run.assert_called_once()
+        call_kwargs = agent._agent.run.call_args
+        assert call_kwargs.kwargs.get("messages") == "What APIs do you have?"
 
-    def test_run_generates_session_id_when_none(self, agent):
+    def test_run_session_id_is_consistent(self, agent):
+        # Session ID is generated once and used for both MAF call and response.
         request = AgentRequest(message="Hello", session_id=None)
         response = agent.run(request)
-        assert response.session_id  # non-empty
+        assert response.session_id  # non-empty UUID
+        # The same session ID must have been passed to Agent.run()
+        call_kwargs = agent._agent.run.call_args
+        session_arg = call_kwargs.kwargs.get("session")
+        assert session_arg is not None
+        assert session_arg.session_id == response.session_id
 
-    def test_run_includes_citations(self, agent):
+    def test_run_preserves_explicit_session_id(self, agent):
+        request = AgentRequest(message="Hello", session_id="my-session")
+        response = agent.run(request)
+        assert response.session_id == "my-session"
+
+    def test_run_citations_from_tool_results(self, agent, mock_search):
+        """Citations are built from search_apis tool results captured during agent run."""
+        search_results = mock_search.search.return_value["results"]
+
+        # Simulate search_apis tool being invoked during MAF agent.run()
+        def side_effect_run(**kwargs):
+            agent._request_context.last_search_results = search_results
+            return "Here are the APIs you requested."
+
+        agent._agent.run.side_effect = side_effect_run
+
         request = AgentRequest(message="weather API", session_id="sess-1")
         response = agent.run(request)
-        # Citations extracted from mock search results
+
+        # No extra search call — citations come from the tool-captured results
+        mock_search.search.assert_not_called()
         assert response.citations is not None
         titles = [c.title for c in response.citations]
         assert any("weather-api" in t for t in titles)
+
+    def test_run_no_citations_when_search_tool_not_invoked(self, agent, mock_search):
+        """When search_apis is not invoked, no extra search call and no citations."""
+        request = AgentRequest(message="Hello", session_id="sess-1")
+        # Do NOT populate last_search_results (tool was not called)
+        response = agent.run(request)
+        # No search calls
+        mock_search.search.assert_not_called()
+        # No citations because search_apis was not invoked
+        assert response.citations is None
 
     def test_run_empty_accessible_ids_returns_no_citations(self, agent):
         request = AgentRequest(message="APIs", session_id="sess-1", accessible_api_ids=[])
         response = agent.run(request)
         assert response.citations is None or len(response.citations) == 0
+
+    def test_run_passes_accessible_api_ids_to_maf(self, agent):
+        """accessible_api_ids is forwarded to Agent.run() via function_invocation_kwargs."""
+        request = AgentRequest(message="APIs", session_id="sess-1", accessible_api_ids=["api-a"])
+        agent.run(request)
+        call_kwargs = agent._agent.run.call_args
+        fik = call_kwargs.kwargs.get("function_invocation_kwargs")
+        assert fik is not None
+        assert fik.get("accessible_api_ids") == ["api-a"]
+
+    def test_run_thread_local_cleaned_up_after_run(self, agent):
+        """Thread-local is cleared after run() so leaks between requests are impossible."""
+        request = AgentRequest(message="Hello", session_id="sess-1", accessible_api_ids=["api-a"])
+        agent.run(request)
+        assert not hasattr(agent._request_context, "accessible_api_ids")
+        assert not hasattr(agent._request_context, "last_search_results")
 
 
 # ---------------------------------------------------------------------------
@@ -180,11 +232,51 @@ class TestSearchApisTool:
         result = tool_fn(query="anything")
         assert "unavailable" in result.lower() or "Search" in result
 
-    def test_search_apis_passes_filter(self, agent, mock_search):
+    def test_search_apis_passes_user_filter(self, agent, mock_search):
         tool_fn = agent._make_search_tool()
         tool_fn(query="test", filters="kind eq 'REST'")
         call_kwargs = mock_search.search.call_args
         assert call_kwargs.kwargs.get("filter_expression") == "kind eq 'REST'"
+
+    def test_search_apis_injects_security_filter_when_accessible_ids_set(self, agent, mock_search):
+        """When accessible_api_ids is set in the thread-local, an OData filter is injected."""
+        agent._request_context.accessible_api_ids = ["weather-api", "maps-api"]
+        tool_fn = agent._make_search_tool()
+        tool_fn(query="test")
+        call_kwargs = mock_search.search.call_args
+        assert "search.in(apiName" in call_kwargs.kwargs.get("filter_expression", "")
+
+    def test_search_apis_merges_security_and_user_filter(self, agent, mock_search):
+        agent._request_context.accessible_api_ids = ["weather-api"]
+        tool_fn = agent._make_search_tool()
+        tool_fn(query="test", filters="kind eq 'REST'")
+        call_kwargs = mock_search.search.call_args
+        fe = call_kwargs.kwargs.get("filter_expression", "")
+        assert "search.in(apiName" in fe
+        assert "kind eq 'REST'" in fe
+
+    def test_search_apis_blocks_when_accessible_ids_empty(self, agent, mock_search):
+        agent._request_context.accessible_api_ids = []
+        tool_fn = agent._make_search_tool()
+        result = tool_fn(query="anything")
+        assert "No APIs are accessible" in result
+        mock_search.search.assert_not_called()
+
+    def test_search_apis_no_filter_when_admin_bypass(self, agent, mock_search):
+        """When accessible_api_ids is None (admin bypass), no security filter is injected."""
+        agent._request_context.accessible_api_ids = None
+        tool_fn = agent._make_search_tool()
+        tool_fn(query="test")
+        call_kwargs = mock_search.search.call_args
+        assert call_kwargs.kwargs.get("filter_expression") is None
+
+    def test_search_apis_captures_results_in_thread_local(self, agent, mock_search):
+        """Results are stored in thread-local so run() can build citations without extra search."""
+        tool_fn = agent._make_search_tool()
+        tool_fn(query="weather")
+        captured = getattr(agent._request_context, "last_search_results", [])
+        assert len(captured) == 2
+        assert captured[0]["apiName"] == "weather-api"
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +334,8 @@ class TestGetApiSpecTool:
         result = tool_fn(api_id="weather-api")
         assert "openapi" in result.lower()
         assert "weather-api" in result
+        # Version should not be doubled (no "vv1")
+        assert "vv" not in result
 
     def test_uses_specified_version(self, agent, mock_api_center):
         tool_fn = agent._make_get_api_spec_tool()
@@ -404,3 +498,126 @@ class TestToChatResponse:
         assert chat_resp.message.content == "Here are APIs"
         assert chat_resp.message.role == "assistant"
         assert chat_resp.message.citations is not None
+
+
+# ---------------------------------------------------------------------------
+# SecurityTrimmingMiddleware tests
+# ---------------------------------------------------------------------------
+
+
+def _make_middleware_context(tool_name: str, args: dict | None = None, accessible_api_ids: list | None = None):
+    """Build a minimal FunctionInvocationContext-like object for middleware tests."""
+    context = MagicMock()
+    context.function.name = tool_name
+    context.arguments = args or {}
+    context.kwargs = {"accessible_api_ids": accessible_api_ids}
+    context.result = None
+    return context
+
+
+class TestSecurityTrimmingMiddleware:
+    """Unit tests for SecurityTrimmingMiddleware using async helpers."""
+
+    def _run(self, coro):
+        return asyncio.run(coro)
+
+    def test_admin_bypass_allows_all_tools(self):
+        """When accessible_api_ids is None, all tool calls are permitted."""
+        middleware = SecurityTrimmingMiddleware()
+
+        for tool_name in ("search_apis", "get_api_details", "get_api_spec", "list_api_versions"):
+            called: list[bool] = []
+            ctx = _make_middleware_context(tool_name, {"api_id": "secret-api"}, accessible_api_ids=None)
+
+            async def _run_case(context=ctx, tracker=called):
+                async def call_next():
+                    tracker.append(True)
+
+                await middleware.process(context, call_next)
+                assert tracker, f"call_next not invoked for {context.function.name}"
+
+            self._run(_run_case())
+
+    def test_permitted_api_center_call_proceeds(self):
+        async def _test():
+            middleware = SecurityTrimmingMiddleware()
+            called = []
+
+            async def call_next():
+                called.append(True)
+
+            context = _make_middleware_context(
+                "get_api_details", {"api_id": "weather-api"}, ["weather-api", "maps-api"]
+            )
+            await middleware.process(context, call_next)
+            assert called
+
+        self._run(_test())
+
+    def test_blocked_api_center_call_raises_termination(self):
+        """API Center calls for non-permitted api_id raise MiddlewareTermination."""
+        from agent_framework import MiddlewareTermination
+
+        for tool_name in ("get_api_details", "get_api_spec", "list_api_versions"):
+            ctx = _make_middleware_context(tool_name, {"api_id": "forbidden-api"}, ["weather-api"])
+
+            async def _test(context=ctx):
+                middleware = SecurityTrimmingMiddleware()
+
+                async def call_next():
+                    pass
+
+                with pytest.raises(MiddlewareTermination):
+                    await middleware.process(context, call_next)
+
+            self._run(_test())
+
+    def test_empty_accessible_ids_blocks_all_api_center_tools(self):
+        """Empty accessible_api_ids list blocks every API Center call."""
+        from agent_framework import MiddlewareTermination
+
+        async def _test():
+            middleware = SecurityTrimmingMiddleware()
+
+            async def call_next():
+                pass
+
+            context = _make_middleware_context("get_api_details", {"api_id": "any-api"}, accessible_api_ids=[])
+            with pytest.raises(MiddlewareTermination):
+                await middleware.process(context, call_next)
+
+        self._run(_test())
+
+    def test_search_apis_not_blocked_by_middleware(self):
+        """search_apis handles its own security trimming; middleware does not block it."""
+
+        async def _test():
+            middleware = SecurityTrimmingMiddleware()
+            called = []
+
+            async def call_next():
+                called.append(True)
+
+            context = _make_middleware_context("search_apis", {}, accessible_api_ids=["api-a"])
+            await middleware.process(context, call_next)
+            assert called
+
+        self._run(_test())
+
+    def test_middleware_reads_api_id_from_pydantic_model(self):
+        """api_id is also resolved from Pydantic-like objects (via getattr)."""
+        from agent_framework import MiddlewareTermination
+
+        async def _test():
+            middleware = SecurityTrimmingMiddleware()
+
+            async def call_next():
+                pass
+
+            args = MagicMock()
+            args.api_id = "forbidden-api"
+            context = _make_middleware_context("get_api_details", args, accessible_api_ids=["permitted-api"])
+            with pytest.raises(MiddlewareTermination):
+                await middleware.process(context, call_next)
+
+        self._run(_test())

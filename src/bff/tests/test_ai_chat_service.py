@@ -517,3 +517,117 @@ class TestMAFHistoryProvider:
 
         assert service._agent is not None
         assert isinstance(service._agent, Agent)
+
+
+# ---------------------------------------------------------------------------
+# Agent-router integration tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mock_agent_router():
+    """Return a mock AgentRouter that produces a deterministic AgentResponse."""
+    from apic_vibe_portal_bff.agents.types import AgentName, AgentResponse
+    from apic_vibe_portal_bff.models.chat import Citation
+
+    router = MagicMock()
+    router.dispatch.return_value = AgentResponse(
+        agent_name=AgentName.API_DISCOVERY,
+        content="Agent says: here are your APIs.",
+        session_id="agent-sess-1",
+        citations=[Citation(title="Payments API", url="/api/catalog/payments-api")],
+    )
+    return router
+
+
+@pytest.fixture
+def agent_service(mock_openai, mock_search, mock_agent_router):
+    """Return an AIChatService wired with a mock agent router."""
+    return AIChatService(
+        openai_client=mock_openai,
+        search_client=mock_search,
+        model="gpt-4o",
+        agent_router=mock_agent_router,
+    )
+
+
+class TestAIChatServiceWithAgentRouter:
+    """Verify the agent-router branch in chat() and chat_stream()."""
+
+    def test_chat_uses_agent_router_dispatch(self, agent_service, mock_agent_router):
+        """When agent_router is set, dispatch() is called and its result is returned."""
+        result = agent_service.chat("Find payment APIs", session_id="sess-1")
+        mock_agent_router.dispatch.assert_called_once()
+        assert isinstance(result, ChatResponse)
+        assert result.message.content == "Agent says: here are your APIs."
+
+    def test_chat_returns_agent_citations(self, agent_service, mock_agent_router):
+        result = agent_service.chat("Find payment APIs", session_id="sess-1")
+        assert result.message.citations is not None
+        assert result.message.citations[0].title == "Payments API"
+
+    def test_chat_preserves_session_id(self, agent_service, mock_agent_router):
+        result = agent_service.chat("Hello", session_id="my-session")
+        assert result.session_id == "my-session"
+
+    def test_chat_does_not_call_openai_directly(self, agent_service, mock_openai):
+        """Direct OpenAI call is bypassed in agent-router mode."""
+        agent_service.chat("Hello", session_id="sess-2")
+        mock_openai.chat_completion.assert_not_called()
+
+    def test_chat_does_not_call_search_directly(self, agent_service, mock_search):
+        """Direct search call is bypassed in agent-router mode."""
+        agent_service.chat("Hello", session_id="sess-3")
+        mock_search.search.assert_not_called()
+
+    def test_chat_passes_accessible_api_ids_to_router(self, agent_service, mock_agent_router):
+        """accessible_api_ids is forwarded in the AgentRequest."""
+        from apic_vibe_portal_bff.agents.types import AgentRequest
+
+        agent_service.chat("Find APIs", accessible_api_ids=["api-a", "api-b"])
+        call_args = mock_agent_router.dispatch.call_args
+        req: AgentRequest = call_args.args[0]
+        assert req.accessible_api_ids == ["api-a", "api-b"]
+
+    def test_chat_rate_limit_still_enforced(self, agent_service):
+        """Rate limiting applies even when agent_router is configured."""
+        session = agent_service.session_manager.get_or_create("rl-agent")
+        for _ in range(_RATE_LIMIT_PER_SESSION):
+            session.check_rate_limit()
+        with pytest.raises(ChatRateLimitError):
+            agent_service.chat("One too many", session_id="rl-agent")
+
+    def test_chat_null_agent_router_uses_direct_rag(self, mock_openai, mock_search):
+        """When agent_router is None, the direct RAG path is used unchanged."""
+        svc = AIChatService(openai_client=mock_openai, search_client=mock_search)
+        result = svc.chat("Hello")
+        mock_openai.chat_completion.assert_called_once()
+        assert result.message.content == "The Weather API provides real-time weather data."
+
+    def test_agent_router_skips_eager_maf_setup(self, mock_openai, mock_search, mock_agent_router):
+        """When agent_router is supplied, _agent and _search_tool are not eagerly created."""
+        svc = AIChatService(
+            openai_client=mock_openai,
+            search_client=mock_search,
+            agent_router=mock_agent_router,
+        )
+        assert svc._agent is None
+        assert svc._search_tool is None
+
+    def test_stream_uses_agent_router_dispatch(self, agent_service, mock_agent_router):
+        """chat_stream() uses dispatch() and emits start / content / end events."""
+        events = list(agent_service.chat_stream("Find APIs", session_id="sess-stream"))
+        mock_agent_router.dispatch.assert_called_once()
+        assert any('"type": "start"' in e for e in events)
+        assert any('"type": "content"' in e for e in events)
+        assert any('"type": "end"' in e for e in events)
+
+    def test_stream_includes_citations_in_end_event(self, agent_service, mock_agent_router):
+        events = list(agent_service.chat_stream("Find APIs", session_id="sess-stream-2"))
+        end_event = next(e for e in events if '"type": "end"' in e)
+        assert "Payments API" in end_event
+
+    def test_stream_agent_router_error_yields_error_event(self, agent_service, mock_agent_router):
+        mock_agent_router.dispatch.side_effect = RuntimeError("Agent exploded")
+        events = list(agent_service.chat_stream("Find APIs", session_id="sess-err"))
+        assert any('"type": "error"' in e for e in events)

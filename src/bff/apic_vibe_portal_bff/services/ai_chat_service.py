@@ -412,18 +412,27 @@ class AIChatService:
         self._sessions = SessionManager()
         self._agent_router = agent_router
 
-        # Create the MAF search tool
-        self._search_tool = _create_search_tool(search_client, model)
+        if agent_router is None:
+            # Direct RAG path — eagerly set up the search tool and MAF agent.
+            # When agent_router is provided these are unused; skipping them
+            # avoids unnecessary startup work and allows Foundry-only deployments
+            # that don't configure openai_endpoint.
+            self._search_tool = _create_search_tool(search_client, model)
 
-        # Set up history provider (Cosmos in prod, in-memory for dev/tests)
-        if history_provider is None:
-            from agent_framework import InMemoryHistoryProvider
+            if history_provider is None:
+                from agent_framework import InMemoryHistoryProvider
 
-            history_provider = InMemoryHistoryProvider()
-        self._history_provider = history_provider
+                history_provider = InMemoryHistoryProvider()
+            self._history_provider = history_provider
 
-        # Create the MAF Agent wired with the search tool and history provider
-        self._agent = self._create_agent()
+            self._agent = self._create_agent()
+        else:
+            # Agent-router path — history provider is owned by the agent.
+            # Store a reference only if one was explicitly supplied (e.g. for
+            # clear_history support).
+            self._search_tool = None  # type: ignore[assignment]
+            self._history_provider = history_provider
+            self._agent = None  # type: ignore[assignment]
 
     @property
     def session_manager(self) -> SessionManager:
