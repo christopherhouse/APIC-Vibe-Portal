@@ -324,6 +324,7 @@ class TestCosmosRuMetrics:
         import apic_vibe_portal_bff.telemetry.metrics as m
 
         m._meter = None
+        m._instruments.clear()
 
     def _make_mock_meter_with_histogram(self) -> tuple[MagicMock, MagicMock]:
         import apic_vibe_portal_bff.telemetry.metrics as m

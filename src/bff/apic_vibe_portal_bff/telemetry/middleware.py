@@ -30,16 +30,22 @@ class OTelEnrichmentMiddleware(BaseHTTPMiddleware):
             request_id = request.headers.get("x-request-id", "")
             if request_id:
                 span.set_attribute("http.request_id", request_id)
-            # route pattern is only available after routing; best-effort
-            route = getattr(request, "scope", {}).get("path", request.url.path)
-            span.set_attribute("http.route", route)
 
         response = await call_next(request)
 
-        # Write trace_id to response header for client-side correlation
+        # Set http.route and X-Trace-ID after routing so we can use the matched
+        # route template (e.g. ``/api/catalog/{api_id}``) instead of the concrete
+        # request path.  Using the template prevents per-request cardinality
+        # explosion in distributed traces and dashboards.
         if span.is_recording():
+            matched_route = request.scope.get("route")
+            route = getattr(matched_route, "path", request.url.path)
+            span.set_attribute("http.route", route)
+
+            # Write trace_id to response header only when the span context is valid
+            # (non-zero).  Returning an all-zero trace-id misleads clients.
             ctx = span.get_span_context()
-            if ctx and ctx.trace_id:
+            if ctx and ctx.is_valid:
                 trace_id_hex = format(ctx.trace_id, "032x")
                 response.headers["X-Trace-ID"] = trace_id_hex
 

@@ -1,5 +1,5 @@
 /**
- * Tests for track-events.ts telemetry helpers.
+ * Tests for app-insights-browser.ts and track-events.ts telemetry helpers.
  *
  * Uses the Jest mock for @microsoft/applicationinsights-web so no real
  * network calls are made and no browser globals are required.
@@ -11,52 +11,57 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-function setEnv(value: string | undefined) {
-  Object.defineProperty(process.env, 'NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING', {
-    value,
-    writable: true,
-    configurable: true,
-  });
-}
-
-describe('getAppInsights', () => {
-  it('returns null when connection string is not set', async () => {
-    setEnv(undefined);
+describe('getAppInsights / initAppInsights', () => {
+  it('returns null before initAppInsights is called', async () => {
     const { getAppInsights } = await import('../app-insights-browser');
     expect(getAppInsights()).toBeNull();
   });
 
-  it('creates and returns an ApplicationInsights instance when connection string is set', async () => {
-    setEnv('InstrumentationKey=test-key');
-    const { getAppInsights } = await import('../app-insights-browser');
+  it('returns null when initAppInsights is called with an empty string', async () => {
+    const { getAppInsights, initAppInsights } = await import('../app-insights-browser');
+    initAppInsights('');
+    expect(getAppInsights()).toBeNull();
+  });
+
+  it('creates and returns an ApplicationInsights instance when a connection string is provided', async () => {
+    const { getAppInsights, initAppInsights } = await import('../app-insights-browser');
+    initAppInsights('InstrumentationKey=test-key');
     const ai = getAppInsights();
     expect(ai).not.toBeNull();
     expect(ai!.loadAppInsights).toBeDefined();
   });
 
-  it('calls loadAppInsights and trackPageView on init', async () => {
-    setEnv('InstrumentationKey=test-key');
-    const { getAppInsights } = await import('../app-insights-browser');
+  it('calls loadAppInsights on init but does NOT call trackPageView', async () => {
+    const { getAppInsights, initAppInsights } = await import('../app-insights-browser');
+    initAppInsights('InstrumentationKey=test-key');
     const ai = getAppInsights()!;
     expect(ai.loadAppInsights).toHaveBeenCalledTimes(1);
-    expect(ai.trackPageView).toHaveBeenCalledTimes(1);
+    // trackPageView is handled by enableAutoRouteTracking — not called manually
+    expect(ai.trackPageView).not.toHaveBeenCalled();
   });
 
-  it('returns the same instance on subsequent calls', async () => {
-    setEnv('InstrumentationKey=test-key');
-    const { getAppInsights } = await import('../app-insights-browser');
+  it('is idempotent — second initAppInsights call is a no-op', async () => {
+    const { getAppInsights, initAppInsights } = await import('../app-insights-browser');
+    initAppInsights('InstrumentationKey=test-key');
+    initAppInsights('InstrumentationKey=other-key');
+    const ai = getAppInsights()!;
+    // loadAppInsights should only be called once (idempotent)
+    expect(ai.loadAppInsights).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns the same instance on subsequent getAppInsights calls', async () => {
+    const { getAppInsights, initAppInsights } = await import('../app-insights-browser');
+    initAppInsights('InstrumentationKey=test-key');
     const ai1 = getAppInsights();
     const ai2 = getAppInsights();
     expect(ai1).toBe(ai2);
-    // loadAppInsights should only be called once (not twice)
-    expect(ai1!.loadAppInsights).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('track-events', () => {
   it('trackSearchPerformed calls trackEvent with correct name and properties', async () => {
-    setEnv('InstrumentationKey=test-key');
-    const { getAppInsights } = await import('../app-insights-browser');
+    const { getAppInsights, initAppInsights } = await import('../app-insights-browser');
+    initAppInsights('InstrumentationKey=test-key');
     const { trackSearchPerformed } = await import('../track-events');
     const ai = getAppInsights()!;
 
@@ -69,8 +74,8 @@ describe('track-events', () => {
   });
 
   it('trackApiViewed calls trackEvent with apiId and source', async () => {
-    setEnv('InstrumentationKey=test-key');
-    const { getAppInsights } = await import('../app-insights-browser');
+    const { getAppInsights, initAppInsights } = await import('../app-insights-browser');
+    initAppInsights('InstrumentationKey=test-key');
     const { trackApiViewed } = await import('../track-events');
     const ai = getAppInsights()!;
 
@@ -83,8 +88,8 @@ describe('track-events', () => {
   });
 
   it('trackChatMessageSent calls trackEvent', async () => {
-    setEnv('InstrumentationKey=test-key');
-    const { getAppInsights } = await import('../app-insights-browser');
+    const { getAppInsights, initAppInsights } = await import('../app-insights-browser');
+    initAppInsights('InstrumentationKey=test-key');
     const { trackChatMessageSent } = await import('../track-events');
     const ai = getAppInsights()!;
 
@@ -97,8 +102,8 @@ describe('track-events', () => {
   });
 
   it('trackFilterApplied calls trackEvent', async () => {
-    setEnv('InstrumentationKey=test-key');
-    const { getAppInsights } = await import('../app-insights-browser');
+    const { getAppInsights, initAppInsights } = await import('../app-insights-browser');
+    initAppInsights('InstrumentationKey=test-key');
     const { trackFilterApplied } = await import('../track-events');
     const ai = getAppInsights()!;
 
@@ -111,8 +116,8 @@ describe('track-events', () => {
   });
 
   it('trackSpecDownloaded calls trackEvent', async () => {
-    setEnv('InstrumentationKey=test-key');
-    const { getAppInsights } = await import('../app-insights-browser');
+    const { getAppInsights, initAppInsights } = await import('../app-insights-browser');
+    initAppInsights('InstrumentationKey=test-key');
     const { trackSpecDownloaded } = await import('../track-events');
     const ai = getAppInsights()!;
 
@@ -125,8 +130,8 @@ describe('track-events', () => {
   });
 
   it('trackError calls trackException', async () => {
-    setEnv('InstrumentationKey=test-key');
-    const { getAppInsights } = await import('../app-insights-browser');
+    const { getAppInsights, initAppInsights } = await import('../app-insights-browser');
+    initAppInsights('InstrumentationKey=test-key');
     const { trackError } = await import('../track-events');
     const ai = getAppInsights()!;
     const err = new Error('boom');
@@ -140,7 +145,7 @@ describe('track-events', () => {
   });
 
   it('track functions are no-ops when App Insights is not initialized', async () => {
-    setEnv(undefined);
+    // Do NOT call initAppInsights — SDK should stay dormant
     const { trackSearchPerformed } = await import('../track-events');
 
     // Should not throw

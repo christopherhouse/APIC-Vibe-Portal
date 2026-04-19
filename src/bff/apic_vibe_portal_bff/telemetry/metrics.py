@@ -1,6 +1,9 @@
 """Custom OpenTelemetry metrics for APIC Vibe Portal BFF.
 
-All metric instruments are created lazily and cached as module-level singletons.
+All metric instruments are created lazily on first use and then cached as
+module-level singletons so that repeated calls never create duplicate
+instruments (or trigger OTel SDK conflict warnings on hot paths).
+
 The meters are created with the ``opentelemetry.metrics`` API so they work
 whether the Azure Monitor distro is configured or not (in tests the SDK ships
 a no-op implementation).
@@ -13,6 +16,9 @@ from opentelemetry import metrics
 _METER_NAME = "apic.vibe.portal.bff"
 _meter: metrics.Meter | None = None
 
+# Instrument cache — keyed by metric name.  Cleared in tests via ``_instruments.clear()``.
+_instruments: dict[str, metrics.Histogram | metrics.Counter] = {}
+
 
 def get_meter() -> metrics.Meter:
     """Return the application-level OTel meter (created once)."""
@@ -22,6 +28,20 @@ def get_meter() -> metrics.Meter:
     return _meter
 
 
+def _histogram(name: str, description: str, unit: str) -> metrics.Histogram:
+    """Return a cached :class:`metrics.Histogram`, creating it on first call."""
+    if name not in _instruments:
+        _instruments[name] = get_meter().create_histogram(name=name, description=description, unit=unit)
+    return _instruments[name]  # type: ignore[return-value]
+
+
+def _counter(name: str, description: str, unit: str) -> metrics.Counter:
+    """Return a cached :class:`metrics.Counter`, creating it on first call."""
+    if name not in _instruments:
+        _instruments[name] = get_meter().create_counter(name=name, description=description, unit=unit)
+    return _instruments[name]  # type: ignore[return-value]
+
+
 # ---------------------------------------------------------------------------
 # Request / feature counters and histograms
 # ---------------------------------------------------------------------------
@@ -29,65 +49,37 @@ def get_meter() -> metrics.Meter:
 
 def get_api_center_requests_histogram() -> metrics.Histogram:
     """Histogram for Azure API Center call latency (ms)."""
-    return get_meter().create_histogram(
-        name="apic.api_center.requests",
-        description="Azure API Center call latency",
-        unit="ms",
-    )
+    return _histogram("apic.api_center.requests", "Azure API Center call latency", "ms")
 
 
 def get_search_queries_histogram() -> metrics.Histogram:
     """Histogram for search request latency and result volume (ms)."""
-    return get_meter().create_histogram(
-        name="apic.search.queries",
-        description="Search request latency and result volume",
-        unit="ms",
-    )
+    return _histogram("apic.search.queries", "Search request latency and result volume", "ms")
 
 
 def get_chat_messages_counter() -> metrics.Counter:
     """Counter for chat message count."""
-    return get_meter().create_counter(
-        name="apic.chat.messages",
-        description="Chat message count",
-        unit="{message}",
-    )
+    return _counter("apic.chat.messages", "Chat message count", "{message}")
 
 
 def get_chat_latency_histogram() -> metrics.Histogram:
     """Histogram for end-to-end chat response time (ms)."""
-    return get_meter().create_histogram(
-        name="apic.chat.latency",
-        description="End-to-end chat response time",
-        unit="ms",
-    )
+    return _histogram("apic.chat.latency", "End-to-end chat response time", "ms")
 
 
 def get_cache_lookups_counter() -> metrics.Counter:
     """Counter for cache hit/miss ratio."""
-    return get_meter().create_counter(
-        name="apic.cache.lookups",
-        description="Cache hit/miss count",
-        unit="{lookup}",
-    )
+    return _counter("apic.cache.lookups", "Cache hit/miss count", "{lookup}")
 
 
 def get_auth_failures_counter() -> metrics.Counter:
     """Counter for authentication failures."""
-    return get_meter().create_counter(
-        name="apic.auth.failures",
-        description="Authentication failure count",
-        unit="{failure}",
-    )
+    return _counter("apic.auth.failures", "Authentication failure count", "{failure}")
 
 
 def get_agent_invocations_counter() -> metrics.Counter:
     """Counter for agent invocations."""
-    return get_meter().create_counter(
-        name="apic.agent.invocations",
-        description="Agent invocation count",
-        unit="{invocation}",
-    )
+    return _counter("apic.agent.invocations", "Agent invocation count", "{invocation}")
 
 
 # ---------------------------------------------------------------------------
@@ -97,47 +89,27 @@ def get_agent_invocations_counter() -> metrics.Counter:
 
 def get_tokens_estimated_histogram() -> metrics.Histogram:
     """Histogram for pre-call token estimates (tiktoken)."""
-    return get_meter().create_histogram(
-        name="apic.llm.tokens.estimated",
-        description="Pre-call token estimate via tiktoken",
-        unit="{token}",
-    )
+    return _histogram("apic.llm.tokens.estimated", "Pre-call token estimate via tiktoken", "{token}")
 
 
 def get_tokens_prompt_histogram() -> metrics.Histogram:
     """Histogram for actual prompt tokens from OpenAI response."""
-    return get_meter().create_histogram(
-        name="apic.llm.tokens.prompt",
-        description="Actual prompt tokens from OpenAI response",
-        unit="{token}",
-    )
+    return _histogram("apic.llm.tokens.prompt", "Actual prompt tokens from OpenAI response", "{token}")
 
 
 def get_tokens_completion_histogram() -> metrics.Histogram:
     """Histogram for actual completion tokens from OpenAI response."""
-    return get_meter().create_histogram(
-        name="apic.llm.tokens.completion",
-        description="Actual completion tokens from OpenAI response",
-        unit="{token}",
-    )
+    return _histogram("apic.llm.tokens.completion", "Actual completion tokens from OpenAI response", "{token}")
 
 
 def get_tokens_total_histogram() -> metrics.Histogram:
     """Histogram for actual total tokens from OpenAI response."""
-    return get_meter().create_histogram(
-        name="apic.llm.tokens.total",
-        description="Actual total tokens (prompt + completion)",
-        unit="{token}",
-    )
+    return _histogram("apic.llm.tokens.total", "Actual total tokens (prompt + completion)", "{token}")
 
 
 def get_cost_estimated_histogram() -> metrics.Histogram:
     """Histogram for estimated LLM cost per request."""
-    return get_meter().create_histogram(
-        name="apic.llm.cost.estimated",
-        description="Estimated cost based on token pricing",
-        unit="USD",
-    )
+    return _histogram("apic.llm.cost.estimated", "Estimated cost based on token pricing", "USD")
 
 
 # ---------------------------------------------------------------------------
@@ -153,8 +125,4 @@ def get_cosmos_ru_histogram() -> metrics.Histogram:
         ``operation``: Operation type (``read``, ``create``, ``replace``,
             ``delete``, ``query``).
     """
-    return get_meter().create_histogram(
-        name="apic.cosmos.ru_cost",
-        description="Cosmos DB operation Request Unit (RU) cost",
-        unit="{RU}",
-    )
+    return _histogram("apic.cosmos.ru_cost", "Cosmos DB operation Request Unit (RU) cost", "{RU}")

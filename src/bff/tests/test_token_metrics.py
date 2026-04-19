@@ -55,6 +55,7 @@ class TestRecordEstimatedTokens:
         import apic_vibe_portal_bff.telemetry.metrics as m
 
         m._meter = None
+        m._instruments.clear()
 
     def test_records_to_estimated_histogram(self) -> None:
         import apic_vibe_portal_bff.telemetry.metrics as m
@@ -90,6 +91,7 @@ class TestRecordActualTokenUsage:
         import apic_vibe_portal_bff.telemetry.metrics as m
 
         m._meter = None
+        m._instruments.clear()
 
     def _make_usage(self, prompt: int = 100, completion: int = 50, total: int | None = None) -> MagicMock:
         usage = MagicMock()
