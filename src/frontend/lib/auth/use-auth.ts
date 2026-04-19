@@ -40,6 +40,10 @@ export interface UseAuthReturn {
  * When MSAL is not configured (no `clientId`), the hook treats the session as
  * authenticated so that data-fetching hooks gated by `isAuthenticated` still
  * work in development and testing environments where Entra ID is not set up.
+ *
+ * In Playwright E2E tests, set `window.__PLAYWRIGHT_USER__` via
+ * `page.evaluate()` or `page.addInitScript()` to inject a mock AuthUser.
+ * This value is only read when MSAL is not configured (clientId is empty).
  */
 export function useAuth(): UseAuthReturn {
   const { instance, inProgress } = useMsal();
@@ -52,13 +56,21 @@ export function useAuth(): UseAuthReturn {
 
   const user: AuthUser | null = (() => {
     const account = instance.getActiveAccount();
-    if (!account) return null;
-    return {
-      name: account.name ?? '',
-      email: account.username ?? '',
-      id: account.localAccountId ?? '',
-      roles: (account.idTokenClaims?.roles as string[] | undefined) ?? [],
-    };
+    if (account) {
+      return {
+        name: account.name ?? '',
+        email: account.username ?? '',
+        id: account.localAccountId ?? '',
+        roles: (account.idTokenClaims?.roles as string[] | undefined) ?? [],
+      };
+    }
+    // When MSAL is not configured, allow Playwright tests to inject a mock user
+    // by setting window.__PLAYWRIGHT_USER__ before the page loads.
+    if (!isMsalConfigured && typeof window !== 'undefined') {
+      const override = (window as Window & { __PLAYWRIGHT_USER__?: AuthUser }).__PLAYWRIGHT_USER__;
+      if (override) return override;
+    }
+    return null;
   })();
 
   const login = useCallback(async () => {

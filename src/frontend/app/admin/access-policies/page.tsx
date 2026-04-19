@@ -173,7 +173,7 @@ export default function AccessPoliciesPage() {
   return (
     <Container maxWidth="xl" sx={{ py: 2 }}>
       {/* Page header */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3, alignItems: { sm: 'center' } }}>
         <Box sx={{ flex: 1 }}>
           <Typography variant="h4" component="h1" gutterBottom>
             API Access Policies

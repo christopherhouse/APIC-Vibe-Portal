@@ -104,7 +104,7 @@ export default function Sidebar() {
         <>
           <Divider />
           <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
-            <Typography variant="overline" color="text.secondary" fontSize="0.65rem">
+            <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
               Admin
             </Typography>
           </Box>

@@ -82,7 +82,7 @@ export default function PoliciesTable({
               data-testid={`policy-row-${policy.apiName}`}
             >
               <TableCell>
-                <Typography variant="body2" fontWeight={500}>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
                   {policy.apiName}
                 </Typography>
               </TableCell>
