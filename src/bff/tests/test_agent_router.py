@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 
 import pytest
 
@@ -29,7 +29,7 @@ def _make_agent(name: AgentName = AgentName.API_DISCOVERY, content: str = "Agent
         def description(self) -> str:
             return "Stub agent"
 
-        def run(self, request: AgentRequest) -> AgentResponse:
+        async def run(self, request: AgentRequest) -> AgentResponse:
             return AgentResponse(
                 agent_name=name,
                 content=content,
@@ -37,7 +37,7 @@ def _make_agent(name: AgentName = AgentName.API_DISCOVERY, content: str = "Agent
                 citations=[Citation(title="Test API", url="/api/catalog/test-api")],
             )
 
-        def stream(self, request: AgentRequest) -> Generator[str]:
+        async def stream(self, request: AgentRequest) -> AsyncGenerator[str]:
             yield content
 
     return _StubAgent()
@@ -112,50 +112,56 @@ class TestAgentRouterRoute:
 
 
 class TestAgentRouterDispatch:
-    def test_dispatch_calls_agent_run(self):
+    @pytest.mark.asyncio
+    async def test_dispatch_calls_agent_run(self):
         registry = AgentRegistry()
         agent = _make_agent(content="Here are your APIs")
         registry.register(agent)
         router = AgentRouter(registry)
 
         request = _make_request("What APIs exist?", session_id="sess-1")
-        response = router.dispatch(request)
+        response = await router.dispatch(request)
 
         assert response.content == "Here are your APIs"
         assert response.agent_name == AgentName.API_DISCOVERY
         assert response.session_id == "sess-1"
 
-    def test_dispatch_no_agent_raises(self):
+    @pytest.mark.asyncio
+    async def test_dispatch_no_agent_raises(self):
         registry = AgentRegistry()  # empty — no agents registered
         router = AgentRouter(registry)
         with pytest.raises(ValueError, match="No agent registered"):
-            router.dispatch(_make_request("help"))
+            await router.dispatch(_make_request("help"))
 
-    def test_dispatch_returns_citations(self):
+    @pytest.mark.asyncio
+    async def test_dispatch_returns_citations(self):
         registry = AgentRegistry()
         registry.register(_make_agent())
         router = AgentRouter(registry)
 
-        response = router.dispatch(_make_request("payments API"))
+        response = await router.dispatch(_make_request("payments API"))
         assert response.citations is not None
         assert len(response.citations) > 0
         assert response.citations[0].title == "Test API"
 
 
 class TestAgentRouterDispatchStream:
-    def test_dispatch_stream_yields_content(self):
+    @pytest.mark.asyncio
+    async def test_dispatch_stream_yields_content(self):
         registry = AgentRegistry()
         registry.register(_make_agent(content="streaming content"))
         router = AgentRouter(registry)
 
-        chunks = list(router.dispatch_stream(_make_request("stream me")))
+        chunks = [chunk async for chunk in router.dispatch_stream(_make_request("stream me"))]
         assert chunks == ["streaming content"]
 
-    def test_dispatch_stream_no_agent_raises(self):
+    @pytest.mark.asyncio
+    async def test_dispatch_stream_no_agent_raises(self):
         registry = AgentRegistry()
         router = AgentRouter(registry)
         with pytest.raises(ValueError, match="No agent registered"):
-            list(router.dispatch_stream(_make_request("stream me")))
+            async for _ in router.dispatch_stream(_make_request("stream me")):
+                pass
 
 
 # ---------------------------------------------------------------------------

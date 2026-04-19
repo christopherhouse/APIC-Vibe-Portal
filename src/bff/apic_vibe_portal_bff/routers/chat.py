@@ -78,8 +78,7 @@ def _get_chat_service() -> AIChatService:
         # Fail fast if Foundry is not configured or init fails.
         if not settings.foundry_project_endpoint.strip():
             raise RuntimeError(
-                "foundry_project_endpoint is not configured — "
-                "the agent router requires a Foundry project endpoint"
+                "foundry_project_endpoint is not configured — the agent router requires a Foundry project endpoint"
             )
 
         from apic_vibe_portal_bff.agents.agent_registry import AgentRegistry

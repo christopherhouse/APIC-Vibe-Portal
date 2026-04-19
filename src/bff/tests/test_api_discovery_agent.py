@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio  # noqa: F401 — registers asyncio mode
@@ -80,7 +80,8 @@ def mock_api_center():
 def agent(mock_maf_client, mock_search, mock_api_center):
     """Return an ApiDiscoveryAgent with a mock MAF agent that returns a fixed response."""
     mock_maf_agent = MagicMock()
-    mock_maf_agent.run.return_value = "Here are the APIs you requested."
+    # Agent.run() is awaited, so the mock must return a coroutine
+    mock_maf_agent.run = AsyncMock(return_value="Here are the APIs you requested.")
 
     with patch("agent_framework.Agent", return_value=mock_maf_agent):
         a = ApiDiscoveryAgent(
@@ -112,23 +113,26 @@ class TestApiDiscoveryAgentIdentity:
 
 
 class TestApiDiscoveryAgentRun:
-    def test_run_returns_agent_response(self, agent):
+    @pytest.mark.asyncio
+    async def test_run_returns_agent_response(self, agent):
         request = AgentRequest(message="Find me payment APIs", session_id="sess-1")
-        response = agent.run(request)
+        response = await agent.run(request)
         assert isinstance(response, AgentResponse)
         assert response.agent_name == AgentName.API_DISCOVERY
 
-    def test_run_uses_maf_agent(self, agent):
+    @pytest.mark.asyncio
+    async def test_run_uses_maf_agent(self, agent):
         request = AgentRequest(message="What APIs do you have?", session_id="sess-1")
-        agent.run(request)
+        await agent.run(request)
         agent._agent.run.assert_called_once()
         call_kwargs = agent._agent.run.call_args
         assert call_kwargs.kwargs.get("messages") == "What APIs do you have?"
 
-    def test_run_session_id_is_consistent(self, agent):
+    @pytest.mark.asyncio
+    async def test_run_session_id_is_consistent(self, agent):
         # Session ID is generated once and used for both MAF call and response.
         request = AgentRequest(message="Hello", session_id=None)
-        response = agent.run(request)
+        response = await agent.run(request)
         assert response.session_id  # non-empty UUID
         # The same session ID must have been passed to Agent.run()
         call_kwargs = agent._agent.run.call_args
@@ -136,24 +140,26 @@ class TestApiDiscoveryAgentRun:
         assert session_arg is not None
         assert session_arg.session_id == response.session_id
 
-    def test_run_preserves_explicit_session_id(self, agent):
+    @pytest.mark.asyncio
+    async def test_run_preserves_explicit_session_id(self, agent):
         request = AgentRequest(message="Hello", session_id="my-session")
-        response = agent.run(request)
+        response = await agent.run(request)
         assert response.session_id == "my-session"
 
-    def test_run_citations_from_tool_results(self, agent, mock_search):
+    @pytest.mark.asyncio
+    async def test_run_citations_from_tool_results(self, agent, mock_search):
         """Citations are built from search_apis tool results captured during agent run."""
         search_results = mock_search.search.return_value["results"]
 
         # Simulate search_apis tool being invoked during MAF agent.run()
-        def side_effect_run(**kwargs):
+        async def side_effect_run(**kwargs):
             agent._request_context.last_search_results = search_results
             return "Here are the APIs you requested."
 
         agent._agent.run.side_effect = side_effect_run
 
         request = AgentRequest(message="weather API", session_id="sess-1")
-        response = agent.run(request)
+        response = await agent.run(request)
 
         # No extra search call — citations come from the tool-captured results
         mock_search.search.assert_not_called()
@@ -161,34 +167,38 @@ class TestApiDiscoveryAgentRun:
         titles = [c.title for c in response.citations]
         assert any("weather-api" in t for t in titles)
 
-    def test_run_no_citations_when_search_tool_not_invoked(self, agent, mock_search):
+    @pytest.mark.asyncio
+    async def test_run_no_citations_when_search_tool_not_invoked(self, agent, mock_search):
         """When search_apis is not invoked, no extra search call and no citations."""
         request = AgentRequest(message="Hello", session_id="sess-1")
         # Do NOT populate last_search_results (tool was not called)
-        response = agent.run(request)
+        response = await agent.run(request)
         # No search calls
         mock_search.search.assert_not_called()
         # No citations because search_apis was not invoked
         assert response.citations is None
 
-    def test_run_empty_accessible_ids_returns_no_citations(self, agent):
+    @pytest.mark.asyncio
+    async def test_run_empty_accessible_ids_returns_no_citations(self, agent):
         request = AgentRequest(message="APIs", session_id="sess-1", accessible_api_ids=[])
-        response = agent.run(request)
+        response = await agent.run(request)
         assert response.citations is None or len(response.citations) == 0
 
-    def test_run_passes_accessible_api_ids_to_maf(self, agent):
+    @pytest.mark.asyncio
+    async def test_run_passes_accessible_api_ids_to_maf(self, agent):
         """accessible_api_ids is forwarded to Agent.run() via function_invocation_kwargs."""
         request = AgentRequest(message="APIs", session_id="sess-1", accessible_api_ids=["api-a"])
-        agent.run(request)
+        await agent.run(request)
         call_kwargs = agent._agent.run.call_args
         fik = call_kwargs.kwargs.get("function_invocation_kwargs")
         assert fik is not None
         assert fik.get("accessible_api_ids") == ["api-a"]
 
-    def test_run_thread_local_cleaned_up_after_run(self, agent):
+    @pytest.mark.asyncio
+    async def test_run_thread_local_cleaned_up_after_run(self, agent):
         """Thread-local is cleared after run() so leaks between requests are impossible."""
         request = AgentRequest(message="Hello", session_id="sess-1", accessible_api_ids=["api-a"])
-        agent.run(request)
+        await agent.run(request)
         assert not hasattr(agent._request_context, "accessible_api_ids")
         assert not hasattr(agent._request_context, "last_search_results")
 
@@ -199,9 +209,10 @@ class TestApiDiscoveryAgentRun:
 
 
 class TestApiDiscoveryAgentStream:
-    def test_stream_yields_content(self, agent):
+    @pytest.mark.asyncio
+    async def test_stream_yields_content(self, agent):
         request = AgentRequest(message="Find APIs", session_id="sess-1")
-        chunks = list(agent.stream(request))
+        chunks = [chunk async for chunk in agent.stream(request)]
         assert len(chunks) > 0
         assert "".join(chunks) == "Here are the APIs you requested."
 
