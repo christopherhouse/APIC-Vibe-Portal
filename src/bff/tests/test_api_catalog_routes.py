@@ -171,7 +171,7 @@ class TestListApis:
         await client.get("/api/catalog", headers=_AUTH_HEADERS)
 
         mock_service.list_apis.assert_called_once_with(
-            page=1, page_size=20, filter_str=None, sort_field=None, sort_reverse=False
+            page=1, page_size=20, filter_str=None, sort_field=None, sort_reverse=False, accessible_api_ids=[]
         )
 
     @pytest.mark.asyncio
@@ -181,7 +181,7 @@ class TestListApis:
         await client.get("/api/catalog?page=2&pageSize=50", headers=_AUTH_HEADERS)
 
         mock_service.list_apis.assert_called_once_with(
-            page=2, page_size=50, filter_str=None, sort_field=None, sort_reverse=False
+            page=2, page_size=50, filter_str=None, sort_field=None, sort_reverse=False, accessible_api_ids=[]
         )
 
     @pytest.mark.asyncio

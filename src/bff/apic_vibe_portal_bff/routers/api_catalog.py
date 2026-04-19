@@ -31,6 +31,7 @@ from apic_vibe_portal_bff.clients.api_center_client import (
     ApiCenterNotFoundError,
 )
 from apic_vibe_portal_bff.middleware.rbac import require_any_role
+from apic_vibe_portal_bff.middleware.security_trimming import make_accessible_ids_dep
 from apic_vibe_portal_bff.models.api_center import (
     ApiDefinition,
     ApiDeployment,
@@ -40,7 +41,7 @@ from apic_vibe_portal_bff.models.api_center import (
     ApiSpecification,
     ApiVersion,
 )
-from apic_vibe_portal_bff.services.api_catalog_service import ApiCatalogService
+from apic_vibe_portal_bff.services.api_catalog_service import ApiAccessDeniedError, ApiCatalogService
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +230,7 @@ def list_apis(
     lifecycle: ApiLifecycle | None = Query(default=None, description="Filter by lifecycle stage"),  # noqa: B008
     kind: ApiKind | None = Query(default=None, description="Filter by API kind"),  # noqa: B008
     service: ApiCatalogService = Depends(_get_service),  # noqa: B008
+    accessible_api_ids: list[str] | None = Depends(make_accessible_ids_dep()),  # noqa: B008
 ) -> ApiResponse[list[ApiDefinition]]:
     """List APIs from the catalog with pagination, filtering, and sorting."""
     start = time.monotonic()
@@ -241,6 +243,7 @@ def list_apis(
             filter_str=filter_str,
             sort_field=sort_attr,
             sort_reverse=(direction == SortDirection.DESC),
+            accessible_api_ids=accessible_api_ids,
         )
         meta = PaginationMetaOut(
             page=result.pagination.page,
@@ -264,12 +267,15 @@ def list_apis(
 def get_api(
     api_id: str,
     service: ApiCatalogService = Depends(_get_service),  # noqa: B008
+    accessible_api_ids: list[str] | None = Depends(make_accessible_ids_dep()),  # noqa: B008
 ) -> ApiResponse[ApiDefinition]:
     """Get detailed information for a specific API."""
     start = time.monotonic()
     try:
-        definition = service.get_api(api_id)
+        definition = service.get_api(api_id, accessible_api_ids=accessible_api_ids)
         return ApiResponse(data=definition)
+    except ApiAccessDeniedError:
+        _raise_error(403, "FORBIDDEN", f"Access to API '{api_id}' is not permitted")
     except ApiCenterNotFoundError:
         _raise_error(404, "NOT_FOUND", f"API '{api_id}' not found")
     except ApiCenterClientError as exc:

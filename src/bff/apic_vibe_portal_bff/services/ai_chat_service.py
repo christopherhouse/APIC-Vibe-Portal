@@ -447,17 +447,36 @@ class AIChatService:
     # RAG retrieval (direct, for non-agent path and citations)
     # ------------------------------------------------------------------
 
-    def _retrieve_context(self, query: str) -> tuple[str, list[Citation]]:
+    def _retrieve_context(self, query: str, accessible_api_ids: list[str] | None = None) -> tuple[str, list[Citation]]:
         """Retrieve relevant API documents from AI Search.
 
-        Returns (context_text, citations).
+        Parameters
+        ----------
+        query:
+            The user's question to search for.
+        accessible_api_ids:
+            When ``None``, no security filter is applied (admin bypass).
+            When a list, RAG retrieval is restricted to the named APIs.
+
+        Returns
+        -------
+        (context_text, citations).
         """
+        # Build an OData filter for security trimming.
+        security_filter: str | None = None
+        if accessible_api_ids is not None:
+            if not accessible_api_ids:
+                return "", []  # No accessible APIs → empty context
+            ids_csv = ",".join(accessible_api_ids)
+            security_filter = f"search.in(apiName, '{ids_csv}', ',')"
+
         try:
             raw = self._search.search(
                 search_text=query,
                 top=_RAG_TOP_K,
                 query_type="semantic",
                 semantic_query=query,
+                filter_expression=security_filter,
             )
             results = raw.get("results", [])
         except AISearchClientError:
@@ -582,8 +601,22 @@ class AIChatService:
     # Chat (synchronous)
     # ------------------------------------------------------------------
 
-    def chat(self, user_message: str, session_id: str | None = None) -> ChatResponse:
+    def chat(
+        self, user_message: str, session_id: str | None = None, accessible_api_ids: list[str] | None = None
+    ) -> ChatResponse:
         """Process a chat message through the RAG pipeline.
+
+        Parameters
+        ----------
+        user_message:
+            The user's input message.
+        session_id:
+            Optional session ID for conversation continuity.
+        accessible_api_ids:
+            When ``None``, no security filter is applied to RAG retrieval
+            (admin bypass).  When a list, the RAG context and citations are
+            restricted to the named APIs so the AI cannot reference
+            inaccessible APIs.
 
         Returns a :class:`ChatResponse` with the assistant's answer and citations.
         """
@@ -593,8 +626,8 @@ class AIChatService:
         if not session.check_rate_limit():
             raise ChatRateLimitError(session.session_id)
 
-        # 1. Retrieve context
-        context, citations = self._retrieve_context(user_message)
+        # 1. Retrieve context (with security filter)
+        context, citations = self._retrieve_context(user_message, accessible_api_ids)
 
         # 2. Build prompt
         messages = self._build_messages(session, user_message, context)
@@ -634,8 +667,20 @@ class AIChatService:
         self,
         user_message: str,
         session_id: str | None = None,
+        accessible_api_ids: list[str] | None = None,
     ) -> Generator[str]:
         """Stream a chat response as SSE events.
+
+        Parameters
+        ----------
+        user_message:
+            The user's input message.
+        session_id:
+            Optional session ID for conversation continuity.
+        accessible_api_ids:
+            When ``None``, no security filter is applied to RAG retrieval
+            (admin bypass).  When a list, RAG context is restricted to
+            the named APIs.
 
         Yields SSE-formatted strings for each token chunk.
         The final event includes citations and metadata.
@@ -646,8 +691,8 @@ class AIChatService:
             yield f"data: {json.dumps({'error': 'Rate limit exceeded', 'sessionId': session.session_id})}\n\n"
             return
 
-        # 1. Retrieve context
-        context, citations = self._retrieve_context(user_message)
+        # 1. Retrieve context (with security filter)
+        context, citations = self._retrieve_context(user_message, accessible_api_ids)
 
         # 2. Build prompt
         messages = self._build_messages(session, user_message, context)

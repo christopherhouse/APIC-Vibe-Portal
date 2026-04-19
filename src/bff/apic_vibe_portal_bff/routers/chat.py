@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from apic_vibe_portal_bff.clients.ai_search_client import AISearchClient
 from apic_vibe_portal_bff.clients.openai_client import OpenAIClient, OpenAIClientError
 from apic_vibe_portal_bff.middleware.rbac import require_any_role
+from apic_vibe_portal_bff.middleware.security_trimming import make_accessible_ids_dep
 from apic_vibe_portal_bff.models.chat import (
     ChatHistoryResponse,
     ChatRequest,
@@ -146,15 +147,19 @@ router = APIRouter(tags=["chat"])
 def chat(
     request: ChatRequest,
     service: AIChatService = Depends(_get_chat_service),  # noqa: B008
+    accessible_api_ids: list[str] | None = Depends(make_accessible_ids_dep()),  # noqa: B008
 ) -> ChatResponse:
     """Send a chat message and receive an AI-generated response.
 
-    The response is grounded in the API catalog via RAG retrieval.
+    The response is grounded in the API catalog via RAG retrieval.  The RAG
+    context is restricted to APIs the authenticated user may access so the AI
+    cannot reference inaccessible APIs.
     """
     try:
         return service.chat(
             user_message=request.message,
             session_id=request.session_id,
+            accessible_api_ids=accessible_api_ids,
         )
     except ChatRateLimitError:
         _raise_error(429, "RATE_LIMIT_EXCEEDED", "Too many messages. Please wait before sending another.")
@@ -182,16 +187,19 @@ def chat(
 def chat_stream(
     request: ChatRequest,
     service: AIChatService = Depends(_get_chat_service),  # noqa: B008
+    accessible_api_ids: list[str] | None = Depends(make_accessible_ids_dep()),  # noqa: B008
 ) -> StreamingResponse:
     """Send a chat message and receive a streaming SSE response.
 
     Tokens are streamed as they are generated, with a final event
-    containing citations and metadata.
+    containing citations and metadata.  The RAG context is restricted to
+    APIs the authenticated user may access.
     """
     return StreamingResponse(
         service.chat_stream(
             user_message=request.message,
             session_id=request.session_id,
+            accessible_api_ids=accessible_api_ids,
         ),
         media_type="text/event-stream",
         headers={

@@ -65,29 +65,52 @@ def _escape_odata_value(value: str) -> str:
     return value.replace("'", "''")
 
 
-def _build_odata_filter(filters: SearchFilters | None) -> str | None:
+def _build_odata_filter(filters: SearchFilters | None, accessible_api_ids: list[str] | None = None) -> str | None:
     """Build an OData filter expression from :class:`SearchFilters`.
 
     Each field supports multi-value OR filters.  Multiple fields are combined
     with AND.  Values are validated and escaped to prevent OData injection.
+
+    Parameters
+    ----------
+    filters:
+        User-supplied search filters.
+    accessible_api_ids:
+        When ``None``, no security filter is applied (admin bypass).
+        When a list, adds a ``search.in()`` clause restricting results to the
+        named APIs.  An empty list produces a filter that matches nothing,
+        effectively returning zero results.
     """
-    if filters is None:
+    if filters is None and accessible_api_ids is None:
         return None
 
     parts: list[str] = []
 
-    if filters.kind:
-        kind_clauses = " or ".join(f"kind eq '{_escape_odata_value(v)}'" for v in filters.kind)
-        parts.append(f"({kind_clauses})")
+    if filters is not None:
+        if filters.kind:
+            kind_clauses = " or ".join(f"kind eq '{_escape_odata_value(v)}'" for v in filters.kind)
+            parts.append(f"({kind_clauses})")
 
-    if filters.lifecycle_stage:
-        lc_clauses = " or ".join(f"lifecycleStage eq '{_escape_odata_value(v)}'" for v in filters.lifecycle_stage)
-        parts.append(f"({lc_clauses})")
+        if filters.lifecycle_stage:
+            lc_clauses = " or ".join(f"lifecycleStage eq '{_escape_odata_value(v)}'" for v in filters.lifecycle_stage)
+            parts.append(f"({lc_clauses})")
 
-    if filters.tags:
-        # Collection fields use any()
-        tag_clauses = " or ".join(f"tags/any(t: t eq '{_escape_odata_value(v)}')" for v in filters.tags)
-        parts.append(f"({tag_clauses})")
+        if filters.tags:
+            # Collection fields use any()
+            tag_clauses = " or ".join(f"tags/any(t: t eq '{_escape_odata_value(v)}')" for v in filters.tags)
+            parts.append(f"({tag_clauses})")
+
+    # Security trimming: restrict to accessible API names.
+    if accessible_api_ids is not None:
+        if not accessible_api_ids:
+            # No accessible APIs — return a filter that matches nothing.
+            parts.append("apiName eq '__no_access__'")
+        else:
+            # Build a search.in() expression.  Values are API names (short
+            # identifiers) which only contain alphanumerics, hyphens, and
+            # underscores — safe to join without extra escaping.
+            ids_csv = ",".join(accessible_api_ids)
+            parts.append(f"search.in(apiName, '{ids_csv}', ',')")
 
     return " and ".join(parts) if parts else None
 
@@ -156,7 +179,7 @@ class SearchService:
     def __init__(self, client: AISearchClient) -> None:
         self._client = client
 
-    def search(self, request: SearchRequest) -> SearchResponse:
+    def search(self, request: SearchRequest, accessible_api_ids: list[str] | None = None) -> SearchResponse:
         """Execute a search and return a structured response.
 
         Uses semantic ranking for natural-language understanding and
@@ -167,13 +190,16 @@ class SearchService:
         request:
             The search request containing query text, optional filters,
             pagination, and sort preferences.
+        accessible_api_ids:
+            When ``None``, no security filter is applied (admin bypass).
+            When a list, search results are restricted to the named APIs.
         """
         start = time.monotonic()
 
         pagination = request.pagination or PaginationParams()
         skip = (pagination.page - 1) * pagination.page_size
 
-        filter_expr = _build_odata_filter(request.filters)
+        filter_expr = _build_odata_filter(request.filters, accessible_api_ids)
 
         # Determine query type — always use semantic for best results
         query_type = "semantic"
@@ -210,13 +236,16 @@ class SearchService:
             queryDuration=round(elapsed_ms, 2),
         )
 
-    def suggest(self, prefix: str) -> SuggestResponse:
+    def suggest(self, prefix: str, accessible_api_ids: list[str] | None = None) -> SuggestResponse:
         """Return autocomplete suggestions for the given prefix.
 
         Parameters
         ----------
         prefix:
             The text prefix to generate suggestions from.
+        accessible_api_ids:
+            When ``None``, no security filter is applied (admin bypass).
+            When a list, only APIs with names in the list are suggested.
         """
         safe_prefix = sanitize_for_log(prefix)
         logger.debug(
@@ -224,7 +253,16 @@ class SearchService:
             safe_prefix,
             extra={"prefix": safe_prefix},
         )
-        raw_suggestions = self._client.suggest(search_text=prefix, top=5)
+
+        # Build a filter string for the suggest call.
+        suggest_filter: str | None = None
+        if accessible_api_ids is not None:
+            if not accessible_api_ids:
+                return SuggestResponse(suggestions=[], query_prefix=prefix)
+            ids_csv = ",".join(accessible_api_ids)
+            suggest_filter = f"search.in(apiName, '{ids_csv}', ',')"
+
+        raw_suggestions = self._client.suggest(search_text=prefix, top=5, filter_expression=suggest_filter)
 
         suggestions: list[SuggestResult] = []
         for item in raw_suggestions:

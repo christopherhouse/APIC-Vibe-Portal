@@ -109,6 +109,7 @@ class TestChatEndpoint:
         mock_chat_service.chat.assert_called_once_with(
             user_message="Follow up",
             session_id="existing-session",
+            accessible_api_ids=[],
         )
 
     @patch("apic_vibe_portal_bff.middleware.auth.validate_token")

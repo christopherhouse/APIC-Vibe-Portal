@@ -89,6 +89,10 @@ class Settings(BaseSettings):
         default="analytics-events",
         description="Cosmos DB container name for analytics events",
     )
+    cosmos_db_access_policies_container: str = Field(
+        default="api-access-policies",
+        description="Cosmos DB container name for API access policies (security trimming)",
+    )
 
     # --- Entra ID (authentication) ---------------------------------------
     bff_entra_tenant_id: str = Field(default="", description="Entra ID (Azure AD) tenant ID")
