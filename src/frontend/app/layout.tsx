@@ -3,6 +3,7 @@ import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
+import { Suspense } from 'react';
 import theme from '@/lib/theme';
 import AuthProvider from '@/lib/auth/auth-provider';
 import Header from '@/components/layout/Header';
@@ -10,6 +11,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import Footer from '@/components/layout/Footer';
 import { ChatProvider } from '@/lib/chat-context';
 import ChatSidePanel from '@/app/chat/components/ChatSidePanel';
+import TelemetryProvider from '@/components/TelemetryProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -24,6 +26,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppRouterCacheProvider>
           <ThemeProvider theme={theme}>
             <CssBaseline />
+            <Suspense>
+              <TelemetryProvider />
+            </Suspense>
             <AuthProvider>
               <ChatProvider>
                 <Box sx={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>

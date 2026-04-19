@@ -1,6 +1,6 @@
 # 019 - Phase 1 MVP: End-to-End OpenTelemetry Observability (Azure Monitor)
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -197,18 +197,31 @@ Define an App Insights workbook or dashboard covering:
 | Date | Status         | Author | Notes        |
 | ---- | -------------- | ------ | ------------ |
 | —    | 🔲 Not Started | —      | Task created |
+| 2026-04-19 | ✅ Complete | @copilot | BFF `telemetry/` module (OTel setup, custom metrics, token metrics, middleware), indexer telemetry, frontend App Insights SDK + typed tracking helpers, 43 new tests (32 BFF + 11 frontend) |
 
 ### Technical Decisions
 
-_No technical decisions recorded yet._
+- `azure-monitor-opentelemetry` is imported inside `try/except` blocks so the package is optional and tests run without it installed
+- `tiktoken` fallback to `chars / 4` estimation when the model encoding is not found, to avoid crashing on unsupported model names
+- OTel `_meter` singleton is reset per-test by setting `metrics._meter = None`, keeping tests isolated
+- Frontend App Insights SDK wrapped in a singleton factory (`getAppInsights()`) that is a no-op when `NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING` is unset
+- `TelemetryProvider` is a `"use client"` component rendered inside `<Suspense>` in the root layout (required because it uses `useSearchParams()`)
+- Indexer instrumented with a root span `indexer.full_reindex` to wrap the entire job invocation
+- OTel trace context (`trace_id`, `span_id`) injected into both BFF structlog and indexer structlog via a custom processor
 
 ### Deviations from Plan
 
-_No deviations from the original plan._
+- Indexer container instrumented in addition to the BFF (per agent instructions) — not in the original spec but consistent with the architecture goal
+- Frontend `TelemetryProvider` is a dedicated client component rather than inline in `layout.tsx` to keep the server component clean
 
 ### Validation Results
 
-_No validation results yet._
+- **BFF tests**: 522 passed (490 pre-existing + 32 new telemetry tests) — `uv run pytest` ✅
+- **BFF lint**: `ruff check` + `ruff format --check` all pass ✅
+- **Indexer tests**: 83 passed — `uv run pytest` ✅
+- **Indexer lint**: `ruff check` + `ruff format --check` all pass ✅
+- **Frontend tests**: 198 passed (187 pre-existing + 11 new telemetry tests); 14 pre-existing failures (unrelated `@apic-vibe-portal/shared` module resolution in Jest) ✅
+- **Frontend lint**: `eslint .` passes ✅
 
 ## Coding Agent Prompt
 

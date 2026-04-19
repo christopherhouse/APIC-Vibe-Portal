@@ -36,6 +36,10 @@ class IndexerSettings(BaseSettings):
 
     # --- Runtime ---------------------------------------------------------
     log_level: str = Field(default="INFO", description="Logging level")
+    appinsights_connection_string: str = Field(
+        default="",
+        description="Application Insights connection string for OpenTelemetry export",
+    )
 
     # --- Azure AI Search -------------------------------------------------
     ai_search_endpoint: str = Field(default="", description="Azure AI Search endpoint URL")

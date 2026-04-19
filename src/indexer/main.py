@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from typing import Any
 
 import structlog
 from apic_client import ApiCenterDataPlaneClient
@@ -27,6 +28,22 @@ from indexer.config import get_settings
 from indexer.embedding_service import EmbeddingService
 from indexer.index_schema import build_index_schema
 from indexer.indexer_service import IndexerService
+from indexer.telemetry import configure_telemetry, get_tracer
+
+
+def _add_otel_trace_context(logger: Any, method: str, event_dict: dict[str, Any]) -> dict[str, Any]:
+    """Inject the current OTel trace_id and span_id into the log record."""
+    try:
+        from opentelemetry import trace as otel_trace
+
+        span = otel_trace.get_current_span()
+        ctx = span.get_span_context()
+        if ctx and ctx.is_valid:
+            event_dict["trace_id"] = format(ctx.trace_id, "032x")
+            event_dict["span_id"] = format(ctx.span_id, "016x")
+    except Exception:  # noqa: BLE001
+        pass
+    return event_dict
 
 
 def _configure_logging(log_level: str) -> None:
@@ -38,6 +55,13 @@ def _configure_logging(log_level: str) -> None:
         stream=sys.stdout,
     )
     structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.stdlib.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso"),
+            _add_otel_trace_context,
+            structlog.processors.JSONRenderer(),
+        ],
         wrapper_class=structlog.make_filtering_bound_logger(resolved_level),
     )
 
@@ -55,6 +79,11 @@ def run() -> None:
     settings = get_settings()
     _configure_logging(settings.log_level)
 
+    # Initialise telemetry before any Azure SDK calls so that all outbound
+    # HTTP spans are captured automatically.
+    configure_telemetry(connection_string=settings.appinsights_connection_string or None)
+
+    tracer = get_tracer()
     log = structlog.get_logger()
     log.info(
         "Indexer job starting",
@@ -113,16 +142,18 @@ def run() -> None:
         workspace_name=settings.api_center_workspace_name,
     )
 
-    # --- Ensure index schema is up to date --------------------------------
-    schema = build_index_schema(
-        index_name=settings.ai_search_index_name,
-        embedding_dimensions=settings.openai_embedding_dimensions,
-    )
-    indexer.ensure_index(schema)
+    with tracer.start_as_current_span("indexer.full_reindex") as span:
+        # --- Ensure index schema is up to date --------------------------------
+        schema = build_index_schema(
+            index_name=settings.ai_search_index_name,
+            embedding_dimensions=settings.openai_embedding_dimensions,
+        )
+        indexer.ensure_index(schema)
 
-    # --- Run full reindex ------------------------------------------------
-    count = indexer.full_reindex()
-    log.info("Indexer job complete", documents_indexed=count)
+        # --- Run full reindex ------------------------------------------------
+        count = indexer.full_reindex()
+        span.set_attribute("indexer.documents_indexed", count)
+        log.info("Indexer job complete", documents_indexed=count)
 
 
 if __name__ == "__main__":
