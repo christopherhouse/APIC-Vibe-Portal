@@ -77,7 +77,7 @@ Complete usage analytics, metadata scoring, performance optimization, and launch
 | [017](017-openai-integration.md)                   | Azure OpenAI Service Integration (BFF)          | ✅     | 002, 006, 007, 013, 014, 016 |
 | [018](018-frontend-chat-ui.md)                     | AI Chat Interface (Frontend)                    | ✅     | 005, 007, 017                |
 | [019](019-observability-app-insights.md)           | Application Insights Observability              | ✅     | 002, 005, 006                |
-| [020](020-security-trimming.md)                    | Security Trimming Implementation                | 🔲     | 009, 014, 017, 008           |
+| [020](020-security-trimming.md)                    | Security Trimming Implementation                | ✅     | 009, 014, 017, 008           |
 | [021](021-e2e-testing-mvp-polish.md)               | End-to-End Integration Testing & MVP Polish     | 🔲     | 001–020                      |
 
 ### Phase 2 — Governance + Compare

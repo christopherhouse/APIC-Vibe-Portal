@@ -10,16 +10,21 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import HomeIcon from '@mui/icons-material/Home';
 import ApiIcon from '@mui/icons-material/Api';
 import ChatIcon from '@mui/icons-material/Chat';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
+import SecurityIcon from '@mui/icons-material/Security';
+import { useAuth } from '@/lib/auth/use-auth';
 import { useSidebarContext } from '@/lib/sidebar-context';
 
 const DRAWER_WIDTH = 240;
 const MINI_DRAWER_WIDTH = 56;
+const ADMIN_ROLE = 'Portal.Admin';
 
 interface NavItem {
   label: string;
@@ -38,6 +43,14 @@ const mainNavItems: NavItem[] = [
 const secondaryNavItems: NavItem[] = [
   { label: 'Settings', icon: <SettingsIcon />, href: '/settings', prefetch: false },
   { label: 'Help', icon: <HelpIcon />, href: '/help', prefetch: false },
+];
+
+const adminNavItems: NavItem[] = [
+  {
+    label: 'Access Policies',
+    icon: <SecurityIcon />,
+    href: '/admin/access-policies',
+  },
 ];
 
 function NavItemButton({
@@ -78,6 +91,8 @@ function NavItemButton({
 export default function Sidebar() {
   const pathname = usePathname();
   const { isOpen } = useSidebarContext();
+  const { user } = useAuth();
+  const isAdmin = Boolean(user?.roles.includes(ADMIN_ROLE));
 
   return (
     <Drawer
@@ -128,6 +143,29 @@ export default function Sidebar() {
           />
         ))}
       </List>
+
+      {isAdmin && (
+        <>
+          <Divider />
+          {isOpen && (
+            <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+              <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                Admin
+              </Typography>
+            </Box>
+          )}
+          <List component="nav" aria-label="admin navigation">
+            {adminNavItems.map((item) => (
+              <NavItemButton
+                key={item.label}
+                item={item}
+                selected={pathname.startsWith(item.href)}
+                collapsed={!isOpen}
+              />
+            ))}
+          </List>
+        </>
+      )}
     </Drawer>
   );
 }

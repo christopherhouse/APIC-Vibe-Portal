@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from apic_vibe_portal_bff.clients.ai_search_client import AISearchClientError
 from apic_vibe_portal_bff.middleware.rbac import require_any_role
+from apic_vibe_portal_bff.middleware.security_trimming import make_accessible_ids_dep
 from apic_vibe_portal_bff.models.search import (
     SearchRequest,
     SearchResponse,
@@ -122,14 +123,16 @@ router = APIRouter(tags=["search"])
 def search(
     request: SearchRequest,
     service: SearchService = Depends(_get_search_service),  # noqa: B008
+    accessible_api_ids: list[str] | None = Depends(make_accessible_ids_dep()),  # noqa: B008
 ) -> SearchResponse:
     """Execute a search against the API catalog.
 
     Delegates search execution to the backend search service and returns
-    results shaped to the shared search response DTO.
+    results shaped to the shared search response DTO.  Results are filtered
+    to only include APIs the authenticated user may access.
     """
     try:
-        return service.search(request)
+        return service.search(request, accessible_api_ids=accessible_api_ids)
     except AISearchClientError as exc:
         logger.error(
             "search failed — status=%s error=%s",
@@ -148,16 +151,19 @@ def search(
 def suggest(
     q: str = Query(default="", description="Search prefix for autocomplete suggestions"),  # noqa: B008
     service: SearchService = Depends(_get_search_service),  # noqa: B008
+    accessible_api_ids: list[str] | None = Depends(make_accessible_ids_dep()),  # noqa: B008
 ) -> SuggestResponse:
     """Return autocomplete suggestions for the given prefix.
 
     Returns an empty result set when ``q`` is shorter than 2 characters
     so the downstream search service is not called with unusable input.
+    Suggestions are filtered to only include APIs the authenticated user
+    may access.
     """
     if len(q.strip()) < 2:
         return SuggestResponse(suggestions=[], query_prefix=q)
     try:
-        return service.suggest(prefix=q)
+        return service.suggest(prefix=q, accessible_api_ids=accessible_api_ids)
     except AISearchClientError as exc:
         safe_q = sanitize_for_log(q)
         logger.error(

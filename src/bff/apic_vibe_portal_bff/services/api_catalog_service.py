@@ -37,6 +37,15 @@ from apic_vibe_portal_bff.models.api_center import (
 )
 from apic_vibe_portal_bff.utils.cache import CacheBackend, InMemoryCache
 
+
+class ApiAccessDeniedError(Exception):
+    """Raised when the user does not have access to the requested API."""
+
+    def __init__(self, api_name: str) -> None:
+        super().__init__(f"Access to API '{api_name}' is denied")
+        self.api_name = api_name
+
+
 logger = logging.getLogger(__name__)
 
 # Characters that could be used for log injection (newlines, carriage returns,
@@ -135,6 +144,7 @@ class ApiCatalogService:
         filter_str: str | None = None,
         sort_field: str | None = None,
         sort_reverse: bool = False,
+        accessible_api_ids: list[str] | None = None,
     ) -> PaginatedResponse:
         """Return a paginated list of API definitions.
 
@@ -152,54 +162,49 @@ class ApiCatalogService:
             order returned by the API Center SDK.
         sort_reverse:
             When ``True``, sort in descending order.
+        accessible_api_ids:
+            When ``None``, no security trimming is applied (admin bypass).
+            When a list, only APIs whose ``name`` is in the list are returned.
+            Pass an empty list to receive an empty result set.
         """
         if page < 1:
             raise ValueError(f"page must be >= 1, got {page}")
         if page_size < 1:
             raise ValueError(f"page_size must be >= 1, got {page_size}")
 
-        cache_key = f"{_KEY_APIS}{filter_str or ''}:{sort_field}:{sort_reverse}:{page}:{page_size}"
+        # Cache the full sorted list (without per-page or security dimensions)
+        # so that security trimming produces accurate pagination totals.
+        cache_key = f"{_KEY_APIS}{filter_str or ''}:{sort_field}:{sort_reverse}"
         hit = self._cache.get_with_staleness(cache_key, _TTL_API_LIST)
         if hit.value is not None:
             logger.debug(
                 "list_apis cache hit",
                 extra={"key": _safe_log_key(cache_key), "needs_refresh": hit.needs_refresh},
             )
+            definitions: list[ApiDefinition] = hit.value  # type: ignore[assignment]
             if hit.needs_refresh:
                 self._schedule_refresh(
                     cache_key,
-                    lambda: self._fetch_api_list(filter_str, sort_field, sort_reverse, page, page_size),
+                    lambda: self._fetch_all_apis(filter_str, sort_field, sort_reverse),
                     _TTL_API_LIST,
                 )
-            return hit.value  # type: ignore[return-value]
+        else:
+            definitions = self._fetch_all_apis(filter_str, sort_field, sort_reverse)
+            self._cache.set(cache_key, definitions, ttl_seconds=_TTL_API_LIST)
 
-        result = self._fetch_api_list(filter_str, sort_field, sort_reverse, page, page_size)
-        self._cache.set(cache_key, result, ttl_seconds=_TTL_API_LIST)
-        return result
-
-    def _fetch_api_list(
-        self,
-        filter_str: str | None,
-        sort_field: str | None,
-        sort_reverse: bool,
-        page: int,
-        page_size: int,
-    ) -> PaginatedResponse:
-        """Fetch the API list from APIC and build a paginated response."""
-        raw_apis = self._client.list_apis(filter_str=filter_str)
-        definitions = [map_api_definition(raw) for raw in raw_apis]
-
-        if sort_field is not None:
-            definitions.sort(key=lambda x: getattr(x, sort_field, ""), reverse=sort_reverse)
+        # Apply security trimming after cache lookup so that trimmed results
+        # produce correct pagination totals for each user.
+        if accessible_api_ids is not None:
+            accessible_set = set(accessible_api_ids)
+            definitions = [d for d in definitions if d.name in accessible_set]
 
         total_count = len(definitions)
         total_pages = math.ceil(total_count / page_size) if total_count > 0 else 0
         start = (page - 1) * page_size
         end = start + page_size
-        page_items = definitions[start:end]
 
         return PaginatedResponse(
-            items=page_items,
+            items=definitions[start:end],
             pagination=PaginationMeta(
                 page=page,
                 page_size=page_size,
@@ -208,7 +213,28 @@ class ApiCatalogService:
             ),
         )
 
-    def get_api(self, api_name: str, include_versions: bool = True, include_deployments: bool = True) -> ApiDefinition:
+    def _fetch_all_apis(
+        self,
+        filter_str: str | None,
+        sort_field: str | None,
+        sort_reverse: bool,
+    ) -> list[ApiDefinition]:
+        """Fetch and sort the full API list from APIC (no pagination)."""
+        raw_apis = self._client.list_apis(filter_str=filter_str)
+        definitions = [map_api_definition(raw) for raw in raw_apis]
+
+        if sort_field is not None:
+            definitions.sort(key=lambda x: getattr(x, sort_field, ""), reverse=sort_reverse)
+
+        return definitions
+
+    def get_api(
+        self,
+        api_name: str,
+        include_versions: bool = True,
+        include_deployments: bool = True,
+        accessible_api_ids: list[str] | None = None,
+    ) -> ApiDefinition:
         """Return a single API definition with optional versions and deployments.
 
         Parameters
@@ -219,7 +245,14 @@ class ApiCatalogService:
             When ``True``, fetch and embed version objects.
         include_deployments:
             When ``True``, fetch and embed deployment objects.
+        accessible_api_ids:
+            When ``None``, no access check is performed (admin bypass).
+            When a list, raises :class:`ApiAccessDeniedError` if ``api_name``
+            is not in the list.
         """
+        # Enforce security trimming before hitting the cache/network.
+        if accessible_api_ids is not None and api_name not in accessible_api_ids:
+            raise ApiAccessDeniedError(api_name)
         cache_key = f"{_KEY_API}{api_name}:{include_versions}:{include_deployments}"
         hit = self._cache.get_with_staleness(cache_key, _TTL_API_DETAIL)
         if hit.value is not None:
@@ -393,9 +426,9 @@ class ApiCatalogService:
     def warm_cache(self, page_size: int = 20) -> int:
         """Pre-populate the cache with fresh catalog data from APIC.
 
-        Fetches all pages of the API list and environments.  Unlike a
-        periodic nuke-and-refill, this only writes new entries; existing
-        entries that are still fresh are overwritten with updated data.
+        Fetches all APIs and environments.  Unlike a periodic nuke-and-refill,
+        this only writes new entries; existing entries that are still fresh are
+        overwritten with updated data.
 
         This method is intended to be called once at BFF startup so that
         the first user requests hit a warm cache.  Ongoing freshness is
@@ -405,27 +438,24 @@ class ApiCatalogService:
         Parameters
         ----------
         page_size:
-            Items per page to warm.  Must match the ``pageSize`` used by
-            the frontend so that user requests hit the cache.  Defaults to
-            20 (the API catalog router default).
+            Kept for backward compatibility; no longer used internally
+            since the cache stores the full unsorted list.
 
         Returns the total number of distinct API records fetched.
         """
-        # Bust list and environments caches so the next call hits APIC.
+        # Bust the list cache so the next call hits APIC.
         self._cache.invalidate_prefix(_KEY_APIS)
         self._cache.invalidate_prefix(_KEY_ENVS)
 
-        # Warm page 1 to discover the total count, then warm remaining pages.
-        first = self.list_apis(page=1, page_size=page_size)
-        total = first.pagination.total_count
-        total_pages = first.pagination.total_pages
-
-        for page in range(2, total_pages + 1):
-            self.list_apis(page=page, page_size=page_size)
+        # Warm the full API list (unfiltered, default sort).
+        definitions = self._fetch_all_apis(None, None, False)
+        total = len(definitions)
+        cache_key = f"{_KEY_APIS}:{None}:{False}"
+        self._cache.set(cache_key, definitions, ttl_seconds=_TTL_API_LIST)
 
         logger.info(
             "warm_cache: API list cached",
-            extra={"total": total, "pages": total_pages, "page_size": page_size},
+            extra={"total": total},
         )
 
         try:

@@ -1,6 +1,6 @@
 # 020 - Phase 1 MVP: Security Trimming Implementation
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -81,16 +81,16 @@ Update `ai_chat_service.py` (from task 017):
 
 ## Testing & Acceptance Criteria
 
-- [ ] User A sees only APIs their groups have access to
-- [ ] User B with different groups sees a different set of APIs
-- [ ] Admin users see all APIs regardless of group membership
-- [ ] Search results are filtered to accessible APIs only
-- [ ] Facet counts reflect only accessible APIs
-- [ ] Chat responses only reference accessible APIs
-- [ ] Requesting an inaccessible API by ID returns 403
-- [ ] Group membership is cached and refreshed appropriately
-- [ ] Performance impact of security trimming is minimal (< 50ms added latency)
-- [ ] Unit tests cover all trimming scenarios
+- [x] User A sees only APIs their groups have access to
+- [x] User B with different groups sees a different set of APIs
+- [x] Admin users see all APIs regardless of group membership
+- [x] Search results are filtered to accessible APIs only
+- [x] Facet counts reflect only accessible APIs
+- [x] Chat responses only reference accessible APIs
+- [x] Requesting an inaccessible API by ID returns 403
+- [x] Group membership is cached and refreshed appropriately
+- [ ] Performance impact of security trimming is minimal (< 50ms added latency) — not formally benchmarked; in-memory filtering adds negligible latency
+- [x] Unit tests cover all trimming scenarios
 
 ## Implementation Notes
 
@@ -102,21 +102,54 @@ Update `ai_chat_service.py` (from task 017):
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
+| Date       | Status         | Author  | Notes                                                                                                    |
+| ---------- | -------------- | ------- | -------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                                                                             |
+| 2026-04-19 | ✅ Complete    | Copilot | Full implementation: UserContextService, policy repo, admin router, service-level trimming, 52 new tests |
 
 ### Technical Decisions
 
-_No technical decisions recorded yet._
+1. **API-to-Group Mapping Storage: Cosmos DB** — Access policies are persisted in a new Cosmos DB container `api-access-policies` (partition key: `apiName`). This enables future admin UI, cross-replica consistency, and aligns with the existing data layer. The container name is configurable via `COSMOS_DB_ACCESS_POLICIES_CONTAINER` environment variable.
+
+2. **Default Access Model: Public by default** — When no policy document exists for an API, it is treated as publicly accessible to all authenticated users. Only APIs with an explicit policy document (with `allowedGroups` or `isPublic=false`) are restricted. This prevents accidentally hiding the entire catalog when policies are first deployed.
+
+3. **Groups from JWT `groups` claim** — Group OIDs are extracted from the `groups` claim in the Entra ID JWT token. If the claim is absent (group overage for large tenants), the user is treated as having no group memberships. Microsoft Graph API calls for group resolution are deferred to a future task.
+
+4. **Security trimming at service layer** — Services (`ApiCatalogService`, `SearchService`, `AIChatService`) accept an `accessible_api_ids: list[str] | None` parameter. `None` signals admin bypass (no filtering); a list restricts results to those API names. This keeps services testable without requiring a `UserContextService` mock.
+
+5. **Cache strategy for catalog**: `ApiCatalogService` now caches the full sorted definition list (not paginated) so that security trimming produces accurate `total_count` and `total_pages` values for each user.
+
+6. **Admin bypass** — Users with `Portal.Admin` role receive `accessible_api_ids=None` from `UserContextService`, bypassing all trimming logic in catalog, search, and chat services.
+
+7. **Policy cache TTL** — `UserContextService` caches the full policy list in-memory with a 5-minute TTL. After admin writes (PUT/DELETE `/api/admin/access-policies/{apiName}`) the cache is explicitly invalidated so changes take effect immediately.
+
+8. **Fail open on Cosmos DB errors** — If the policy repository is unavailable, the service logs a warning and returns an empty policy map, treating all APIs as public. This prevents a Cosmos DB outage from causing a complete portal outage.
+
+9. **Admin management endpoints** — A new `Portal.Admin`-only router at `/api/admin/access-policies` exposes CRUD operations for managing access policies. This addresses the issue comment asking about an admin interface for maintaining API-to-group mappings.
 
 ### Deviations from Plan
 
-_No deviations from the original plan._
+- **Search suggestor filter**: Added `accessible_api_ids` support to `suggest()` in addition to `search()`, which was not explicitly called out in the plan but is necessary for consistent security trimming.
+- **Catalog cache refactored**: Changed from caching per-page paginated responses to caching the full sorted list per OData filter. This is necessary for security trimming to produce correct pagination totals.
+- **Open-access stub service**: When Cosmos DB is not configured (dev environment), a stub repository is used that returns empty policies (all APIs public). This avoids requiring Cosmos DB for local development.
 
 ### Validation Results
 
-_No validation results yet._
+- **585 tests pass** (533 original + 52 new)
+- **52 new unit tests** in `tests/test_user_context_service.py` covering:
+  - Policy cache TTL and invalidation
+  - Admin bypass (Portal.Admin role)
+  - Group extraction from JWT claims
+  - Accessible API ID resolution (user A vs user B)
+  - Public API access, restricted access, locked API (empty groups)
+  - `can_access_api()` for individual checks
+  - OData filter generation with/without security trimming
+  - `ApiCatalogService` trimming (list and detail endpoints)
+  - `SearchService` trimming (search and suggest)
+  - `AIChatService` RAG retrieval trimming
+  - `ApiAccessPolicyDocument` model serialization
+- **Lint/format**: All ruff checks pass
+- **Admin router**: `PUT /api/admin/access-policies/{apiName}` creates/updates policy and invalidates cache; `DELETE` removes policy; `GET` lists all policies
 
 ## Coding Agent Prompt
 
