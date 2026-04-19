@@ -243,5 +243,4 @@ class OpenAIClient:
     def close(self) -> None:
         """Close the underlying clients."""
         self._client = None
-        if self._chat_client is not None:
-            self._chat_client = None
+        self._chat_client = None
