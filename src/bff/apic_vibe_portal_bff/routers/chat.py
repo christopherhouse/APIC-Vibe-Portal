@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from apic_vibe_portal_bff.clients.ai_search_client import AISearchClient
-from apic_vibe_portal_bff.clients.openai_client import OpenAIClientError
+from apic_vibe_portal_bff.clients.openai_client import OpenAIClientError, OpenAIContentFilterError
 from apic_vibe_portal_bff.middleware.rbac import require_any_role
 from apic_vibe_portal_bff.middleware.security_trimming import make_accessible_ids_dep
 from apic_vibe_portal_bff.models.chat import (
@@ -193,6 +193,13 @@ async def chat(
         )
     except ChatRateLimitError:
         _raise_error(429, "RATE_LIMIT_EXCEEDED", "Too many messages. Please wait before sending another.")
+    except OpenAIContentFilterError as exc:
+        logger.warning("Content filter triggered for chat request")
+        _raise_error(
+            400,
+            "CONTENT_FILTER",
+            str(exc),
+        )
     except OpenAIClientError as exc:
         safe_error = sanitize_for_log(str(exc))
         safe_session = sanitize_for_log(request.session_id or "")

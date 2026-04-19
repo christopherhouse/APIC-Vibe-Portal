@@ -52,7 +52,10 @@ def _run_startup_cache_warm() -> None:
 async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """FastAPI lifespan handler — configures telemetry and starts the cache-warm thread."""
     settings = get_settings()
-    configure_telemetry(environment=settings.environment)
+    configure_telemetry(
+        connection_string=settings.applicationinsights_connection_string or None,
+        environment=settings.environment,
+    )
 
     thread = threading.Thread(
         target=_run_startup_cache_warm,

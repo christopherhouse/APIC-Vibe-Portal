@@ -19,6 +19,7 @@ from datetime import UTC, datetime
 from threading import Lock
 from typing import Any
 
+from apic_vibe_portal_bff.clients.openai_client import OpenAIContentFilterError
 from apic_vibe_portal_bff.models.chat import ChatMessage, ChatResponse
 from apic_vibe_portal_bff.utils.logger import sanitize_for_log
 
@@ -322,6 +323,15 @@ class AIChatService:
             if full_content:
                 yield f"data: {json.dumps({'type': 'content', 'content': full_content})}\n\n"
             citations = agent_response.citations
+        except OpenAIContentFilterError as exc:
+            logger.warning("Content filter triggered during agent streaming")
+            error_payload = {
+                "type": "error",
+                "error": str(exc),
+                "sessionId": session.session_id,
+            }
+            yield f"data: {json.dumps(error_payload)}\n\n"
+            return
         except Exception:
             logger.exception("Agent streaming error mid-response")
             error_payload = {

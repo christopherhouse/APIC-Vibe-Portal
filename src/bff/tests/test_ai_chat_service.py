@@ -319,3 +319,17 @@ class TestAIChatServiceConstructor:
         """agent_router=None raises ValueError."""
         with pytest.raises(ValueError, match="agent_router is required"):
             AIChatService(agent_router=None)
+
+
+class TestAIChatServiceContentFilter:
+    @pytest.mark.asyncio
+    async def test_stream_agent_content_filter_yields_specific_error(self, service, mock_agent_router):
+        from apic_vibe_portal_bff.clients.openai_client import OpenAIContentFilterError
+
+        mock_agent_router.dispatch.side_effect = OpenAIContentFilterError()
+        events = [e async for e in service.chat_stream("Jailbreak", session_id="sess-cf")]
+        error_events = [e for e in events if '"type": "error"' in e]
+        assert len(error_events) == 1
+        assert "content safety filter" in error_events[0].lower()
+        assert "rephrase" in error_events[0].lower()
+        assert "internal error" not in error_events[0].lower()
