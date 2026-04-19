@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
+import pytest_asyncio  # noqa: F401 — registers asyncio mode
 
 from apic_vibe_portal_bff.agents.api_discovery_agent.definition import ApiDiscoveryAgent, SecurityTrimmingMiddleware
 from apic_vibe_portal_bff.agents.api_discovery_agent.handler import (
@@ -516,12 +516,10 @@ def _make_middleware_context(tool_name: str, args: dict | None = None, accessibl
 
 
 class TestSecurityTrimmingMiddleware:
-    """Unit tests for SecurityTrimmingMiddleware using async helpers."""
+    """Unit tests for SecurityTrimmingMiddleware using pytest-asyncio."""
 
-    def _run(self, coro):
-        return asyncio.run(coro)
-
-    def test_admin_bypass_allows_all_tools(self):
+    @pytest.mark.asyncio
+    async def test_admin_bypass_allows_all_tools(self):
         """When accessible_api_ids is None, all tool calls are permitted."""
         middleware = SecurityTrimmingMiddleware()
 
@@ -529,95 +527,78 @@ class TestSecurityTrimmingMiddleware:
             called: list[bool] = []
             ctx = _make_middleware_context(tool_name, {"api_id": "secret-api"}, accessible_api_ids=None)
 
-            async def _run_case(context=ctx, tracker=called):
-                async def call_next():
-                    tracker.append(True)
+            async def call_next(tracker=called):
+                tracker.append(True)
 
-                await middleware.process(context, call_next)
-                assert tracker, f"call_next not invoked for {context.function.name}"
+            await middleware.process(ctx, call_next)
+            assert called, f"call_next not invoked for {tool_name}"
 
-            self._run(_run_case())
+    @pytest.mark.asyncio
+    async def test_permitted_api_center_call_proceeds(self):
+        middleware = SecurityTrimmingMiddleware()
+        called: list[bool] = []
 
-    def test_permitted_api_center_call_proceeds(self):
-        async def _test():
-            middleware = SecurityTrimmingMiddleware()
-            called = []
+        async def call_next():
+            called.append(True)
 
-            async def call_next():
-                called.append(True)
+        context = _make_middleware_context("get_api_details", {"api_id": "weather-api"}, ["weather-api", "maps-api"])
+        await middleware.process(context, call_next)
+        assert called
 
-            context = _make_middleware_context(
-                "get_api_details", {"api_id": "weather-api"}, ["weather-api", "maps-api"]
-            )
-            await middleware.process(context, call_next)
-            assert called
-
-        self._run(_test())
-
-    def test_blocked_api_center_call_raises_termination(self):
+    @pytest.mark.asyncio
+    async def test_blocked_api_center_call_raises_termination(self):
         """API Center calls for non-permitted api_id raise MiddlewareTermination."""
         from agent_framework import MiddlewareTermination
 
+        middleware = SecurityTrimmingMiddleware()
+
+        async def call_next():
+            pass
+
         for tool_name in ("get_api_details", "get_api_spec", "list_api_versions"):
             ctx = _make_middleware_context(tool_name, {"api_id": "forbidden-api"}, ["weather-api"])
+            with pytest.raises(MiddlewareTermination):
+                await middleware.process(ctx, call_next)
 
-            async def _test(context=ctx):
-                middleware = SecurityTrimmingMiddleware()
-
-                async def call_next():
-                    pass
-
-                with pytest.raises(MiddlewareTermination):
-                    await middleware.process(context, call_next)
-
-            self._run(_test())
-
-    def test_empty_accessible_ids_blocks_all_api_center_tools(self):
+    @pytest.mark.asyncio
+    async def test_empty_accessible_ids_blocks_all_api_center_tools(self):
         """Empty accessible_api_ids list blocks every API Center call."""
         from agent_framework import MiddlewareTermination
 
-        async def _test():
-            middleware = SecurityTrimmingMiddleware()
+        middleware = SecurityTrimmingMiddleware()
 
-            async def call_next():
-                pass
+        async def call_next():
+            pass
 
-            context = _make_middleware_context("get_api_details", {"api_id": "any-api"}, accessible_api_ids=[])
-            with pytest.raises(MiddlewareTermination):
-                await middleware.process(context, call_next)
-
-        self._run(_test())
-
-    def test_search_apis_not_blocked_by_middleware(self):
-        """search_apis handles its own security trimming; middleware does not block it."""
-
-        async def _test():
-            middleware = SecurityTrimmingMiddleware()
-            called = []
-
-            async def call_next():
-                called.append(True)
-
-            context = _make_middleware_context("search_apis", {}, accessible_api_ids=["api-a"])
+        context = _make_middleware_context("get_api_details", {"api_id": "any-api"}, accessible_api_ids=[])
+        with pytest.raises(MiddlewareTermination):
             await middleware.process(context, call_next)
-            assert called
 
-        self._run(_test())
+    @pytest.mark.asyncio
+    async def test_search_apis_not_blocked_by_middleware(self):
+        """search_apis handles its own security trimming; middleware does not block it."""
+        middleware = SecurityTrimmingMiddleware()
+        called: list[bool] = []
 
-    def test_middleware_reads_api_id_from_pydantic_model(self):
+        async def call_next():
+            called.append(True)
+
+        context = _make_middleware_context("search_apis", {}, accessible_api_ids=["api-a"])
+        await middleware.process(context, call_next)
+        assert called
+
+    @pytest.mark.asyncio
+    async def test_middleware_reads_api_id_from_pydantic_model(self):
         """api_id is also resolved from Pydantic-like objects (via getattr)."""
         from agent_framework import MiddlewareTermination
 
-        async def _test():
-            middleware = SecurityTrimmingMiddleware()
+        middleware = SecurityTrimmingMiddleware()
 
-            async def call_next():
-                pass
+        async def call_next():
+            pass
 
-            args = MagicMock()
-            args.api_id = "forbidden-api"
-            context = _make_middleware_context("get_api_details", args, accessible_api_ids=["permitted-api"])
-            with pytest.raises(MiddlewareTermination):
-                await middleware.process(context, call_next)
-
-        self._run(_test())
+        args = MagicMock()
+        args.api_id = "forbidden-api"
+        context = _make_middleware_context("get_api_details", args, accessible_api_ids=["permitted-api"])
+        with pytest.raises(MiddlewareTermination):
+            await middleware.process(context, call_next)

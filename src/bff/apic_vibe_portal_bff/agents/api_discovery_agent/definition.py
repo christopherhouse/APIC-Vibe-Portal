@@ -460,20 +460,14 @@ class ApiDiscoveryAgent(BaseAgent):
                 session=AgentSession(session_id=effective_session_id),
                 function_invocation_kwargs={"accessible_api_ids": request.accessible_api_ids},
             )
-            # MAF Agent.run() returns Awaitable in production; MagicMock in tests
-            # returns the configured return_value directly.
-            response_text: str = getattr(response, "text", None) or (
-                str(response) if not hasattr(response, "__await__") else ""
-            )
+            response_text: str = self._extract_response_text(response)
         finally:
             # Capture what the search_apis tool stored (if it ran)
             last_search_results = list(getattr(self._request_context, "last_search_results", []))
-            # Clean up thread-local so the slot doesn't leak between requests
-            try:
-                del self._request_context.accessible_api_ids
-                del self._request_context.last_search_results
-            except AttributeError:
-                pass
+            # Clean up thread-local so slots don't leak between requests
+            for attr in ("accessible_api_ids", "last_search_results"):
+                if hasattr(self._request_context, attr):
+                    delattr(self._request_context, attr)
 
         # Build citations from tool-captured results to avoid a redundant search call.
         # If search_apis was not invoked during this run, no citations are produced.
@@ -501,6 +495,37 @@ class ApiDiscoveryAgent(BaseAgent):
         response = self.run(request)
         if response.content:
             yield response.content
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _extract_response_text(response: Any) -> str:
+        """Extract a plain-text string from whatever ``Agent.run()`` returns.
+
+        In production the MAF ``Agent.run()`` returns an ``Awaitable[AgentResponse]``
+        whose resolved ``.text`` attribute holds the final text.  In tests the MAF
+        agent is replaced with a :class:`~unittest.mock.MagicMock` whose
+        ``return_value`` is already a plain string — so we handle both cases
+        explicitly rather than relying on duck-typing.
+
+        Priority:
+        1. ``response.text`` (MAF ``AgentResponse`` attribute, production path)
+        2. Plain ``str`` (mock / test path where ``.text`` is absent)
+        3. Empty string for coroutines / Awaitables (async path not yet integrated)
+        """
+        # Production: MAF AgentResponse has a .text attribute
+        text = getattr(response, "text", None)
+        if text is not None:
+            return str(text)
+        # Test / sync-mock path: response IS the string
+        if isinstance(response, str):
+            return response
+        # Awaitable returned but not awaited (future async integration)
+        if hasattr(response, "__await__"):
+            return ""
+        return str(response)
 
     # ------------------------------------------------------------------
     # Convenience: build ChatResponse from AgentResponse
