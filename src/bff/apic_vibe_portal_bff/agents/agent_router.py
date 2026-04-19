@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 
 from apic_vibe_portal_bff.agents.agent_registry import AgentRegistry
 from apic_vibe_portal_bff.agents.types import AgentName, AgentRequest, AgentResponse
@@ -56,7 +56,7 @@ class AgentRouter:
     # Dispatch
     # ------------------------------------------------------------------
 
-    def dispatch(self, request: AgentRequest) -> AgentResponse:
+    async def dispatch(self, request: AgentRequest) -> AgentResponse:
         """Route *request* and return the agent's response.
 
         Parameters
@@ -74,9 +74,9 @@ class AgentRouter:
         if agent is None:
             raise ValueError(f"No agent registered for name: {agent_name!r}")
         logger.info("AgentRouter dispatching to agent=%s session=%s", agent_name, request.session_id)
-        return agent.run(request)
+        return await agent.run(request)
 
-    def dispatch_stream(self, request: AgentRequest) -> Generator[str]:
+    async def dispatch_stream(self, request: AgentRequest) -> AsyncGenerator[str]:
         """Route *request* and stream the agent's response.
 
         Parameters
@@ -99,4 +99,5 @@ class AgentRouter:
         if agent is None:
             raise ValueError(f"No agent registered for name: {agent_name!r}")
         logger.info("AgentRouter streaming from agent=%s session=%s", agent_name, request.session_id)
-        yield from agent.stream(request)
+        async for chunk in agent.stream(request):
+            yield chunk

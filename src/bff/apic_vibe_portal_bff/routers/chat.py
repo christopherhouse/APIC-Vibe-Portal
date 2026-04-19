@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from apic_vibe_portal_bff.clients.ai_search_client import AISearchClient
-from apic_vibe_portal_bff.clients.openai_client import OpenAIClient, OpenAIClientError, OpenAIContentFilterError
+from apic_vibe_portal_bff.clients.openai_client import OpenAIClientError, OpenAIContentFilterError
 from apic_vibe_portal_bff.middleware.rbac import require_any_role
 from apic_vibe_portal_bff.middleware.security_trimming import make_accessible_ids_dep
 from apic_vibe_portal_bff.models.chat import (
@@ -42,8 +42,9 @@ _service_instance: AIChatService | None = None
 def _get_chat_service() -> AIChatService:
     """Return a shared :class:`AIChatService` instance.
 
-    In production the service is created once with real Azure credentials
-    and MAF ``CosmosHistoryProvider`` for Cosmos DB-backed chat history.
+    In production the service is created once with a real agent router
+    backed by Azure AI Foundry and an optional ``CosmosHistoryProvider``
+    for Cosmos DB-backed chat history.
     Tests override this dependency via ``app.dependency_overrides``.
     """
     global _service_instance  # noqa: PLW0603
@@ -51,10 +52,6 @@ def _get_chat_service() -> AIChatService:
         from apic_vibe_portal_bff.config.settings import get_settings
 
         settings = get_settings()
-        openai_client = OpenAIClient(
-            endpoint=settings.openai_endpoint,
-            deployment=settings.openai_chat_deployment,
-        )
         search_client = AISearchClient(
             endpoint=settings.ai_search_endpoint,
             index_name=settings.ai_search_index_name,
@@ -77,44 +74,42 @@ def _get_chat_service() -> AIChatService:
             except Exception:
                 logger.exception("Failed to initialise CosmosHistoryProvider — falling back to InMemoryHistoryProvider")
 
-        # Wire up the agent router if a Foundry project endpoint is configured
-        agent_router = None
-        if settings.foundry_project_endpoint.strip():
-            try:
-                from apic_vibe_portal_bff.agents.agent_registry import AgentRegistry
-                from apic_vibe_portal_bff.agents.agent_router import AgentRouter
-                from apic_vibe_portal_bff.agents.api_discovery_agent.definition import ApiDiscoveryAgent
-                from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient
-                from apic_vibe_portal_bff.clients.foundry_agent_client import FoundryAgentClient
+        # Wire up the agent router — required for chat to function.
+        # Fail fast if Foundry is not configured or init fails.
+        if not settings.foundry_project_endpoint.strip():
+            raise RuntimeError(
+                "FOUNDRY_PROJECT_ENDPOINT is not configured — set this environment variable to enable the agent router"
+            )
 
-                foundry_client = FoundryAgentClient(
-                    project_endpoint=settings.foundry_project_endpoint,
-                    deployment=settings.openai_chat_deployment,
-                )
-                api_center_client = ApiCenterClient(
-                    base_url=settings.api_center_endpoint,
-                    workspace_name=settings.api_center_workspace_name,
-                )
-                discovery_agent = ApiDiscoveryAgent(
-                    maf_client=foundry_client.get_maf_client(),
-                    search_client=search_client,
-                    api_center_client=api_center_client,
-                    history_provider=history_provider,
-                    model=settings.openai_chat_deployment,
-                )
-                registry = AgentRegistry()
-                registry.register(discovery_agent)
-                agent_router = AgentRouter(registry)
-                logger.info("Agent router initialised with Foundry endpoint=%s", settings.foundry_project_endpoint)
-            except Exception:
-                logger.exception("Failed to initialise agent router — agent-based chat will be unavailable")
+        from apic_vibe_portal_bff.agents.agent_registry import AgentRegistry
+        from apic_vibe_portal_bff.agents.agent_router import AgentRouter
+        from apic_vibe_portal_bff.agents.api_discovery_agent.definition import ApiDiscoveryAgent
+        from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient
+        from apic_vibe_portal_bff.clients.foundry_agent_client import FoundryAgentClient
+
+        foundry_client = FoundryAgentClient(
+            project_endpoint=settings.foundry_project_endpoint,
+            deployment=settings.openai_chat_deployment,
+        )
+        api_center_client = ApiCenterClient(
+            base_url=settings.api_center_endpoint,
+            workspace_name=settings.api_center_workspace_name,
+        )
+        discovery_agent = ApiDiscoveryAgent(
+            maf_client=foundry_client.get_maf_client(),
+            search_client=search_client,
+            api_center_client=api_center_client,
+            history_provider=history_provider,
+            model=settings.openai_chat_deployment,
+        )
+        registry = AgentRegistry()
+        registry.register(discovery_agent)
+        agent_router = AgentRouter(registry)
+        logger.info("Agent router initialised with Foundry endpoint=%s", settings.foundry_project_endpoint)
 
         _service_instance = AIChatService(
-            openai_client=openai_client,
-            search_client=search_client,
-            model=settings.openai_chat_deployment,
-            history_provider=history_provider,
             agent_router=agent_router,
+            history_provider=history_provider,
         )
     return _service_instance
 

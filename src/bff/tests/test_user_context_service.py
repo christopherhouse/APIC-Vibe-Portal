@@ -484,89 +484,38 @@ class TestSearchServiceSecurityFilter:
 
 
 # ---------------------------------------------------------------------------
-# AIChatService._retrieve_context with security filter
+# AIChatService accessible_api_ids forwarding
 # ---------------------------------------------------------------------------
 
 
 class TestAIChatServiceSecurityFilter:
-    """Verify that AIChatService._retrieve_context applies security trimming."""
+    """Verify that AIChatService forwards accessible_api_ids through the agent router.
 
-    def _make_chat_service(self, mock_search=None):
-        from apic_vibe_portal_bff.services.ai_chat_service import AIChatService
-
-        mock_openai = MagicMock()
-        if mock_search is None:
-            mock_search = MagicMock()
-            mock_search.search.return_value = {"results": [], "count": 0, "facets": None}
-
-        return AIChatService(
-            openai_client=mock_openai,
-            search_client=mock_search,
-            model="gpt-4o",
-        ), mock_search
-
-    def test_retrieve_context_passes_security_filter(self):
-        svc, mock_search = self._make_chat_service()
-        mock_search.search.return_value = {"results": [], "count": 0, "facets": None}
-
-        svc._retrieve_context("find weather API", accessible_api_ids=["weather-api", "maps-api"])  # noqa: SLF001
-
-        call_kwargs = mock_search.search.call_args.kwargs
-        assert call_kwargs.get("filter_expression") is not None
-        assert "weather-api" in call_kwargs["filter_expression"]
-        assert "maps-api" in call_kwargs["filter_expression"]
-
-    def test_retrieve_context_no_filter_when_admin(self):
-        svc, mock_search = self._make_chat_service()
-        mock_search.search.return_value = {"results": [], "count": 0, "facets": None}
-
-        svc._retrieve_context("find weather API", accessible_api_ids=None)  # noqa: SLF001
-
-        call_kwargs = mock_search.search.call_args.kwargs
-        assert call_kwargs.get("filter_expression") is None
-
-    def test_retrieve_context_returns_empty_when_no_accessible_apis(self):
-        svc, mock_search = self._make_chat_service()
-
-        context, citations = svc._retrieve_context("any query", accessible_api_ids=[])  # noqa: SLF001
-
-        assert context == ""
-        assert citations == []
-        mock_search.search.assert_not_called()
+    Security trimming is enforced inside the agent (search_apis tool and
+    SecurityTrimmingMiddleware).  The service layer's responsibility is to
+    pass the IDs into the AgentRequest.
+    """
 
     @pytest.mark.asyncio
-    async def test_chat_passes_accessible_ids_to_retrieve_context(self):
-        mock_openai = MagicMock()
-        mock_openai.chat_completion = AsyncMock(
-            return_value={
-                "content": "Here is the answer.",
-                "finish_reason": "stop",
-                "usage": {"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70},
-            }
-        )
-        mock_search = MagicMock()
-        mock_search.search.return_value = {
-            "results": [
-                {
-                    "apiName": "weather-api",
-                    "title": "Weather API",
-                    "description": "Weather data",
-                    "kind": "REST",
-                    "lifecycleStage": "Production",
-                }
-            ],
-            "count": 1,
-            "facets": None,
-        }
-
+    async def test_chat_passes_accessible_ids_to_agent_router(self):
+        from apic_vibe_portal_bff.agents.types import AgentName, AgentRequest, AgentResponse
         from apic_vibe_portal_bff.services.ai_chat_service import AIChatService
 
-        svc = AIChatService(openai_client=mock_openai, search_client=mock_search, model="gpt-4o")
+        mock_router = MagicMock()
+        mock_router.dispatch = AsyncMock(
+            return_value=AgentResponse(
+                agent_name=AgentName.API_DISCOVERY,
+                content="Here is the answer.",
+                session_id="sess-1",
+            )
+        )
+
+        svc = AIChatService(agent_router=mock_router)
         await svc.chat("What APIs do we have?", accessible_api_ids=["weather-api"])
 
-        call_kwargs = mock_search.search.call_args.kwargs
-        assert call_kwargs.get("filter_expression") is not None
-        assert "weather-api" in call_kwargs["filter_expression"]
+        call_args = mock_router.dispatch.call_args
+        req: AgentRequest = call_args.args[0]
+        assert req.accessible_api_ids == ["weather-api"]
 
 
 # ---------------------------------------------------------------------------
