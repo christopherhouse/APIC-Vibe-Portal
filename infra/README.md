@@ -150,6 +150,26 @@ For production deployments with private endpoints:
 2. Update `prod.bicepparam` with the subnet resource ID
 3. Deploy infrastructure with `enablePrivateEndpoints = true`
 
+## Mandatory Tagging
+
+All Azure resources **must** include the tag `SecurityControl` with a value of `Ignore`. This tag is included in the default `tags` parameter in `main.bicep` and is automatically applied to every resource deployed through the Bicep modules.
+
+When adding new resources or modules:
+
+1. Accept a `tags object` parameter in the module.
+2. Pass `tags: tags` from `main.bicep` to the module.
+3. Apply `tags: tags` on every resource definition inside the module.
+4. **Do not** override or remove the `SecurityControl` tag.
+
+The default tags applied to all resources are:
+
+| Tag Name          | Value              | Purpose                            |
+| ----------------- | ------------------ | ---------------------------------- |
+| `Environment`     | `dev`/`staging`/`prod` | Identifies the deployment environment |
+| `Application`     | `APIC-Vibe-Portal` | Identifies the owning application  |
+| `ManagedBy`       | `Bicep`            | Indicates IaC management           |
+| `SecurityControl` | `Ignore`           | Required security control marker   |
+
 ## Security
 
 - **RBAC**: All resources use Azure RBAC (no access keys)
