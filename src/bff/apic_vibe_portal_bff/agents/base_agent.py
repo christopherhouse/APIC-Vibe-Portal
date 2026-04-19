@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 
 from apic_vibe_portal_bff.agents.types import AgentName, AgentRequest, AgentResponse
 
@@ -13,6 +13,11 @@ class BaseAgent(ABC):
 
     Concrete agents (e.g. :class:`~apic_vibe_portal_bff.agents.api_discovery_agent.definition.ApiDiscoveryAgent`)
     extend this class and provide their own tool definitions and prompts.
+
+    All I/O-bound methods are ``async`` because the underlying MAF
+    ``Agent.run()`` is asynchronous, and we must ``await`` it so that
+    context-provider hooks (e.g. ``CosmosHistoryProvider.after_run``)
+    actually execute.
     """
 
     @property
@@ -28,7 +33,7 @@ class BaseAgent(ABC):
         ...
 
     @abstractmethod
-    def run(self, request: AgentRequest) -> AgentResponse:
+    async def run(self, request: AgentRequest) -> AgentResponse:
         """Process a request and return a complete response.
 
         Parameters
@@ -44,7 +49,7 @@ class BaseAgent(ABC):
         ...
 
     @abstractmethod
-    def stream(self, request: AgentRequest) -> Generator[str]:
+    async def stream(self, request: AgentRequest) -> AsyncGenerator[str]:
         """Stream a response token by token.
 
         Parameters
@@ -58,3 +63,5 @@ class BaseAgent(ABC):
             Individual text chunks that together form the full response.
         """
         ...
+        # Trick to make the abstract method an async generator:
+        yield  # pragma: no cover

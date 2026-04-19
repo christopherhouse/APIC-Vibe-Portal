@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import threading
 import uuid
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 from typing import Any
 
 from apic_vibe_portal_bff.clients.ai_search_client import AISearchClient, AISearchClientError
@@ -429,12 +429,17 @@ class ApiDiscoveryAgent(BaseAgent):
     # Run / Stream
     # ------------------------------------------------------------------
 
-    def run(self, request: AgentRequest) -> AgentResponse:
+    async def run(self, request: AgentRequest) -> AgentResponse:
         """Process a request through the MAF Agent and return a response.
 
         Per-request security context is set on a thread-local before the MAF
         ``Agent.run()`` call and cleaned up in a ``finally`` block so that
         concurrent requests on different threads never bleed into each other.
+
+        The MAF ``Agent.run()`` returns an ``Awaitable`` which **must** be
+        awaited so that context-provider lifecycle hooks execute — in
+        particular ``CosmosHistoryProvider.after_run`` which persists
+        conversation history to Cosmos DB.
 
         Security trimming is enforced at two layers:
 
@@ -455,7 +460,7 @@ class ApiDiscoveryAgent(BaseAgent):
         self._request_context.last_search_results = []
 
         try:
-            response = self._agent.run(
+            response = await self._agent.run(
                 messages=request.message,
                 session=AgentSession(session_id=effective_session_id),
                 function_invocation_kwargs={"accessible_api_ids": request.accessible_api_ids},
@@ -484,7 +489,7 @@ class ApiDiscoveryAgent(BaseAgent):
             citations=citations or None,
         )
 
-    def stream(self, request: AgentRequest) -> Generator[str]:
+    async def stream(self, request: AgentRequest) -> AsyncGenerator[str]:
         """Stream the agent response as text chunks.
 
         Delegates to :meth:`run` and yields the full response as a single chunk.
@@ -492,7 +497,7 @@ class ApiDiscoveryAgent(BaseAgent):
         returns a complete response.  When MAF adds a ``run_stream()`` API, this method
         should be updated to yield individual tokens for progressive user feedback.
         """
-        response = self.run(request)
+        response = await self.run(request)
         if response.content:
             yield response.content
 
@@ -502,18 +507,15 @@ class ApiDiscoveryAgent(BaseAgent):
 
     @staticmethod
     def _extract_response_text(response: Any) -> str:
-        """Extract a plain-text string from whatever ``Agent.run()`` returns.
+        """Extract a plain-text string from the awaited MAF ``AgentResponse``.
 
-        In production the MAF ``Agent.run()`` returns an ``Awaitable[AgentResponse]``
-        whose resolved ``.text`` attribute holds the final text.  In tests the MAF
-        agent is replaced with a :class:`~unittest.mock.MagicMock` whose
-        ``return_value`` is already a plain string — so we handle both cases
-        explicitly rather than relying on duck-typing.
+        The MAF ``Agent.run()`` is awaited by :meth:`run`, so *response* is
+        always a resolved ``AgentResponse`` with a ``.text`` attribute in
+        production.  In tests the mock may return a plain ``str`` instead.
 
         Priority:
         1. ``response.text`` (MAF ``AgentResponse`` attribute, production path)
         2. Plain ``str`` (mock / test path where ``.text`` is absent)
-        3. Empty string for coroutines / Awaitables (async path not yet integrated)
         """
         # Production: MAF AgentResponse has a .text attribute
         text = getattr(response, "text", None)
@@ -522,9 +524,6 @@ class ApiDiscoveryAgent(BaseAgent):
         # Test / sync-mock path: response IS the string
         if isinstance(response, str):
             return response
-        # Awaitable returned but not awaited (future async integration)
-        if hasattr(response, "__await__"):
-            return ""
         return str(response)
 
     # ------------------------------------------------------------------

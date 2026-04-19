@@ -256,7 +256,7 @@ class AIChatService:
             session_id=session.session_id,
             accessible_api_ids=accessible_api_ids,
         )
-        agent_response = self._agent_router.dispatch(agent_request)
+        agent_response = await self._agent_router.dispatch(agent_request)
 
         session.add_message("user", user_message)
         session.add_message("assistant", agent_response.content)
@@ -317,7 +317,7 @@ class AIChatService:
                 session_id=session.session_id,
                 accessible_api_ids=accessible_api_ids,
             )
-            agent_response = self._agent_router.dispatch(agent_request)
+            agent_response = await self._agent_router.dispatch(agent_request)
             full_content = agent_response.content
             if full_content:
                 yield f"data: {json.dumps({'type': 'content', 'content': full_content})}\n\n"
