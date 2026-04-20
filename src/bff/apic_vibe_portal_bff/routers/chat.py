@@ -19,7 +19,8 @@ from pydantic import BaseModel
 
 from apic_vibe_portal_bff.clients.ai_search_client import AISearchClient
 from apic_vibe_portal_bff.clients.openai_client import OpenAIClientError, OpenAIContentFilterError
-from apic_vibe_portal_bff.middleware.rbac import require_any_role
+from apic_vibe_portal_bff.middleware.auth import AuthenticatedUser
+from apic_vibe_portal_bff.middleware.rbac import get_current_user, require_any_role
 from apic_vibe_portal_bff.middleware.security_trimming import make_accessible_ids_dep
 from apic_vibe_portal_bff.models.chat import (
     ChatHistoryResponse,
@@ -176,6 +177,7 @@ router = APIRouter(tags=["chat"])
 )
 async def chat(
     request: ChatRequest,
+    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
     service: AIChatService = Depends(_get_chat_service),  # noqa: B008
     accessible_api_ids: list[str] | None = Depends(make_accessible_ids_dep()),  # noqa: B008
 ) -> ChatResponse:
@@ -223,6 +225,7 @@ async def chat(
 )
 async def chat_stream(
     request: ChatRequest,
+    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
     service: AIChatService = Depends(_get_chat_service),  # noqa: B008
     accessible_api_ids: list[str] | None = Depends(make_accessible_ids_dep()),  # noqa: B008
 ) -> StreamingResponse:
@@ -253,6 +256,7 @@ async def chat_stream(
     dependencies=[Depends(require_any_role(_ALLOWED_ROLES))],
 )
 def get_chat_history(
+    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
     session_id: str = Query(..., alias="sessionId", description="Session ID"),  # noqa: B008
     service: AIChatService = Depends(_get_chat_service),  # noqa: B008
 ) -> ChatHistoryResponse:
@@ -269,6 +273,7 @@ def get_chat_history(
     dependencies=[Depends(require_any_role(_ALLOWED_ROLES))],
 )
 def clear_chat_history(
+    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
     session_id: str = Query(..., alias="sessionId", description="Session ID"),  # noqa: B008
     service: AIChatService = Depends(_get_chat_service),  # noqa: B008
 ) -> dict[str, Any]:

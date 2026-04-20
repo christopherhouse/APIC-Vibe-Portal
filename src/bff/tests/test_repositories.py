@@ -13,7 +13,6 @@ import pytest
 
 from apic_vibe_portal_bff.data.repositories.analytics_repository import AnalyticsRepository
 from apic_vibe_portal_bff.data.repositories.base_repository import TTL_SECONDS, BaseRepository, PaginatedResult
-from apic_vibe_portal_bff.data.repositories.chat_session_repository import ChatSessionRepository
 from apic_vibe_portal_bff.data.repositories.governance_repository import GovernanceRepository
 
 # ---------------------------------------------------------------------------
@@ -244,28 +243,6 @@ class TestBaseRepositoryPagination:
 # ---------------------------------------------------------------------------
 # Concrete repository tests
 # ---------------------------------------------------------------------------
-
-
-class TestChatSessionRepository:
-    """Tests for :class:`ChatSessionRepository`."""
-
-    def test_inherits_base(self):
-        container = _make_container_mock("chat-sessions")
-        repo = ChatSessionRepository(container)
-        assert isinstance(repo, BaseRepository)
-        assert repo._pk_field == "userId"
-
-    def test_find_sessions_for_user(self):
-        container = _make_container_mock("chat-sessions")
-        container.query_items.return_value = _make_pager(
-            [{"id": "s1", "userId": "u1", "schemaVersion": 1}],
-        )
-        repo = ChatSessionRepository(container)
-
-        result = repo.find_sessions_for_user("u1")
-        assert len(result.items) == 1
-        query = container.query_items.call_args.kwargs.get("query") or container.query_items.call_args[1].get("query")
-        assert "createdAt DESC" in query
 
 
 class TestGovernanceRepository:

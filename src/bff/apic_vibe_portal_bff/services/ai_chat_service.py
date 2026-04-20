@@ -2,7 +2,8 @@
 
 Delegates all chat interactions through the agent router (currently the
 API Discovery Agent backed by Azure AI Foundry).  The agent handles RAG
-retrieval, tool calling, and conversation history internally.
+retrieval, tool calling, and conversation history internally via the MAF
+``CosmosHistoryProvider``.
 
 The service layer adds per-session rate limiting, session management for
 local message caching, and history/clear operations.
@@ -192,6 +193,10 @@ class AIChatService:
     routes requests through the multi-agent system (currently the API
     Discovery Agent backed by Azure AI Foundry).
 
+    Conversation persistence is handled by the MAF ``CosmosHistoryProvider``
+    configured on the agent — the service layer does **not** write history
+    documents itself.
+
     Parameters
     ----------
     agent_router:
@@ -225,7 +230,10 @@ class AIChatService:
     # ------------------------------------------------------------------
 
     async def chat(
-        self, user_message: str, session_id: str | None = None, accessible_api_ids: list[str] | None = None
+        self,
+        user_message: str,
+        session_id: str | None = None,
+        accessible_api_ids: list[str] | None = None,
     ) -> ChatResponse:
         """Process a chat message through the agent system.
 
@@ -263,10 +271,12 @@ class AIChatService:
         session.add_message("assistant", agent_response.content)
 
         now = _utc_iso_now()
+        msg_id = str(uuid.uuid4())
+
         return ChatResponse(
             sessionId=session.session_id,
             message=ChatMessage(
-                id=str(uuid.uuid4()),
+                id=msg_id,
                 role="assistant",
                 content=agent_response.content,
                 citations=agent_response.citations or None,
@@ -364,39 +374,54 @@ class AIChatService:
     # History
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _to_chat_messages(raw_messages: list[dict[str, str]]) -> list[ChatMessage]:
+        """Convert raw message dicts to :class:`ChatMessage` objects.
+
+        Filters out ``system`` messages and assigns fallback IDs/timestamps
+        when the original values are missing.
+        """
+        return [
+            ChatMessage(
+                id=m.get("id", str(uuid.uuid4())),
+                role=m["role"],
+                content=m["content"],
+                timestamp=m.get("timestamp", _utc_iso_now()),
+            )
+            for m in raw_messages
+            if m.get("role") != "system"
+        ]
+
     def get_history(self, session_id: str) -> list[ChatMessage]:
         """Return the conversation history for a session.
 
-        Uses stable IDs and timestamps stored alongside each message
-        rather than generating new ones on every call.  If a MAF
-        ``HistoryProvider`` is configured, it will have received the
-        same messages during the ``Agent.run()`` call; this method reads
-        from the local in-memory cache for consistency.
+        Returns messages from the in-memory cache.  Persistent history
+        is managed by the MAF ``CosmosHistoryProvider`` on the agent.
+
+        Parameters
+        ----------
+        session_id:
+            The chat session identifier.
         """
         session = self._sessions.get(session_id)
-        if session is None:
-            return []
+        if session is not None:
+            return self._to_chat_messages(session.get_history_messages())
 
-        messages: list[ChatMessage] = []
-        for msg in session.get_history_messages():
-            messages.append(
-                ChatMessage(
-                    id=msg.get("id", str(uuid.uuid4())),
-                    role=msg["role"],
-                    content=msg["content"],
-                    timestamp=msg.get("timestamp", _utc_iso_now()),
-                )
-            )
-        return messages
+        return []
 
     def clear_history(self, session_id: str) -> bool:
         """Clear the conversation history for a session.
 
-        Removes the in-memory session and, if a MAF ``HistoryProvider``
-        with a ``clear`` method is configured, also clears persisted
-        history.
+        Removes the in-memory session and clears the MAF history
+        provider if it has a ``clear`` method.
+
+        Parameters
+        ----------
+        session_id:
+            The chat session identifier.
         """
         deleted = self._sessions.delete(session_id)
+
         # Also clear from the MAF history provider if it supports it
         if hasattr(self._history_provider, "clear"):
             try:
