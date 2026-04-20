@@ -24,6 +24,18 @@ def provider(mock_container):
     return ChatHistoryProvider(container=mock_container)
 
 
+def test_source_id_default(mock_container):
+    """Test that source_id defaults to 'chat_history'."""
+    provider = ChatHistoryProvider(container=mock_container)
+    assert provider.source_id == "chat_history"
+
+
+def test_source_id_custom(mock_container):
+    """Test that custom source_id can be set."""
+    provider = ChatHistoryProvider(container=mock_container, source_id="custom_id")
+    assert provider.source_id == "custom_id"
+
+
 def test_serialize_content_string(provider):
     """Test content serialization for string values."""
     content = "Hello world"
