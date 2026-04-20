@@ -3,29 +3,29 @@
 Replaces the buggy MAF `CosmosHistoryProvider` with a custom implementation
 that stores chat messages directly in Cosmos DB using the Azure SDK.
 
-This provider implements the MAF context provider interface and stores messages
+This provider implements the MAF HistoryProvider interface and stores messages
 in the `chat-sessions` Cosmos DB container with the session ID as the partition key.
 """
 
 from __future__ import annotations
 
-import json
+from collections.abc import Sequence
 import logging
-import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from agent_framework import HistoryProvider, Message
 from azure.cosmos.container import ContainerProxy
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 
 logger = logging.getLogger(__name__)
 
 
-class ChatHistoryProvider:
-    """Custom MAF context provider for persisting chat history to Cosmos DB.
+class ChatHistoryProvider(HistoryProvider):
+    """Custom MAF history provider for persisting chat history to Cosmos DB.
 
-    Implements the MAF context provider interface (before_run, after_run) to
-    automatically save conversation messages after each agent interaction.
+    Implements the MAF HistoryProvider interface (get_messages, save_messages) to
+    automatically load and save conversation messages with each agent interaction.
 
     Messages are stored in the `chat-sessions` container with the following schema:
     - id: <session_id>
@@ -44,18 +44,17 @@ class ChatHistoryProvider:
     """
 
     def __init__(self, container: ContainerProxy, source_id: str = "chat_history") -> None:
-        self.source_id = source_id
+        super().__init__(source_id, load_messages=True)
         self._container = container
 
-    async def before_run(
+    async def get_messages(
         self,
+        session_id: str | None,
         *,
-        session_id: str,
-        context: Any = None,
-        messages: list[dict[str, Any]] | None = None,
+        state: dict[str, Any] | None = None,
         **kwargs: Any,
-    ) -> list[dict[str, Any]]:
-        """Load existing messages for the session before the agent runs.
+    ) -> list[Message]:
+        """Load existing messages for the session.
 
         This is called by MAF before invoking the agent to populate the
         conversation history context.
@@ -64,34 +63,34 @@ class ChatHistoryProvider:
         ----------
         session_id:
             The chat session identifier.
-        context:
-            MAF context object (unused).
-        messages:
-            Current messages list (may be empty or contain new user message).
+        state:
+            MAF state object (unused).
         **kwargs:
             Additional context from MAF.
 
-        Returns the complete conversation history including any previously
-        saved messages for this session.
+        Returns
+        -------
+        list[Message]
+            The complete conversation history for this session.
         """
-        logger.debug("ChatHistoryProvider.before_run session=%s", session_id)
+        if not session_id:
+            logger.debug("ChatHistoryProvider.get_messages: no session_id, returning empty list")
+            return []
+
+        logger.debug("ChatHistoryProvider.get_messages session=%s", session_id)
 
         # Load existing messages from Cosmos DB
-        existing_messages = await self._load_messages(session_id)
+        message_dicts = await self._load_messages(session_id)
 
-        # If we have new messages in the current batch, append them
-        if messages:
-            existing_messages.extend(messages)
+        # Convert to Message objects
+        return [Message.from_dict(msg) for msg in message_dicts]
 
-        return existing_messages
-
-    async def after_run(
+    async def save_messages(
         self,
+        session_id: str | None,
+        messages: Sequence[Message],
         *,
-        session_id: str,
-        context: Any = None,
-        messages: list[dict[str, Any]] | None = None,
-        state: Any = None,
+        state: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         """Save messages to Cosmos DB after the agent completes.
@@ -103,8 +102,6 @@ class ChatHistoryProvider:
         ----------
         session_id:
             The chat session identifier.
-        context:
-            MAF context object (unused).
         messages:
             Complete conversation history to save.
         state:
@@ -112,12 +109,19 @@ class ChatHistoryProvider:
         **kwargs:
             Additional context from MAF.
         """
-        logger.debug("ChatHistoryProvider.after_run session=%s message_count=%d", session_id, len(messages or []))
+        if not session_id:
+            logger.debug("ChatHistoryProvider.save_messages: no session_id, skipping")
+            return
+
+        logger.debug("ChatHistoryProvider.save_messages session=%s message_count=%d", session_id, len(messages))
 
         if not messages:
             return
 
-        await self._save_messages(session_id, messages)
+        # Convert Message objects to dicts
+        message_dicts = [msg.to_dict() for msg in messages]
+
+        await self._save_messages(session_id, message_dicts)
 
     async def _load_messages(self, session_id: str) -> list[dict[str, Any]]:
         """Load messages for a session from Cosmos DB.
