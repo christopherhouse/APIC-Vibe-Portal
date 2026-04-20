@@ -36,9 +36,11 @@ import {
   type AccessPolicy,
   type AccessPolicyRequest,
 } from '@/lib/admin-api';
+import { fetchCatalogApis } from '@/lib/catalog-api';
 
 import PoliciesTable from './components/PoliciesTable';
 import PolicyDialog from './components/PolicyDialog';
+import type { ApiOption } from './components/PolicyDialog';
 import DeletePolicyDialog from './components/DeletePolicyDialog';
 
 const ADMIN_ROLE = 'Portal.Admin';
@@ -59,6 +61,10 @@ export default function AccessPoliciesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingPolicy, setDeletingPolicy] = useState<AccessPolicy | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Available APIs for the policy dialog dropdown
+  const [availableApis, setAvailableApis] = useState<ApiOption[]>([]);
+  const [apisLoading, setApisLoading] = useState(false);
 
   // Success / error toast
   const [snackbar, setSnackbar] = useState<{
@@ -83,13 +89,27 @@ export default function AccessPoliciesPage() {
     }
   }, []);
 
+  const loadAvailableApis = useCallback(async () => {
+    setApisLoading(true);
+    try {
+      const response = await fetchCatalogApis({ pageSize: 100 });
+      setAvailableApis(response.data.map((api) => ({ name: api.name, title: api.title })));
+    } catch (err) {
+      // Non-critical: admin can still manage policies without the dropdown.
+      console.warn('Failed to load available APIs for policy dropdown:', err);
+    } finally {
+      setApisLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
       void loadPolicies();
+      void loadAvailableApis();
     } else {
       setIsLoading(false);
     }
-  }, [isAuthenticated, isAdmin, loadPolicies]);
+  }, [isAuthenticated, isAdmin, loadPolicies, loadAvailableApis]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -229,6 +249,8 @@ export default function AccessPoliciesPage() {
       <PolicyDialog
         open={policyDialogOpen}
         existing={editingPolicy}
+        availableApis={availableApis}
+        apisLoading={apisLoading}
         onClose={() => setPolicyDialogOpen(false)}
         onSave={handleSavePolicy}
       />

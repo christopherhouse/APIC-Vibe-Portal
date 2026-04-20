@@ -4,10 +4,12 @@
  * Dialog for creating or editing an API access policy.
  *
  * Handles both "create new" (apiName editable) and "edit existing"
- * (apiName fixed) modes.
+ * (apiName fixed) modes.  In create mode, the API name is selected
+ * from a searchable dropdown of available APIs fetched from the catalog.
  */
 
 import { useEffect, useState } from 'react';
+import Autocomplete from '@mui/material/Autocomplete';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -24,15 +26,32 @@ import Alert from '@mui/material/Alert';
 import AddIcon from '@mui/icons-material/Add';
 import type { AccessPolicy, AccessPolicyRequest } from '@/lib/admin-api';
 
+/** Minimal API summary for the dropdown options. */
+export interface ApiOption {
+  name: string;
+  title: string;
+}
+
 export interface PolicyDialogProps {
   open: boolean;
   /** When provided, the dialog is in edit mode; otherwise create mode. */
   existing?: AccessPolicy | null;
+  /** Available APIs to select from in the dropdown (create mode). */
+  availableApis?: ApiOption[];
+  /** Whether the available APIs are still loading. */
+  apisLoading?: boolean;
   onClose: () => void;
   onSave: (apiName: string, request: AccessPolicyRequest) => Promise<void>;
 }
 
-export default function PolicyDialog({ open, existing, onClose, onSave }: PolicyDialogProps) {
+export default function PolicyDialog({
+  open,
+  existing,
+  availableApis = [],
+  apisLoading = false,
+  onClose,
+  onSave,
+}: PolicyDialogProps) {
   const isEdit = Boolean(existing);
 
   const [apiName, setApiName] = useState('');
@@ -105,20 +124,36 @@ export default function PolicyDialog({ open, existing, onClose, onSave }: Policy
         <Stack spacing={3} sx={{ mt: 1 }}>
           {error && <Alert severity="error">{error}</Alert>}
 
-          <TextField
-            label="API Name"
-            value={apiName}
-            onChange={(e) => setApiName(e.target.value)}
-            disabled={isEdit}
-            required
-            fullWidth
-            helperText={
-              isEdit
-                ? 'The API name cannot be changed after creation.'
-                : 'Short name of the API in API Center (e.g. petstore-api).'
-            }
-            slotProps={{ htmlInput: { 'data-testid': 'api-name-input' } }}
-          />
+          {isEdit ? (
+            <TextField
+              label="API Name"
+              value={apiName}
+              disabled
+              fullWidth
+              helperText="The API name cannot be changed after creation."
+              slotProps={{ htmlInput: { 'data-testid': 'api-name-input' } }}
+            />
+          ) : (
+            <Autocomplete
+              options={availableApis}
+              getOptionLabel={(option) =>
+                option.title ? `${option.title} (${option.name})` : option.name
+              }
+              value={availableApis.find((a) => a.name === apiName) ?? null}
+              onChange={(_event, newValue) => setApiName(newValue?.name ?? '')}
+              loading={apisLoading}
+              isOptionEqualToValue={(option, value) => option.name === value.name}
+              data-testid="api-name-autocomplete"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="API Name"
+                  required
+                  helperText="Select the API from the catalog."
+                />
+              )}
+            />
+          )}
 
           <FormControlLabel
             control={
