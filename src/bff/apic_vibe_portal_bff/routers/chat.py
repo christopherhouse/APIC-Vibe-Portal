@@ -106,6 +106,7 @@ def _get_chat_service() -> AIChatService:
         )
         governance_agent = GovernanceAgent(
             maf_client=foundry_client.get_maf_client(),
+            search_client=search_client,
             api_center_client=api_center_client,
             history_provider=history_provider,
             model=settings.openai_chat_deployment,
