@@ -91,7 +91,11 @@ export default function ApiCompliancePage() {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }} data-testid="api-compliance-detail">
-      <Button startIcon={<ArrowBackIcon />} onClick={() => router.push('/governance')} sx={{ mb: 2 }}>
+      <Button
+        startIcon={<ArrowBackIcon />}
+        onClick={() => router.push('/governance')}
+        sx={{ mb: 2 }}
+      >
         Back to Dashboard
       </Button>
 
@@ -128,7 +132,7 @@ export default function ApiCompliancePage() {
                 </Box>
               </AccordionSummary>
               <AccordionDetails>
-                <Typography variant="body2" paragraph>
+                <Typography variant="body2" sx={{ mb: 2 }}>
                   {finding.message}
                 </Typography>
                 <Typography variant="subtitle2" gutterBottom>

@@ -144,9 +144,9 @@ Top-level KPI cards:
 
 ### Status History
 
-| Date       | Status         | Author | Notes                                                                                                                      |
-| ---------- | -------------- | ------ | -------------------------------------------------------------------------------------------------------------------------- |
-| —          | 🔲 Not Started | —      | Task created                                                                                                               |
+| Date       | Status         | Author | Notes                                                                                                                       |
+| ---------- | -------------- | ------ | --------------------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —      | Task created                                                                                                                |
 | 2026-04-20 | ✅ Complete    | Claude | Governance dashboard UI implemented with BFF endpoints, React components, recharts visualizations, and Playwright e2e tests |
 
 ### Technical Decisions
@@ -174,12 +174,14 @@ Top-level KPI cards:
 ### Validation Results
 
 **BFF Implementation:**
+
 - ✅ GovernanceDashboardService: 24/24 tests passing
-- ⚠️  Governance Router: 9/10 tests need auth middleware mocking (service layer fully tested)
+- ⚠️ Governance Router: 9/10 tests need auth middleware mocking (service layer fully tested)
 - ✅ 7 REST endpoints implemented: `/summary`, `/scores`, `/rules`, `/apis/:id/compliance`, `/trends`, `/distribution`, `/rule-compliance`
 - ✅ BFF linting passes: `uv run ruff check` and `uv run ruff format --check` both pass
 
 **Frontend Implementation:**
+
 - ✅ Governance API client with TypeScript interfaces
 - ✅ 6 React components: GovernanceOverview, ScoreDistributionChart, RuleComplianceChart, ApiScoreTable, 2 pages
 - ✅ Recharts integration for pie and bar charts
@@ -187,14 +189,16 @@ Top-level KPI cards:
 - ✅ Sortable and filterable API scores table
 - ✅ Single API compliance detail with accordion-based remediation guidance
 - ✅ Frontend linting passes: `npm run lint --workspace=@apic-vibe-portal/frontend` succeeds
-- ⚠️  Frontend build has pre-existing issue with `@apic-vibe-portal/shared` package resolution (not introduced by this task)
+- ⚠️ Frontend build has pre-existing issue with `@apic-vibe-portal/shared` package resolution (not introduced by this task)
 
 **E2E Testing:**
+
 - ✅ Playwright e2e tests added in `src/frontend/e2e/governance.spec.ts`
 - ✅ Tests cover: dashboard rendering, KPI cards, charts, table filtering, sorting, drill-down navigation
-- ⚠️  E2E tests not executed due to dev server dependency (requires mock data or test environment)
+- ⚠️ E2E tests not executed due to dev server dependency (requires mock data or test environment)
 
 **Acceptance Criteria:**
+
 - ✅ Dashboard overview shows accurate KPI cards
 - ✅ Score distribution chart renders correctly
 - ✅ Rule compliance chart shows per-rule compliance rates
@@ -202,7 +206,7 @@ Top-level KPI cards:
 - ✅ Clicking an API navigates to compliance detail
 - ✅ Single API compliance detail shows rule-by-rule breakdown
 - ✅ Remediation guidance is actionable and specific
-- ⚠️  Trend chart displays placeholder data (historical aggregation deferred)
+- ⚠️ Trend chart displays placeholder data (historical aggregation deferred)
 - ✅ All visualizations handle empty data gracefully
 - ✅ Dashboard is responsive across screen sizes (MUI Grid responsive breakpoints)
 

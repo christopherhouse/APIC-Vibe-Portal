@@ -107,7 +107,9 @@ export async function fetchGovernanceRules(): Promise<GovernanceRule[]> {
 
 /** Fetch compliance report for a single API. */
 export async function fetchApiCompliance(apiId: string): Promise<ApiCompliance> {
-  return apiClient.get<ApiCompliance>(`/api/governance/apis/${encodeURIComponent(apiId)}/compliance`);
+  return apiClient.get<ApiCompliance>(
+    `/api/governance/apis/${encodeURIComponent(apiId)}/compliance`
+  );
 }
 
 /** Fetch governance score trends over time. */

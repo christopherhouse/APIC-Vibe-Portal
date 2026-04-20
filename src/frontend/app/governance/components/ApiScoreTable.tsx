@@ -166,7 +166,7 @@ export default function ApiScoreTable({ scores }: ApiScoreTableProps) {
               >
                 <TableCell>{score.apiName}</TableCell>
                 <TableCell>
-                  <Typography variant="body2" fontWeight="bold">
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                     {score.score.toFixed(1)}
                   </Typography>
                 </TableCell>

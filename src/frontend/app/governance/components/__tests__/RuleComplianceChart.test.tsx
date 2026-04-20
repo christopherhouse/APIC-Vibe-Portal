@@ -61,8 +61,6 @@ describe('RuleComplianceChart', () => {
 
   it('shows subtitle about top 10 rules', () => {
     render(<RuleComplianceChart compliance={mockCompliance} />);
-    expect(
-      screen.getByText('Showing top 10 rules with lowest compliance')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Showing top 10 rules with lowest compliance')).toBeInTheDocument();
   });
 });

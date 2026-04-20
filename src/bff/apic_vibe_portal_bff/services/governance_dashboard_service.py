@@ -113,14 +113,16 @@ class GovernanceDashboardService:
 
         for api in all_apis:
             result = self._check_api_compliance(api)
-            results.append({
-                "apiId": result.api_id,
-                "apiName": result.api_name,
-                "score": result.score,
-                "category": result.category.value,
-                "criticalFailures": len(result.critical_failures),
-                "lastChecked": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-            })
+            results.append(
+                {
+                    "apiId": result.api_id,
+                    "apiName": result.api_name,
+                    "score": result.score,
+                    "category": result.category.value,
+                    "criticalFailures": len(result.critical_failures),
+                    "lastChecked": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                }
+            )
 
         # Sort by score descending
         results.sort(key=lambda x: x["score"], reverse=True)
@@ -233,10 +235,12 @@ class GovernanceDashboardService:
         # Generate weekly data points
         for i in range(5):
             date = now - timedelta(days=i * 7)
-            data_points.append({
-                "date": date.isoformat().replace("+00:00", "Z"),
-                "averageScore": 75.0,  # Placeholder
-            })
+            data_points.append(
+                {
+                    "date": date.isoformat().replace("+00:00", "Z"),
+                    "averageScore": 75.0,  # Placeholder
+                }
+            )
 
         data_points.reverse()
 
@@ -322,10 +326,12 @@ class GovernanceDashboardService:
         results = []
         for stats in rule_stats.values():
             compliance_rate = (stats["passCount"] / total_apis * 100) if total_apis > 0 else 0.0
-            results.append({
-                **stats,
-                "complianceRate": round(compliance_rate, 1),
-            })
+            results.append(
+                {
+                    **stats,
+                    "complianceRate": round(compliance_rate, 1),
+                }
+            )
 
         # Sort by compliance rate ascending (worst first)
         results.sort(key=lambda x: x["complianceRate"])
