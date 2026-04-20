@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
@@ -13,7 +13,7 @@ import Paper from '@mui/material/Paper';
 import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import type { ApiCatalogItem } from '@apic-vibe-portal/shared';
-import { fetchCatalogApis } from '@/lib/catalog-api';
+import { fetchSuggestions } from '@/lib/search-api';
 
 const MAX_COMPARE = 5;
 const MIN_COMPARE = 2;
@@ -25,30 +25,71 @@ export interface CompareSelectorProps {
   onRemove: (id: string) => void;
 }
 
+/** Minimal catalog-item shape built from a suggest result. */
+function suggestToItem(s: {
+  apiId: string;
+  title: string;
+  description: string;
+  kind: string;
+}): ApiCatalogItem {
+  return {
+    id: s.apiId,
+    name: s.apiId,
+    title: s.title,
+    description: s.description,
+    kind: s.kind as ApiCatalogItem['kind'],
+    lifecycleStage: 'production' as ApiCatalogItem['lifecycleStage'],
+    versionCount: 0,
+    deploymentCount: 0,
+    updatedAt: '',
+  };
+}
+
 export default function CompareSelector({ selectedIds, onAdd, onRemove }: CompareSelectorProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ApiCatalogItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  // Incremented each time a new search starts; used to discard stale responses.
+  const requestIdRef = useRef(0);
+
+  // Clear pending timer and in-flight request on unmount
+  useEffect(() => {
+    return () => {
+      clearTimeout(debounceTimerRef.current);
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   const search = useCallback(async (q: string) => {
+    // Abort any in-flight request and start a fresh one
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const requestId = ++requestIdRef.current;
+
     if (!q.trim()) {
       setResults([]);
+      setIsSearching(false);
       return;
     }
+
     setIsSearching(true);
     try {
-      const resp = await fetchCatalogApis({ pageSize: 10 });
-      const filtered = resp.data.filter(
-        (api) =>
-          api.title.toLowerCase().includes(q.toLowerCase()) ||
-          api.name.toLowerCase().includes(q.toLowerCase())
-      );
-      setResults(filtered);
-    } catch {
+      const resp = await fetchSuggestions(q, controller.signal);
+      // Discard stale responses from earlier queries
+      if (requestId !== requestIdRef.current) return;
+      setResults(resp.suggestions.map(suggestToItem));
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return;
       setResults([]);
     } finally {
-      setIsSearching(false);
+      if (requestId === requestIdRef.current) {
+        setIsSearching(false);
+      }
     }
   }, []);
 

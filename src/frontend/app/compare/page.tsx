@@ -69,7 +69,9 @@ export default function ComparePage() {
     } else {
       sp.set('compare', ids.join(','));
     }
-    router.push(`/compare?${sp.toString()}`, { scroll: false });
+    const queryString = sp.toString();
+    const url = queryString ? `/compare?${queryString}` : '/compare';
+    router.push(url, { scroll: false });
   };
 
   const handleAdd = (api: ApiCatalogItem) => {

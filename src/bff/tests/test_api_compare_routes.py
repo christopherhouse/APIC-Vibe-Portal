@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from apic_vibe_portal_bff.app import create_app
 from apic_vibe_portal_bff.middleware.auth import AuthenticatedUser
-from apic_vibe_portal_bff.models.api_center import ApiDefinition
 from apic_vibe_portal_bff.routers.api_compare import _get_compare_service
 from apic_vibe_portal_bff.services.api_compare_service import (
     AspectComparison,
@@ -71,7 +70,10 @@ def _make_compare_response(ai_analysis: str | None = None) -> CompareResponse:
 
 @pytest.fixture
 def mock_compare_service():
-    return MagicMock()
+    svc = MagicMock()
+    # compare_with_ai is async — ensure the mock returns a coroutine
+    svc.compare_with_ai = AsyncMock()
+    return svc
 
 
 @pytest.fixture
@@ -92,9 +94,7 @@ async def client(mock_compare_service):
 
 class TestCompareEndpoint:
     @pytest.mark.asyncio
-    async def test_returns_200_with_valid_request(
-        self, client: AsyncClient, mock_compare_service: MagicMock
-    ) -> None:
+    async def test_returns_200_with_valid_request(self, client: AsyncClient, mock_compare_service: MagicMock) -> None:
         mock_compare_service.compare.return_value = _make_compare_response()
 
         resp = await client.post(
@@ -110,9 +110,7 @@ class TestCompareEndpoint:
         assert len(body["apis"]) == 2
 
     @pytest.mark.asyncio
-    async def test_returns_422_for_single_api_id(
-        self, client: AsyncClient, mock_compare_service: MagicMock
-    ) -> None:
+    async def test_returns_422_for_single_api_id(self, client: AsyncClient, mock_compare_service: MagicMock) -> None:
         resp = await client.post(
             "/api/compare",
             json={"apiIds": ["api-1"]},
@@ -134,9 +132,7 @@ class TestCompareEndpoint:
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_passes_aspects_to_service(
-        self, client: AsyncClient, mock_compare_service: MagicMock
-    ) -> None:
+    async def test_passes_aspects_to_service(self, client: AsyncClient, mock_compare_service: MagicMock) -> None:
         mock_compare_service.compare.return_value = _make_compare_response()
 
         await client.post(
@@ -149,9 +145,7 @@ class TestCompareEndpoint:
         assert "metadata" in str(call_kwargs) or "aspects" in str(call_kwargs)
 
     @pytest.mark.asyncio
-    async def test_returns_401_without_auth(
-        self, client: AsyncClient, mock_compare_service: MagicMock
-    ) -> None:
+    async def test_returns_401_without_auth(self, client: AsyncClient, mock_compare_service: MagicMock) -> None:
         resp = await client.post(
             "/api/compare",
             json={"apiIds": ["api-1", "api-2"]},
@@ -159,9 +153,7 @@ class TestCompareEndpoint:
         assert resp.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_includes_similarity_score(
-        self, client: AsyncClient, mock_compare_service: MagicMock
-    ) -> None:
+    async def test_includes_similarity_score(self, client: AsyncClient, mock_compare_service: MagicMock) -> None:
         mock_compare_service.compare.return_value = _make_compare_response()
 
         resp = await client.post(
@@ -175,9 +167,7 @@ class TestCompareEndpoint:
         assert body["similarityScore"] == 0.3
 
     @pytest.mark.asyncio
-    async def test_returns_500_on_service_error(
-        self, client: AsyncClient, mock_compare_service: MagicMock
-    ) -> None:
+    async def test_returns_500_on_service_error(self, client: AsyncClient, mock_compare_service: MagicMock) -> None:
         mock_compare_service.compare.side_effect = RuntimeError("unexpected")
 
         resp = await client.post(
@@ -198,9 +188,7 @@ class TestCompareEndpoint:
 
 class TestCompareAiAnalysisEndpoint:
     @pytest.mark.asyncio
-    async def test_returns_200_with_ai_analysis(
-        self, client: AsyncClient, mock_compare_service: MagicMock
-    ) -> None:
+    async def test_returns_200_with_ai_analysis(self, client: AsyncClient, mock_compare_service: MagicMock) -> None:
         mock_compare_service.compare_with_ai.return_value = _make_compare_response(
             ai_analysis="This is an AI analysis."
         )
@@ -216,9 +204,7 @@ class TestCompareAiAnalysisEndpoint:
         assert body["aiAnalysis"] == "This is an AI analysis."
 
     @pytest.mark.asyncio
-    async def test_returns_422_for_single_api_id(
-        self, client: AsyncClient, mock_compare_service: MagicMock
-    ) -> None:
+    async def test_returns_422_for_single_api_id(self, client: AsyncClient, mock_compare_service: MagicMock) -> None:
         resp = await client.post(
             "/api/compare/ai-analysis",
             json={"apiIds": ["api-1"]},

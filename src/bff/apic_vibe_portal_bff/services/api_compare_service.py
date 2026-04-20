@@ -59,11 +59,11 @@ class CompareApiSummary(CamelModel):
 class AspectValue(CamelModel):
     """A single value cell in the comparison table."""
 
-    value: str | None = None
-    display: str | None = None
-    """Human-readable representation (e.g. ``"3 versions"`` for an integer 3)."""
-    is_best: bool = False
-    """True when this value is the 'best' in its row (for highlighting)."""
+    value: str | None = Field(default=None, description="Raw string value")
+    display: str | None = Field(
+        default=None, description="Human-readable representation (e.g. '3 versions' for an integer 3)"
+    )
+    is_best: bool = Field(default=False, description="True when this value is the 'best' in its row (for highlighting)")
 
 
 class AspectComparison(CamelModel):
@@ -71,8 +71,7 @@ class AspectComparison(CamelModel):
 
     aspect: str
     label: str
-    values: list[AspectValue]
-    """One entry per API, in the same order as :attr:`CompareResponse.apis`."""
+    values: list[AspectValue] = Field(description="One entry per API, in the same order as CompareResponse.apis")
     all_equal: bool = False
 
 
@@ -81,10 +80,10 @@ class CompareResponse(CamelModel):
 
     apis: list[CompareApiSummary]
     aspects: list[AspectComparison]
-    similarity_score: float = Field(default=0.0, ge=0.0, le=1.0)
-    """Fraction of aspects that are identical across all APIs (0–1)."""
-    ai_analysis: str | None = None
-    """Only populated by the /api/compare/ai-analysis endpoint."""
+    similarity_score: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="Fraction of aspects that are identical across all APIs (0–1)"
+    )
+    ai_analysis: str | None = Field(default=None, description="Only populated by the /api/compare/ai-analysis endpoint")
 
 
 # ---------------------------------------------------------------------------
@@ -140,6 +139,7 @@ class ApiCompareService:
         self,
         api_ids: list[str],
         aspects: list[CompareAspect] | None = None,
+        accessible_api_ids: list[str] | None = None,
     ) -> CompareResponse:
         """Return a structured comparison for *api_ids*.
 
@@ -149,6 +149,11 @@ class ApiCompareService:
             2–5 API names / IDs to compare.
         aspects:
             Subset of aspects to include.  ``None`` → all aspects.
+        accessible_api_ids:
+            When ``None``, no access check is performed (admin bypass).
+            When a list, each API ID is validated against the list before
+            fetching.  Raises :class:`ApiAccessDeniedError` for any ID not
+            in the list.
         """
         if len(api_ids) < 2:  # noqa: PLR2004
             raise ValueError("At least 2 API IDs are required for comparison")
@@ -157,10 +162,10 @@ class ApiCompareService:
 
         target_aspects = aspects if aspects is not None else ALL_ASPECTS
 
-        # Fetch API definitions (no security trimming — caller enforces access)
+        # Fetch API definitions with security trimming applied per-ID.
         definitions = []
         for api_id in api_ids:
-            api = self._catalog.get_api(api_id)
+            api = self._catalog.get_api(api_id, accessible_api_ids=accessible_api_ids)
             definitions.append(api)
 
         summaries = [
@@ -185,14 +190,15 @@ class ApiCompareService:
             similarity_score=round(similarity, 3),
         )
 
-    def compare_with_ai(
+    async def compare_with_ai(
         self,
         api_ids: list[str],
         aspects: list[CompareAspect] | None = None,
+        accessible_api_ids: list[str] | None = None,
     ) -> CompareResponse:
         """Return a comparison that also includes AI-generated narrative analysis."""
-        result = self.compare(api_ids, aspects)
-        result.ai_analysis = self._generate_ai_analysis(result)
+        result = self.compare(api_ids, aspects, accessible_api_ids)
+        result.ai_analysis = await self._generate_ai_analysis(result)
         return result
 
     # ------------------------------------------------------------------
@@ -232,7 +238,7 @@ class ApiCompareService:
             self._row(
                 "metadata.license",
                 "License",
-                [d.license or "" for d in defs],
+                [d.license or "N/A" for d in defs],
             )
         )
         rows.append(
@@ -368,7 +374,7 @@ class ApiCompareService:
     # AI analysis
     # ------------------------------------------------------------------
 
-    def _generate_ai_analysis(self, result: CompareResponse) -> str | None:
+    async def _generate_ai_analysis(self, result: CompareResponse) -> str | None:
         if self._openai is None:
             return None
 
@@ -389,13 +395,12 @@ class ApiCompareService:
         )
 
         try:
-            response = self._openai.chat.completions.create(
-                model="gpt-4o-mini",
+            response = await self._openai.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=800,
                 temperature=0.3,
             )
-            return response.choices[0].message.content
+            return response.get("content") or None
         except Exception:  # noqa: BLE001
             logger.warning("AI analysis generation failed", exc_info=True)
             return None

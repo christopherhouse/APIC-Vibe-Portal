@@ -41,7 +41,8 @@ export default function CompareAddButton({ apiId, variant = 'icon' }: CompareAdd
     e.stopPropagation();
     e.preventDefault();
     const next = toggleCompareId(new URLSearchParams(searchParams.toString()), apiId);
-    router.push(`?${next}`, { scroll: false });
+    const url = next ? `?${next}` : window.location.pathname;
+    router.push(url, { scroll: false });
   };
 
   const label = isSelected ? 'Remove from comparison' : isFull ? 'Max 5 APIs' : 'Add to compare';

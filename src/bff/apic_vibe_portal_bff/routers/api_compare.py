@@ -19,8 +19,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
 from apic_vibe_portal_bff.middleware.rbac import require_any_role
+from apic_vibe_portal_bff.middleware.security_trimming import make_accessible_ids_dep
 from apic_vibe_portal_bff.routers.api_catalog import CatalogApiError, _get_service
-from apic_vibe_portal_bff.services.api_catalog_service import ApiCatalogService
+from apic_vibe_portal_bff.services.api_catalog_service import ApiAccessDeniedError, ApiCatalogService
 from apic_vibe_portal_bff.services.api_compare_service import (
     ALL_ASPECTS,
     ApiCompareService,
@@ -54,11 +55,15 @@ def _get_compare_service(
             from apic_vibe_portal_bff.config.settings import get_settings
 
             settings = get_settings()
-            if settings.azure_openai_endpoint:
-                openai_client: Any | None = OpenAIClient(endpoint=settings.azure_openai_endpoint)
+            if settings.openai_endpoint and settings.openai_chat_deployment:
+                openai_client: Any | None = OpenAIClient(
+                    endpoint=settings.openai_endpoint,
+                    deployment=settings.openai_chat_deployment,
+                )
             else:
                 openai_client = None
         except Exception:  # noqa: BLE001
+            logger.exception("Failed to initialize OpenAI client for API comparison.")
             openai_client = None
 
         _compare_service_instance = ApiCompareService(
@@ -130,11 +135,14 @@ router = APIRouter(tags=["compare"])
 def compare_apis(
     body: CompareRequest,
     service: ApiCompareService = Depends(_get_compare_service),  # noqa: B008
+    accessible_api_ids: list[str] | None = Depends(make_accessible_ids_dep()),  # noqa: B008
 ) -> CompareResponse:
     """Compare 2–5 APIs and return structured aspect comparison data."""
     try:
         aspects = body.aspects if body.aspects else ALL_ASPECTS
-        return service.compare(body.api_ids, aspects)
+        return service.compare(body.api_ids, aspects, accessible_api_ids=accessible_api_ids)
+    except ApiAccessDeniedError as exc:
+        _raise_error(403, "FORBIDDEN", f"Access to API '{exc.api_name}' is not permitted")
     except ValueError as exc:
         _raise_error(422, "INVALID_REQUEST", str(exc))
     except Exception as exc:
@@ -147,14 +155,17 @@ def compare_apis(
     dependencies=[Depends(require_any_role(_ALLOWED_ROLES))],
     response_model=CompareResponse,
 )
-def compare_apis_with_ai(
+async def compare_apis_with_ai(
     body: CompareRequest,
     service: ApiCompareService = Depends(_get_compare_service),  # noqa: B008
+    accessible_api_ids: list[str] | None = Depends(make_accessible_ids_dep()),  # noqa: B008
 ) -> CompareResponse:
     """Compare 2–5 APIs and include an AI-generated narrative analysis."""
     try:
         aspects = body.aspects if body.aspects else ALL_ASPECTS
-        return service.compare_with_ai(body.api_ids, aspects)
+        return await service.compare_with_ai(body.api_ids, aspects, accessible_api_ids=accessible_api_ids)
+    except ApiAccessDeniedError as exc:
+        _raise_error(403, "FORBIDDEN", f"Access to API '{exc.api_name}' is not permitted")
     except ValueError as exc:
         _raise_error(422, "INVALID_REQUEST", str(exc))
     except Exception as exc:

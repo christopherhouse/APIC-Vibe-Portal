@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -202,35 +202,62 @@ class TestCompare:
 
         assert result.ai_analysis is None
 
+    def test_forwards_accessible_api_ids_to_catalog(self):
+        """Verify security trimming is passed through to the catalog service."""
+        a1 = _make_api("api-1")
+        a2 = _make_api("api-2")
+        mock_catalog = MagicMock()
+        mock_catalog.get_api.side_effect = lambda api_id, **_: {"api-1": a1, "api-2": a2}[api_id]
+        svc = ApiCompareService(catalog_service=mock_catalog)
+
+        svc.compare(["api-1", "api-2"], accessible_api_ids=["api-1", "api-2"])
+
+        for call_args in mock_catalog.get_api.call_args_list:
+            assert call_args.kwargs.get("accessible_api_ids") == ["api-1", "api-2"]
+
+    def test_license_missing_shows_na(self):
+        """Empty license should render as 'N/A', not empty string."""
+        a1 = _make_api("api-1", license=None)
+        a2 = _make_api("api-2", license="MIT")
+        svc = _make_service({"api-1": a1, "api-2": a2})
+
+        result = svc.compare(["api-1", "api-2"], aspects=[CompareAspect.METADATA])
+
+        lic_row = next(r for r in result.aspects if r.aspect == "metadata.license")
+        assert lic_row.values[0].value == "N/A"
+        assert lic_row.values[1].value == "MIT"
+
 
 class TestCompareWithAi:
-    def test_calls_openai_and_returns_analysis(self):
+    @pytest.mark.asyncio
+    async def test_calls_openai_and_returns_analysis(self):
         a1 = _make_api("api-1")
         a2 = _make_api("api-2")
         mock_catalog = MagicMock()
         mock_catalog.get_api.side_effect = lambda api_id, **_: {"api-1": a1, "api-2": a2}[api_id]
 
         mock_openai = MagicMock()
-        mock_openai.chat.completions.create.return_value.choices[0].message.content = "AI analysis text"
+        mock_openai.chat_completion = AsyncMock(return_value={"content": "AI analysis text"})
 
         svc = ApiCompareService(catalog_service=mock_catalog, openai_client=mock_openai)
 
-        result = svc.compare_with_ai(["api-1", "api-2"])
+        result = await svc.compare_with_ai(["api-1", "api-2"])
 
         assert result.ai_analysis == "AI analysis text"
-        mock_openai.chat.completions.create.assert_called_once()
+        mock_openai.chat_completion.assert_called_once()
 
-    def test_ai_analysis_is_none_when_openai_raises(self):
+    @pytest.mark.asyncio
+    async def test_ai_analysis_is_none_when_openai_raises(self):
         a1 = _make_api("api-1")
         a2 = _make_api("api-2")
         mock_catalog = MagicMock()
         mock_catalog.get_api.side_effect = lambda api_id, **_: {"api-1": a1, "api-2": a2}[api_id]
 
         mock_openai = MagicMock()
-        mock_openai.chat.completions.create.side_effect = RuntimeError("OpenAI unavailable")
+        mock_openai.chat_completion = AsyncMock(side_effect=RuntimeError("OpenAI unavailable"))
 
         svc = ApiCompareService(catalog_service=mock_catalog, openai_client=mock_openai)
 
-        result = svc.compare_with_ai(["api-1", "api-2"])
+        result = await svc.compare_with_ai(["api-1", "api-2"])
 
         assert result.ai_analysis is None
