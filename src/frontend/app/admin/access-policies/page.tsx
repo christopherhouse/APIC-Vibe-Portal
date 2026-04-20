@@ -94,10 +94,9 @@ export default function AccessPoliciesPage() {
     try {
       const response = await fetchCatalogApis({ pageSize: 100 });
       setAvailableApis(response.data.map((api) => ({ name: api.name, title: api.title })));
-    } catch {
-      // Failing to load APIs is non-critical; the admin can still manage
-      // policies — just without the dropdown.  We intentionally swallow the
-      // error to avoid blocking the page.
+    } catch (err) {
+      // Non-critical: admin can still manage policies without the dropdown.
+      console.warn('Failed to load available APIs for policy dropdown:', err);
     } finally {
       setApisLoading(false);
     }
