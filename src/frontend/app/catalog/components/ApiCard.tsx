@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import type { ApiCatalogItem } from '@apic-vibe-portal/shared';
 import { ApiLifecycle, ApiKind } from '@apic-vibe-portal/shared';
 import { formatDate, truncate } from '@/lib/utils';
+import CompareAddButton from '@/app/compare/components/CompareAddButton';
 
 /** Color mapping for lifecycle stages. */
 const lifecycleColorMap: Record<
@@ -74,6 +75,7 @@ export default function ApiCard({ api, listMode = false }: ApiCardProps) {
               <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
                 Updated {formatDate(api.updatedAt)}
               </Typography>
+              <CompareAddButton apiId={api.id} variant="icon" />
             </Box>
           </CardContent>
         </CardActionArea>
@@ -111,9 +113,12 @@ export default function ApiCard({ api, listMode = false }: ApiCardProps) {
             <Typography variant="caption" color="text.secondary">
               {api.versionCount} version{api.versionCount !== 1 ? 's' : ''}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Updated {formatDate(api.updatedAt)}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Updated {formatDate(api.updatedAt)}
+              </Typography>
+              <CompareAddButton apiId={api.id} variant="icon" />
+            </Box>
           </Box>
         </CardContent>
       </CardActionArea>

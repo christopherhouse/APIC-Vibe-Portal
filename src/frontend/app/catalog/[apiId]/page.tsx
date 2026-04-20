@@ -17,6 +17,7 @@ import ApiVersionList from './components/ApiVersionList';
 import ApiSpecViewer from './components/ApiSpecViewer';
 import ApiDeployments from './components/ApiDeployments';
 import SpecDownloadButton from './components/SpecDownloadButton';
+import CompareAddButton from '@/app/compare/components/CompareAddButton';
 
 export default function ApiDetailPage() {
   const params = useParams<{ apiId: string }>();
@@ -61,6 +62,11 @@ export default function ApiDetailPage() {
       {/* Header with breadcrumb, title, badges */}
       <Box sx={{ mb: 3 }}>
         <ApiHeader api={api} isLoading={isLoading} />
+        {api && (
+          <Box sx={{ mt: 1 }}>
+            <CompareAddButton apiId={api.name} variant="button" />
+          </Box>
+        )}
       </Box>
 
       {/* Tabs */}
