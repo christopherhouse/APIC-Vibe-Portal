@@ -1,36 +1,89 @@
 import { render, screen, fireEvent, waitFor } from '../../../../../__tests__/test-utils';
 import userEvent from '@testing-library/user-event';
 import PolicyDialog from '../PolicyDialog';
+import type { ApiOption } from '../PolicyDialog';
 
 const noopSave = jest.fn().mockResolvedValue(undefined);
 const noopClose = jest.fn();
+
+const sampleApis: ApiOption[] = [
+  { name: 'petstore-api', title: 'Petstore API' },
+  { name: 'weather-api', title: 'Weather API' },
+  { name: 'internal-api', title: 'Internal API' },
+];
 
 describe('PolicyDialog — create mode', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('renders the create dialog when no existing policy', () => {
-    render(<PolicyDialog open existing={null} onClose={noopClose} onSave={noopSave} />);
+    render(
+      <PolicyDialog
+        open
+        existing={null}
+        availableApis={sampleApis}
+        onClose={noopClose}
+        onSave={noopSave}
+      />
+    );
     expect(screen.getByText('New Access Policy')).toBeInTheDocument();
-    expect(screen.getByTestId('api-name-input')).not.toBeDisabled();
+    expect(screen.getByRole('combobox', { name: /API Name/i })).not.toBeDisabled();
   });
 
   it('disables save button when API name is empty', () => {
-    render(<PolicyDialog open existing={null} onClose={noopClose} onSave={noopSave} />);
+    render(
+      <PolicyDialog
+        open
+        existing={null}
+        availableApis={sampleApis}
+        onClose={noopClose}
+        onSave={noopSave}
+      />
+    );
     expect(screen.getByTestId('save-policy-button')).toBeDisabled();
   });
 
-  it('enables save button when API name is provided', async () => {
+  it('enables save button when API is selected from dropdown', async () => {
     const user = userEvent.setup();
-    render(<PolicyDialog open existing={null} onClose={noopClose} onSave={noopSave} />);
-    await user.type(screen.getByTestId('api-name-input'), 'petstore-api');
+    render(
+      <PolicyDialog
+        open
+        existing={null}
+        availableApis={sampleApis}
+        onClose={noopClose}
+        onSave={noopSave}
+      />
+    );
+
+    // Open the autocomplete and select an option
+    const input = screen.getByRole('combobox', { name: /API Name/i });
+    await user.click(input);
+    await user.type(input, 'petstore');
+
+    const option = await screen.findByText('Petstore API (petstore-api)');
+    await user.click(option);
+
     expect(screen.getByTestId('save-policy-button')).not.toBeDisabled();
   });
 
   it('calls onSave with API name and groups', async () => {
     const user = userEvent.setup();
-    render(<PolicyDialog open existing={null} onClose={noopClose} onSave={noopSave} />);
+    render(
+      <PolicyDialog
+        open
+        existing={null}
+        availableApis={sampleApis}
+        onClose={noopClose}
+        onSave={noopSave}
+      />
+    );
 
-    await user.type(screen.getByTestId('api-name-input'), 'petstore-api');
+    // Select API from dropdown
+    const input = screen.getByRole('combobox', { name: /API Name/i });
+    await user.click(input);
+    await user.type(input, 'petstore');
+    const option = await screen.findByText('Petstore API (petstore-api)');
+    await user.click(option);
+
     await user.type(screen.getByTestId('group-oid-input'), 'group-abc');
     await user.click(screen.getByTestId('add-group-button'));
 
@@ -48,7 +101,15 @@ describe('PolicyDialog — create mode', () => {
 
   it('adds group on Enter key', async () => {
     const user = userEvent.setup();
-    render(<PolicyDialog open existing={null} onClose={noopClose} onSave={noopSave} />);
+    render(
+      <PolicyDialog
+        open
+        existing={null}
+        availableApis={sampleApis}
+        onClose={noopClose}
+        onSave={noopSave}
+      />
+    );
 
     await user.type(screen.getByTestId('group-oid-input'), 'group-xyz{Enter}');
     expect(screen.getByTestId('group-chip-group-xyz')).toBeInTheDocument();
@@ -56,7 +117,15 @@ describe('PolicyDialog — create mode', () => {
 
   it('removes a group chip on delete', async () => {
     const user = userEvent.setup();
-    render(<PolicyDialog open existing={null} onClose={noopClose} onSave={noopSave} />);
+    render(
+      <PolicyDialog
+        open
+        existing={null}
+        availableApis={sampleApis}
+        onClose={noopClose}
+        onSave={noopSave}
+      />
+    );
 
     await user.type(screen.getByTestId('group-oid-input'), 'group-xyz{Enter}');
     const chip = screen.getByTestId('group-chip-group-xyz');
@@ -73,7 +142,15 @@ describe('PolicyDialog — create mode', () => {
 
   it('shows isPublic switch and hides group section when toggled', async () => {
     const user = userEvent.setup();
-    render(<PolicyDialog open existing={null} onClose={noopClose} onSave={noopSave} />);
+    render(
+      <PolicyDialog
+        open
+        existing={null}
+        availableApis={sampleApis}
+        onClose={noopClose}
+        onSave={noopSave}
+      />
+    );
     // Groups section should be visible by default
     expect(screen.getByTestId('group-oid-input')).toBeInTheDocument();
     // Toggle isPublic
@@ -84,9 +161,31 @@ describe('PolicyDialog — create mode', () => {
 
   it('calls onClose when Cancel is clicked', async () => {
     const user = userEvent.setup();
-    render(<PolicyDialog open existing={null} onClose={noopClose} onSave={noopSave} />);
+    render(
+      <PolicyDialog
+        open
+        existing={null}
+        availableApis={sampleApis}
+        onClose={noopClose}
+        onSave={noopSave}
+      />
+    );
     await user.click(screen.getByText('Cancel'));
     expect(noopClose).toHaveBeenCalled();
+  });
+
+  it('renders autocomplete dropdown in create mode', () => {
+    render(
+      <PolicyDialog
+        open
+        existing={null}
+        availableApis={[]}
+        apisLoading={true}
+        onClose={noopClose}
+        onSave={noopSave}
+      />
+    );
+    expect(screen.getByRole('combobox', { name: /API Name/i })).toBeInTheDocument();
   });
 });
 

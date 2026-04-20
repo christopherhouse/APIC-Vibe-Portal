@@ -16,6 +16,11 @@ jest.mock('@/lib/admin-api', () => ({
   invalidatePolicyCache: jest.fn().mockResolvedValue(undefined),
 }));
 
+const mockFetchCatalogApis = jest.fn();
+jest.mock('@/lib/catalog-api', () => ({
+  fetchCatalogApis: (...args: unknown[]) => mockFetchCatalogApis(...args),
+}));
+
 import AccessPoliciesPage from '../page';
 
 const adminUser = {
@@ -28,7 +33,16 @@ const regularUser = {
 };
 
 describe('AccessPoliciesPage', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFetchCatalogApis.mockResolvedValue({
+      data: [
+        { name: 'petstore-api', title: 'Petstore API' },
+        { name: 'weather-api', title: 'Weather API' },
+      ],
+      meta: { page: 1, pageSize: 100, totalCount: 2, totalPages: 1 },
+    });
+  });
 
   it('shows access denied for non-admin users', async () => {
     mockUseAuth.mockReturnValue(regularUser);
