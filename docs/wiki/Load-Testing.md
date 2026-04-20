@@ -6,12 +6,12 @@ Load testing is implemented using **Azure Load Testing** with a JMeter test plan
 
 ## Components
 
-| Component | Location | Description |
-|-----------|----------|-------------|
-| Azure Load Testing resource | `infra/modules/load-testing.bicep` | Azure-managed JMeter engine |
-| JMeter test plan | `tests/load/bff-load-test.jmx` | Test scenarios and HTTP requests |
-| Load test config | `tests/load/load-test-config.yaml` | Azure Load Testing YAML with failure criteria |
-| GitHub Actions workflow | `.github/workflows/load-test.yml` | Automates test execution |
+| Component                   | Location                           | Description                                   |
+| --------------------------- | ---------------------------------- | --------------------------------------------- |
+| Azure Load Testing resource | `infra/modules/load-testing.bicep` | Azure-managed JMeter engine                   |
+| JMeter test plan            | `tests/load/bff-load-test.jmx`     | Test scenarios and HTTP requests              |
+| Load test config            | `tests/load/load-test-config.yaml` | Azure Load Testing YAML with failure criteria |
+| GitHub Actions workflow     | `.github/workflows/load-test.yml`  | Automates test execution                      |
 
 ## Architecture
 
@@ -55,11 +55,11 @@ az ad sp create-for-rbac --name "apic-portal-load-test-sp" --skip-assignment
 
 ### 3. Configure GitHub Secrets & Variables
 
-| Type | Name | Value |
-|------|------|-------|
-| Environment variable | `LOADTEST_CLIENT_ID` | Load test SP client ID |
-| Environment variable | `LOADTEST_TOKEN_SCOPE` | `api://<bff-client-id>/.default` |
-| Environment secret | `LOADTEST_CLIENT_SECRET` | Load test SP client secret |
+| Type                 | Name                     | Value                            |
+| -------------------- | ------------------------ | -------------------------------- |
+| Environment variable | `LOADTEST_CLIENT_ID`     | Load test SP client ID           |
+| Environment variable | `LOADTEST_TOKEN_SCOPE`   | `api://<bff-client-id>/.default` |
+| Environment secret   | `LOADTEST_CLIENT_SECRET` | Load test SP client secret       |
 
 ### 4. Trigger
 
@@ -69,11 +69,11 @@ The workflow triggers automatically after a successful `Deploy Application` run 
 
 The load test YAML defines failure criteria that fail the workflow if exceeded:
 
-| Metric | Threshold |
-|--------|-----------|
-| Average response time | < 2000ms |
-| Error rate | < 5% |
-| P95 response time | < 5000ms |
+| Metric                | Threshold |
+| --------------------- | --------- |
+| Average response time | < 2000ms  |
+| Error rate            | < 5%      |
+| P95 response time     | < 5000ms  |
 
 ## Related
 

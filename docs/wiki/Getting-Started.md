@@ -4,15 +4,15 @@ This guide walks you through setting up a local development environment for the 
 
 ## Prerequisites
 
-| Tool | Version | Install |
-|------|---------|---------|
-| Node.js | >= 24 (see `.nvmrc`) | [nodejs.org](https://nodejs.org) or `nvm install` |
-| npm | >= 10 | Included with Node.js |
-| Python | 3.14 (see `.python-version`) | [python.org](https://python.org) or `pyenv install` |
-| UV | latest | `curl -LsSf https://astral.sh/uv/install.sh | sh` |
-| Azure CLI | latest | [Install Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) |
-| Docker | latest | [docker.com](https://docker.com) (optional, for container builds) |
-| Git | >= 2.40 | [git-scm.com](https://git-scm.com) |
+| Tool      | Version                      | Install                                                                            |
+| --------- | ---------------------------- | ---------------------------------------------------------------------------------- | --- |
+| Node.js   | >= 24 (see `.nvmrc`)         | [nodejs.org](https://nodejs.org) or `nvm install`                                  |
+| npm       | >= 10                        | Included with Node.js                                                              |
+| Python    | 3.14 (see `.python-version`) | [python.org](https://python.org) or `pyenv install`                                |
+| UV        | latest                       | `curl -LsSf https://astral.sh/uv/install.sh                                        | sh` |
+| Azure CLI | latest                       | [Install Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) |
+| Docker    | latest                       | [docker.com](https://docker.com) (optional, for container builds)                  |
+| Git       | >= 2.40                      | [git-scm.com](https://git-scm.com)                                                 |
 
 ## Clone & Install
 
@@ -157,14 +157,14 @@ docker build -t apic-portal-bff src/bff
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| `nvm` not found | Install nvm first, then run `nvm install` in the repo root |
-| `uv` not found | Run the UV install script (see Prerequisites) |
-| Frontend can't reach BFF | Ensure BFF is running on port 8000; check `.env.local` proxy config |
-| MSAL redirect loop | Verify `MSAL_REDIRECT_URI=http://localhost:3000` in `.env.local` |
-| `roles` claim missing in token | Assign yourself an app role in Entra ID Enterprise applications |
-| Redis connection refused | Leave `REDIS_HOST` unset — BFF falls back to in-memory cache locally |
+| Problem                        | Fix                                                                  |
+| ------------------------------ | -------------------------------------------------------------------- |
+| `nvm` not found                | Install nvm first, then run `nvm install` in the repo root           |
+| `uv` not found                 | Run the UV install script (see Prerequisites)                        |
+| Frontend can't reach BFF       | Ensure BFF is running on port 8000; check `.env.local` proxy config  |
+| MSAL redirect loop             | Verify `MSAL_REDIRECT_URI=http://localhost:3000` in `.env.local`     |
+| `roles` claim missing in token | Assign yourself an app role in Entra ID Enterprise applications      |
+| Redis connection refused       | Leave `REDIS_HOST` unset — BFF falls back to in-memory cache locally |
 
 ## Next Steps
 

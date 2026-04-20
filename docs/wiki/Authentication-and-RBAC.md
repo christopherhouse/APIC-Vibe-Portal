@@ -6,11 +6,11 @@ Authentication uses **Microsoft Entra ID** (Azure AD). Authorization uses **App 
 
 ## Role Definitions
 
-| Role Value | Display Name | Description | Typical Assignees |
-|------------|--------------|-------------|-------------------|
-| `Portal.Admin` | Admin | Full access — manage config, view org-wide analytics, bypass security trimming | Platform leads, DevOps managers |
-| `Portal.Maintainer` | Maintainer | Manage APIs — publish, edit, curate catalog; view scoped analytics | API product owners, tech leads |
-| `Portal.User` | User | Read-only — browse catalog, use AI chat | All developers |
+| Role Value          | Display Name | Description                                                                    | Typical Assignees               |
+| ------------------- | ------------ | ------------------------------------------------------------------------------ | ------------------------------- |
+| `Portal.Admin`      | Admin        | Full access — manage config, view org-wide analytics, bypass security trimming | Platform leads, DevOps managers |
+| `Portal.Maintainer` | Maintainer   | Manage APIs — publish, edit, curate catalog; view scoped analytics             | API product owners, tech leads  |
+| `Portal.User`       | User         | Read-only — browse catalog, use AI chat                                        | All developers                  |
 
 > Roles are **additive**. A user can have multiple roles.
 
@@ -32,13 +32,13 @@ Response
 
 ## Route → Role Matrix
 
-| Route | Required Roles |
-|-------|---------------|
-| `GET /api/catalog/` | Any portal role |
-| `POST /api/chat/` | Any portal role |
-| `GET /api/governance/` | Admin or Maintainer |
-| `GET /api/analytics/` | Admin or Maintainer |
-| `GET /health`, `GET /docs` | Public (no auth) |
+| Route                      | Required Roles      |
+| -------------------------- | ------------------- |
+| `GET /api/catalog/`        | Any portal role     |
+| `POST /api/chat/`          | Any portal role     |
+| `GET /api/governance/`     | Admin or Maintainer |
+| `GET /api/analytics/`      | Admin or Maintainer |
+| `GET /health`, `GET /docs` | Public (no auth)    |
 
 ## Entra ID Setup
 
@@ -46,10 +46,10 @@ Response
 
 You need **two** app registrations:
 
-| Registration | Purpose |
-|-------------|---------|
+| Registration     | Purpose                                           |
+| ---------------- | ------------------------------------------------- |
 | **Frontend SPA** | MSAL login; requests tokens scoped to the BFF API |
-| **BFF API** | Exposes the API scope; defines App Roles |
+| **BFF API**      | Exposes the API scope; defines App Roles          |
 
 #### Frontend SPA
 
@@ -72,11 +72,11 @@ You need **two** app registrations:
 
 In the **BFF API** registration → **App roles** → **Create app role**:
 
-| Display Name | Value | Allowed Member Types | Description |
-|-------------|-------|---------------------|-------------|
-| Admin | `Portal.Admin` | Users/Groups | Full portal administration |
-| Maintainer | `Portal.Maintainer` | Users/Groups | API catalog management |
-| User | `Portal.User` | Users/Groups | Read-only portal access |
+| Display Name | Value               | Allowed Member Types | Description                |
+| ------------ | ------------------- | -------------------- | -------------------------- |
+| Admin        | `Portal.Admin`      | Users/Groups         | Full portal administration |
+| Maintainer   | `Portal.Maintainer` | Users/Groups         | API catalog management     |
+| User         | `Portal.User`       | Users/Groups         | Read-only portal access    |
 
 Or update the manifest JSON directly:
 
@@ -112,6 +112,7 @@ Or update the manifest JSON directly:
 ### 3. Enable "Assignment Required"
 
 In **Enterprise applications** (the BFF app's enterprise application):
+
 - **Properties** → **Assignment required?** → **Yes**
 
 This ensures only users explicitly assigned a role can log in.
@@ -122,11 +123,11 @@ This ensures only users explicitly assigned a role can log in.
 
 #### Recommended: Group-Based Assignment
 
-| Security Group | Role |
-|---------------|------|
-| `sg-apic-portal-admins` | Portal.Admin |
+| Security Group               | Role              |
+| ---------------------------- | ----------------- |
+| `sg-apic-portal-admins`      | Portal.Admin      |
 | `sg-apic-portal-maintainers` | Portal.Maintainer |
-| `sg-apic-portal-users` | Portal.User |
+| `sg-apic-portal-users`       | Portal.User       |
 
 ## Local Development Setup
 
@@ -175,12 +176,12 @@ from apic_vibe_portal_bff.middleware.rbac import require_role, require_any_role
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| `roles` claim is empty | User has no role assignment in Enterprise applications → assign a role |
-| 403 on a route user should access | Log out and back in to refresh token; verify role values match exactly |
-| AADSTS50105 — user can't log in | "Assignment required" is on but user has no role; assign at least `Portal.User` |
-| Roles not reflected after assignment | Role changes take effect on next token issuance; have user log out and back in |
+| Problem                              | Fix                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------- |
+| `roles` claim is empty               | User has no role assignment in Enterprise applications → assign a role          |
+| 403 on a route user should access    | Log out and back in to refresh token; verify role values match exactly          |
+| AADSTS50105 — user can't log in      | "Assignment required" is on but user has no role; assign at least `Portal.User` |
+| Roles not reflected after assignment | Role changes take effect on next token issuance; have user log out and back in  |
 
 ## Related
 

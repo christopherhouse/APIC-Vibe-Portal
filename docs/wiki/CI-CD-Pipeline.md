@@ -4,23 +4,23 @@
 
 The CI/CD pipeline consists of five GitHub Actions workflows:
 
-| Workflow | File | Trigger | Purpose |
-|----------|------|---------|---------|
-| CI | `ci.yml` | PR + push to `main` | Lint, typecheck, test, build |
-| Deploy Infrastructure | `deploy-infra.yml` | Push to `main` (infra changes) + manual | Bicep → Azure |
-| Deploy Application | `deploy-app.yml` | Push to `main` (src changes) + manual | Docker build → ACR → Container Apps |
-| Load Test | `load-test.yml` | After deploy-app + manual | JMeter load tests via Azure Load Testing |
-| PR Checks | `pr-checks.yml` | PR events | Labeling, size checks, plan references |
+| Workflow              | File               | Trigger                                 | Purpose                                  |
+| --------------------- | ------------------ | --------------------------------------- | ---------------------------------------- |
+| CI                    | `ci.yml`           | PR + push to `main`                     | Lint, typecheck, test, build             |
+| Deploy Infrastructure | `deploy-infra.yml` | Push to `main` (infra changes) + manual | Bicep → Azure                            |
+| Deploy Application    | `deploy-app.yml`   | Push to `main` (src changes) + manual   | Docker build → ACR → Container Apps      |
+| Load Test             | `load-test.yml`    | After deploy-app + manual               | JMeter load tests via Azure Load Testing |
+| PR Checks             | `pr-checks.yml`    | PR events                               | Labeling, size checks, plan references   |
 
 ## Environments
 
 Three GitHub environments with progressive approval gates:
 
-| Environment | Deploy Trigger | Approval Required |
-|-------------|---------------|-------------------|
-| `dev` | Auto on push to `main` | No |
-| `staging` | Manual (`workflow_dispatch`) | Yes |
-| `prod` | Manual (`workflow_dispatch`) | Yes |
+| Environment | Deploy Trigger               | Approval Required |
+| ----------- | ---------------------------- | ----------------- |
+| `dev`       | Auto on push to `main`       | No                |
+| `staging`   | Manual (`workflow_dispatch`) | Yes               |
+| `prod`      | Manual (`workflow_dispatch`) | Yes               |
 
 ### Setup
 
@@ -82,28 +82,28 @@ az role assignment create \
 
 ### Repository Secrets
 
-| Secret | Description |
-|--------|-------------|
-| `AZURE_CLIENT_ID` | Entra ID app registration client ID |
-| `AZURE_TENANT_ID` | Azure tenant ID |
-| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
+| Secret                  | Description                         |
+| ----------------------- | ----------------------------------- |
+| `AZURE_CLIENT_ID`       | Entra ID app registration client ID |
+| `AZURE_TENANT_ID`       | Azure tenant ID                     |
+| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID               |
 
 ### Environment Variables (per environment)
 
-| Variable | dev example | Description |
-|----------|-------------|-------------|
-| `AZURE_RESOURCE_GROUP` | `rg-apic-vibe-portal-dev` | Resource group name |
-| `MSAL_CLIENT_ID` | `12345678-...` | SPA client ID |
-| `MSAL_AUTHORITY` | `https://login.microsoftonline.com/<tenant>` | Entra authority |
-| `MSAL_REDIRECT_URI` | `https://apic-portal-dev.azurecontainerapps.io` | Redirect URI |
-| `BFF_API_SCOPE` | `api://<bff-client-id>/.default` | BFF OAuth scope |
-| `LOADTEST_CLIENT_ID` | `<sp-client-id>` | Load test service principal |
-| `LOADTEST_TOKEN_SCOPE` | `api://<bff-client-id>/.default` | Load test token scope |
+| Variable               | dev example                                     | Description                 |
+| ---------------------- | ----------------------------------------------- | --------------------------- |
+| `AZURE_RESOURCE_GROUP` | `rg-apic-vibe-portal-dev`                       | Resource group name         |
+| `MSAL_CLIENT_ID`       | `12345678-...`                                  | SPA client ID               |
+| `MSAL_AUTHORITY`       | `https://login.microsoftonline.com/<tenant>`    | Entra authority             |
+| `MSAL_REDIRECT_URI`    | `https://apic-portal-dev.azurecontainerapps.io` | Redirect URI                |
+| `BFF_API_SCOPE`        | `api://<bff-client-id>/.default`                | BFF OAuth scope             |
+| `LOADTEST_CLIENT_ID`   | `<sp-client-id>`                                | Load test service principal |
+| `LOADTEST_TOKEN_SCOPE` | `api://<bff-client-id>/.default`                | Load test token scope       |
 
 ### Environment Secrets (per environment)
 
-| Secret | Description |
-|--------|-------------|
+| Secret                   | Description                               |
+| ------------------------ | ----------------------------------------- |
 | `LOADTEST_CLIENT_SECRET` | Load test service principal client secret |
 
 ## Workflow Details
@@ -151,6 +151,7 @@ Images are built once and promoted across environments using runtime configurati
 ### Container Apps Deployment
 
 Container Apps are deployed via `scripts/deploy-container-apps.sh` (not directly in Bicep). The script:
+
 - Creates Container Apps if they don't exist
 - Updates existing apps with new image tags
 - Configures ingress, scaling rules, managed identity, and environment variables
@@ -164,12 +165,12 @@ Container Apps are deployed via `scripts/deploy-container-apps.sh` (not directly
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| OIDC auth fails | Check federated credential `subject` matches repo + branch |
-| Container Apps deploy fails | Verify managed identity has AcrPull + required RBAC roles |
-| Build fails (Node.js version) | Ensure `.nvmrc` specifies Node.js >= 24 |
-| Build fails (Python version) | Ensure `.python-version` specifies Python 3.14 |
+| Problem                       | Fix                                                        |
+| ----------------------------- | ---------------------------------------------------------- |
+| OIDC auth fails               | Check federated credential `subject` matches repo + branch |
+| Container Apps deploy fails   | Verify managed identity has AcrPull + required RBAC roles  |
+| Build fails (Node.js version) | Ensure `.nvmrc` specifies Node.js >= 24                    |
+| Build fails (Python version)  | Ensure `.python-version` specifies Python 3.14             |
 
 ## Related
 

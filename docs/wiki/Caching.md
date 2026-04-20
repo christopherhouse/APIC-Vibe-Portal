@@ -6,11 +6,11 @@ The BFF uses **Azure Cache for Redis** as a response cache for all Azure API Cen
 
 ## Cache TTLs
 
-| Entity | Cache TTL |
-|--------|-----------|
-| API list | 2 minutes |
-| API detail / versions | 5 minutes |
-| Specifications | 10 minutes |
+| Entity                     | Cache TTL  |
+| -------------------------- | ---------- |
+| API list                   | 2 minutes  |
+| API detail / versions      | 5 minutes  |
+| Specifications             | 10 minutes |
 | Environments / Deployments | 15 minutes |
 
 ## Authentication
@@ -25,20 +25,20 @@ The BFF's UAMI is granted the built-in `Data Owner` access policy on the Redis i
 
 ## Environment Configuration
 
-| Variable | Description |
-|----------|-------------|
-| `REDIS_HOST` | Redis hostname (e.g., `myredis.redis.cache.windows.net`) |
-| `REDIS_PORT` | Redis port (default: `6380`) |
+| Variable          | Description                                                                |
+| ----------------- | -------------------------------------------------------------------------- |
+| `REDIS_HOST`      | Redis hostname (e.g., `myredis.redis.cache.windows.net`)                   |
+| `REDIS_PORT`      | Redis port (default: `6380`)                                               |
 | `AZURE_CLIENT_ID` | UAMI client ID — ensures `DefaultAzureCredential` picks the right identity |
 
 **Local development**: Leave `REDIS_HOST` unset. The BFF falls back to an in-memory cache automatically.
 
 ## SKU Selection
 
-| Environment | SKU | Size |
-|------------|-----|------|
-| dev | Basic/C0 | 250 MB |
-| staging/prod | Standard/C1 | 1 GB |
+| Environment  | SKU         | Size   |
+| ------------ | ----------- | ------ |
+| dev          | Basic/C0    | 250 MB |
+| staging/prod | Standard/C1 | 1 GB   |
 
 ## Cache-Aside Pattern
 

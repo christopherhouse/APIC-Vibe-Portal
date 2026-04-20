@@ -14,31 +14,31 @@ All persistent data is stored in **Azure Cosmos DB** (NoSQL API, serverless capa
 
 ### Chat Sessions (`chat-sessions`)
 
-| Property | Value |
-|----------|-------|
-| Container | `chat-sessions` |
-| Partition key | `/userId` |
-| Rationale | High write throughput, flexible schema, natural partitioning by user |
+| Property      | Value                                                                |
+| ------------- | -------------------------------------------------------------------- |
+| Container     | `chat-sessions`                                                      |
+| Partition key | `/userId`                                                            |
+| Rationale     | High write throughput, flexible schema, natural partitioning by user |
 
 **Schema fields**: session ID, user ID, title, messages array, created timestamp, updated timestamp, model name, tokens used, schema version, soft-delete flags.
 
 ### Governance Snapshots (`governance-snapshots`)
 
-| Property | Value |
-|----------|-------|
-| Container | `governance-snapshots` |
-| Partition key | `/apiId` |
-| Rationale | Structured compliance data, point-in-time queries, relationship to APIs |
+| Property      | Value                                                                   |
+| ------------- | ----------------------------------------------------------------------- |
+| Container     | `governance-snapshots`                                                  |
+| Partition key | `/apiId`                                                                |
+| Rationale     | Structured compliance data, point-in-time queries, relationship to APIs |
 
 **Schema fields**: snapshot ID, API ID, timestamp, findings array, compliance score, agent ID, schema version, soft-delete flags.
 
 ### Analytics Events (`analytics-events`)
 
-| Property | Value |
-|----------|-------|
-| Container | `analytics-events` |
-| Partition key | `/eventType` |
-| Rationale | High-volume writes, time-series queries, eventual archival to cold storage |
+| Property      | Value                                                                      |
+| ------------- | -------------------------------------------------------------------------- |
+| Container     | `analytics-events`                                                         |
+| Partition key | `/eventType`                                                               |
+| Rationale     | High-volume writes, time-series queries, eventual archival to cold storage |
 
 **Schema fields**: event ID, event type, timestamp, user ID, API ID, metadata object, schema version, soft-delete flags.
 
@@ -52,11 +52,11 @@ All persistent data is stored in **Azure Cosmos DB** (NoSQL API, serverless capa
 
 ## Data Retention Policy
 
-| Data Class | Active Retention | Deletion Method |
-|------------|-----------------|-----------------|
-| Chat sessions | 1 year from last activity | Soft delete then purge via TTL |
-| Governance snapshots | 3 years | Soft delete then purge via TTL |
-| Analytics events | 90 days (hot), 1 year (archive) | TTL + cold storage archival |
+| Data Class           | Active Retention                | Deletion Method                |
+| -------------------- | ------------------------------- | ------------------------------ |
+| Chat sessions        | 1 year from last activity       | Soft delete then purge via TTL |
+| Governance snapshots | 3 years                         | Soft delete then purge via TTL |
+| Analytics events     | 90 days (hot), 1 year (archive) | TTL + cold storage archival    |
 
 GDPR erasure requests trigger immediate soft delete + scheduled purge within 30 days.
 
@@ -64,12 +64,12 @@ GDPR erasure requests trigger immediate soft delete + scheduled purge within 30 
 
 ### PII Fields
 
-| Container | PII Field | Handling |
-|-----------|-----------|---------|
-| `chat-sessions` | `userId` | Pseudonymized (Entra OID, not email) |
-| `chat-sessions` | `messages[].content` | May contain PII — not indexed, not logged |
-| `analytics-events` | `userId` | Pseudonymized (Entra OID) |
-| `governance-snapshots` | — | No direct PII |
+| Container              | PII Field            | Handling                                  |
+| ---------------------- | -------------------- | ----------------------------------------- |
+| `chat-sessions`        | `userId`             | Pseudonymized (Entra OID, not email)      |
+| `chat-sessions`        | `messages[].content` | May contain PII — not indexed, not logged |
+| `analytics-events`     | `userId`             | Pseudonymized (Entra OID)                 |
+| `governance-snapshots` | —                    | No direct PII                             |
 
 ### Rules
 
@@ -96,11 +96,11 @@ All documents include:
 
 Default Cosmos DB indexing is used with the following customizations:
 
-| Container | Custom Index | Purpose |
-|-----------|-------------|---------|
-| `chat-sessions` | Composite index on (`userId`, `updatedAt`) | Efficient user session listing |
-| `governance-snapshots` | Index on `apiId` + `timestamp` | Point-in-time governance queries |
-| `analytics-events` | Index on `eventType` + `timestamp` | Time-series event queries |
+| Container              | Custom Index                               | Purpose                          |
+| ---------------------- | ------------------------------------------ | -------------------------------- |
+| `chat-sessions`        | Composite index on (`userId`, `updatedAt`) | Efficient user session listing   |
+| `governance-snapshots` | Index on `apiId` + `timestamp`             | Point-in-time governance queries |
+| `analytics-events`     | Index on `eventType` + `timestamp`         | Time-series event queries        |
 
 High-write containers use **lazy indexing** where appropriate to improve write throughput.
 

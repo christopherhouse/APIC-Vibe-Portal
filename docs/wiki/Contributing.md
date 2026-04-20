@@ -2,12 +2,12 @@
 
 ## Branch Strategy
 
-| Branch | Purpose |
-|--------|---------|
-| `main` | Production-ready code; triggers auto-deploy to dev |
-| `feature/<task-number>-<short-description>` | Feature branches for implementation tasks |
-| `fix/<short-description>` | Bug fix branches |
-| `chore/<short-description>` | Non-functional changes (deps, config, docs) |
+| Branch                                      | Purpose                                            |
+| ------------------------------------------- | -------------------------------------------------- |
+| `main`                                      | Production-ready code; triggers auto-deploy to dev |
+| `feature/<task-number>-<short-description>` | Feature branches for implementation tasks          |
+| `fix/<short-description>`                   | Bug fix branches                                   |
+| `chore/<short-description>`                 | Non-functional changes (deps, config, docs)        |
 
 Create branches from `main`. Open PRs back to `main`.
 
@@ -88,13 +88,13 @@ docker build -t bff-check src/bff
 
 The repository includes GitHub Copilot coding agents for specialized tasks:
 
-| Agent | Specialization |
-|-------|---------------|
-| `api-portal-architect` | Architecture and design decisions |
-| `azure-infra-agent` | Bicep templates and Azure resources |
-| `frontend-agent` | Next.js and React development |
-| `bff-agent` | FastAPI and Azure SDK integration |
-| `tech-writer-agent` | Documentation writing |
+| Agent                  | Specialization                      |
+| ---------------------- | ----------------------------------- |
+| `api-portal-architect` | Architecture and design decisions   |
+| `azure-infra-agent`    | Bicep templates and Azure resources |
+| `frontend-agent`       | Next.js and React development       |
+| `bff-agent`            | FastAPI and Azure SDK integration   |
+| `tech-writer-agent`    | Documentation writing               |
 
 Use these agents via GitHub Copilot when working in their respective domains.
 

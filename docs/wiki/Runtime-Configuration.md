@@ -3,6 +3,7 @@
 ## Problem
 
 Previously, Next.js `NEXT_PUBLIC_*` variables were baked into the Docker image at build time. This meant:
+
 - Each environment required a separate image build
 - Images couldn't be promoted across environments
 - Config changes required a full rebuild and redeploy
@@ -36,12 +37,12 @@ Container App (dev/staging/prod)
 
 ## Environment Variables
 
-| Variable | Example (dev) | Description |
-|----------|---------------|-------------|
-| `MSAL_CLIENT_ID` | `12345678-1234-1234-1234-123456789abc` | SPA app registration client ID |
-| `MSAL_AUTHORITY` | `https://login.microsoftonline.com/<tenant-id>` | Entra authority URL |
-| `MSAL_REDIRECT_URI` | `https://apic-portal-dev.azurecontainerapps.io` | Post-login redirect |
-| `BFF_API_SCOPE` | `api://12345678-...def/.default` | BFF OAuth scope |
+| Variable            | Example (dev)                                   | Description                    |
+| ------------------- | ----------------------------------------------- | ------------------------------ |
+| `MSAL_CLIENT_ID`    | `12345678-1234-1234-1234-123456789abc`          | SPA app registration client ID |
+| `MSAL_AUTHORITY`    | `https://login.microsoftonline.com/<tenant-id>` | Entra authority URL            |
+| `MSAL_REDIRECT_URI` | `https://apic-portal-dev.azurecontainerapps.io` | Post-login redirect            |
+| `BFF_API_SCOPE`     | `api://12345678-...def/.default`                | BFF OAuth scope                |
 
 ## Local Development
 
@@ -60,12 +61,12 @@ Next.js loads `.env.local` automatically; the `/api/config/msal` endpoint serves
 
 Set these as GitHub environment variables (Settings → Environments → select env → Environment variables):
 
-| Variable | Set In |
-|----------|--------|
-| `MSAL_CLIENT_ID` | Each environment (`dev`, `staging`, `prod`) |
-| `MSAL_AUTHORITY` | Each environment |
-| `MSAL_REDIRECT_URI` | Each environment |
-| `BFF_API_SCOPE` | Each environment |
+| Variable            | Set In                                      |
+| ------------------- | ------------------------------------------- |
+| `MSAL_CLIENT_ID`    | Each environment (`dev`, `staging`, `prod`) |
+| `MSAL_AUTHORITY`    | Each environment                            |
+| `MSAL_REDIRECT_URI` | Each environment                            |
+| `BFF_API_SCOPE`     | Each environment                            |
 
 The `deploy-app.yml` workflow passes these to `scripts/deploy-container-apps.sh` via `--frontend-env-vars`.
 
@@ -79,13 +80,13 @@ The `deploy-app.yml` workflow passes these to `scripts/deploy-container-apps.sh`
 
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `src/frontend/app/api/config/msal/route.ts` | API endpoint that serves runtime config |
-| `src/frontend/lib/auth/msal-config.ts` | Config fetcher and MSAL config builder |
-| `src/frontend/lib/auth/auth-provider.tsx` | AuthProvider that fetches config asynchronously |
-| `scripts/deploy-container-apps.sh` | Injects env vars into Container App at deploy time |
-| `.github/workflows/deploy-app.yml` | CI/CD workflow |
+| File                                        | Purpose                                            |
+| ------------------------------------------- | -------------------------------------------------- |
+| `src/frontend/app/api/config/msal/route.ts` | API endpoint that serves runtime config            |
+| `src/frontend/lib/auth/msal-config.ts`      | Config fetcher and MSAL config builder             |
+| `src/frontend/lib/auth/auth-provider.tsx`   | AuthProvider that fetches config asynchronously    |
+| `scripts/deploy-container-apps.sh`          | Injects env vars into Container App at deploy time |
+| `.github/workflows/deploy-app.yml`          | CI/CD workflow                                     |
 
 ## Related
 
