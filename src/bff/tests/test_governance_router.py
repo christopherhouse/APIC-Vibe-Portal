@@ -27,8 +27,10 @@ def mock_service():
 
 @pytest.fixture
 def client(app: FastAPI, mock_service: MagicMock) -> TestClient:
-    """Create a test client with mocked service."""
+    """Create a test client with mocked service and bypassed auth."""
     app.dependency_overrides[governance._get_service] = lambda: mock_service
+    # Override the accessible-IDs dependency so tests don't require the auth middleware
+    app.dependency_overrides[governance._accessible_ids_dep] = lambda: None
     return TestClient(app)
 
 

@@ -35,14 +35,14 @@ def _make_service(apis: list[dict] | None = None) -> tuple[GovernanceDashboardSe
     mock_api_center = MagicMock()
     mock_governance_repo = MagicMock()
 
-    # Mock list_apis
+    # Mock ApiCenterClient methods using the real SDK contract.
     if apis is None:
         apis = []
-    mock_api_center.list_apis.return_value = {"value": apis}
+    mock_api_center.list_apis.return_value = apis
 
-    # Mock list_versions and list_deployments to return empty by default
-    mock_api_center.list_versions.return_value = {"value": []}
-    mock_api_center.list_deployments.return_value = {"value": []}
+    # `list_api_versions` and `list_deployments` both return lists.
+    mock_api_center.list_api_versions.return_value = []
+    mock_api_center.list_deployments.return_value = []
 
     service = GovernanceDashboardService(
         api_center_client=mock_api_center,

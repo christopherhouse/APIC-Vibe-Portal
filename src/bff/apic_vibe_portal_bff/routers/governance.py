@@ -24,6 +24,9 @@ router = APIRouter(prefix="/api/governance", tags=["governance"])
 # Service singleton
 _service_instance: GovernanceDashboardService | None = None
 
+# Dependency callables — exposed at module level so tests can override them
+_accessible_ids_dep = make_accessible_ids_dep()
+
 
 def _get_service() -> GovernanceDashboardService:
     """Lazy-initialize and return the governance dashboard service singleton."""
@@ -50,7 +53,7 @@ def _get_service() -> GovernanceDashboardService:
 
 
 GovernanceServiceDep = Annotated[GovernanceDashboardService, Depends(_get_service)]
-AccessibleApiIdsDep = Annotated[list[str] | None, Depends(make_accessible_ids_dep())]
+AccessibleApiIdsDep = Annotated[list[str] | None, Depends(_accessible_ids_dep)]
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +100,7 @@ async def get_governance_scores(
 @router.get("/rules")
 async def get_governance_rules(
     service: GovernanceServiceDep,
+    _accessible_api_ids: AccessibleApiIdsDep,
 ) -> list[dict[str, Any]]:
     """Get available governance rules.
 

@@ -7,7 +7,6 @@ data, and per-API compliance details for the governance dashboard UI.
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -17,9 +16,8 @@ from apic_vibe_portal_bff.agents.governance_agent.rules.compliance_checker impor
     ComplianceResult,
     GovernanceCategory,
 )
-from apic_vibe_portal_bff.agents.governance_agent.rules.governance_rules import DEFAULT_RULES, GovernanceRule
+from apic_vibe_portal_bff.agents.governance_agent.rules.governance_rules import DEFAULT_RULES
 from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient
-from apic_vibe_portal_bff.data.models.governance import GovernanceSnapshotDocument
 from apic_vibe_portal_bff.data.repositories.governance_repository import GovernanceRepository
 
 logger = logging.getLogger(__name__)
@@ -339,8 +337,7 @@ class GovernanceDashboardService:
 
     def _get_accessible_apis(self, accessible_api_ids: list[str] | None) -> list[dict[str, Any]]:
         """Fetch all accessible APIs and enrich with versions/deployments."""
-        all_apis_raw = self._api_center.list_apis()
-        all_apis = all_apis_raw.get("value", [])
+        all_apis: list[dict[str, Any]] = self._api_center.list_apis()
 
         # Apply security trimming
         if accessible_api_ids is not None:
@@ -357,16 +354,14 @@ class GovernanceDashboardService:
 
         # Fetch versions
         try:
-            versions_response = self._api_center.list_versions(api_id)
-            api["versions"] = versions_response.get("value", [])
+            api["versions"] = self._api_center.list_api_versions(api_id)
         except Exception:
             logger.warning(f"Failed to fetch versions for API: {api_id}")
             api["versions"] = []
 
         # Fetch deployments
         try:
-            deployments_response = self._api_center.list_deployments(api_id)
-            api["deployments"] = deployments_response.get("value", [])
+            api["deployments"] = self._api_center.list_deployments(api_id)
         except Exception:
             logger.warning(f"Failed to fetch deployments for API: {api_id}")
             api["deployments"] = []

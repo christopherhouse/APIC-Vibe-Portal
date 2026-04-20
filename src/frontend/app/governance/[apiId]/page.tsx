@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Box,
   Container,
@@ -26,12 +26,9 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { fetchApiCompliance, type ApiCompliance } from '@/lib/governance-api';
 
-interface PageProps {
-  params: Promise<{ apiId: string }>;
-}
-
-export default function ApiCompliancePage({ params }: PageProps) {
-  const resolvedParams = use(params);
+export default function ApiCompliancePage() {
+  const params = useParams<{ apiId: string }>();
+  const apiId = params.apiId;
   const router = useRouter();
   const [compliance, setCompliance] = useState<ApiCompliance | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +39,7 @@ export default function ApiCompliancePage({ params }: PageProps) {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchApiCompliance(resolvedParams.apiId);
+        const data = await fetchApiCompliance(apiId);
         setCompliance(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load compliance data');
@@ -52,7 +49,7 @@ export default function ApiCompliancePage({ params }: PageProps) {
     }
 
     loadCompliance();
-  }, [resolvedParams.apiId]);
+  }, [apiId]);
 
   if (loading) {
     return (
