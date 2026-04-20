@@ -341,7 +341,7 @@ class ApiCompareService:
             try:
                 nums = [int(v) for v in raw_values]
                 best_idx = nums.index(max(nums))
-            except ValueError, TypeError:
+            except (ValueError, TypeError):
                 pass
 
         values = []
