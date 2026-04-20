@@ -47,6 +47,10 @@ class IndexerSettings(BaseSettings):
 
     # --- Azure OpenAI ----------------------------------------------------
     openai_endpoint: str = Field(default="", description="Azure OpenAI endpoint URL")
+    openai_api_version: str = Field(
+        default="2025-03-01-preview",
+        description="Azure OpenAI API version (e.g. 2025-03-01-preview). Used for embedding requests.",
+    )
     openai_embedding_deployment: str = Field(
         default="text-embedding-ada-002",
         description="Azure OpenAI embedding model deployment name",
