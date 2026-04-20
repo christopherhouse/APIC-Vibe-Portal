@@ -24,6 +24,10 @@ class GovernanceSecurityTrimmingMiddleware:
     """MAF ``FunctionMiddleware`` that enforces per-request ``accessible_api_ids`` security
     trimming on single-API governance tool calls.
 
+    Implements the MAF ``FunctionMiddleware`` interface; the framework calls
+    :meth:`process` with a ``FunctionInvocationContext`` and a ``call_next``
+    coroutine for every tool invocation.
+
     ``accessible_api_ids`` is read from ``context.kwargs``, which is populated
     by passing ``function_invocation_kwargs={"accessible_api_ids": ...}`` to
     :meth:`agent_framework.Agent.run`.
@@ -265,9 +269,11 @@ class GovernanceAgent(BaseAgent):
             if not all_apis:
                 return "No APIs found in the catalog."
 
-            # Security trimming: restrict to caller's permitted APIs before iteration
+            # Security trimming: restrict to caller's permitted APIs before iteration.
+            # Use a set for O(1) membership tests when the permitted list is large.
             if accessible_api_ids is not None:
-                all_apis = [a for a in all_apis if a.get("name", "") in accessible_api_ids]
+                permitted: frozenset[str] = frozenset(accessible_api_ids)
+                all_apis = [a for a in all_apis if a.get("name", "") in permitted]
 
             # Cap to limit after trimming to avoid overloading API Center
             all_apis = all_apis[:limit]

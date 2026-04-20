@@ -6,6 +6,7 @@ import logging
 from collections.abc import AsyncGenerator
 
 from apic_vibe_portal_bff.agents.agent_registry import AgentRegistry
+from apic_vibe_portal_bff.agents.base_agent import BaseAgent
 from apic_vibe_portal_bff.agents.types import AgentName, AgentRequest, AgentResponse
 
 logger = logging.getLogger(__name__)
@@ -106,6 +107,34 @@ class AgentRouter:
         return AgentName.API_DISCOVERY
 
     # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _resolve_agent_with_fallback(self, agent_name: AgentName) -> tuple[AgentName, BaseAgent | None]:
+        """Resolve an agent by name, falling back to API_DISCOVERY if absent.
+
+        Parameters
+        ----------
+        agent_name:
+            The preferred agent name from :meth:`route`.
+
+        Returns
+        -------
+        tuple[AgentName, BaseAgent | None]
+            The effective agent name and instance (``None`` if both the
+            preferred and fallback agents are unregistered).
+        """
+        agent = self._registry.get(agent_name)
+        if agent is None and agent_name != AgentName.API_DISCOVERY:
+            logger.warning(
+                "AgentRouter: no agent registered for %r; falling back to API_DISCOVERY",
+                agent_name,
+            )
+            agent_name = AgentName.API_DISCOVERY
+            agent = self._registry.get(agent_name)
+        return agent_name, agent
+
+    # ------------------------------------------------------------------
     # Dispatch
     # ------------------------------------------------------------------
 
@@ -128,15 +157,7 @@ class AgentRouter:
             If no agent is registered for the resolved :class:`AgentName` **and**
             the fallback agent is also absent.
         """
-        agent_name = self.route(request)
-        agent = self._registry.get(agent_name)
-        if agent is None and agent_name != AgentName.API_DISCOVERY:
-            logger.warning(
-                "AgentRouter: no agent registered for %r; falling back to API_DISCOVERY",
-                agent_name,
-            )
-            agent_name = AgentName.API_DISCOVERY
-            agent = self._registry.get(agent_name)
+        agent_name, agent = self._resolve_agent_with_fallback(self.route(request))
         if agent is None:
             raise ValueError(f"No agent registered for name: {agent_name!r}")
         logger.info("AgentRouter dispatching to agent=%s session=%s", agent_name, request.session_id)
@@ -145,8 +166,9 @@ class AgentRouter:
     async def dispatch_stream(self, request: AgentRequest) -> AsyncGenerator[str]:
         """Route *request* and stream the agent's response.
 
-        Applies the same fallback logic as :meth:`dispatch`: if the resolved agent
-        is not registered, falls back to the Discovery Agent before raising.
+        Applies the same fallback logic as :meth:`dispatch` via
+        :meth:`_resolve_agent_with_fallback`: if the resolved agent is not
+        registered, falls back to the Discovery Agent before raising.
 
         Parameters
         ----------
@@ -164,15 +186,7 @@ class AgentRouter:
         str
             Text chunks from the agent response stream.
         """
-        agent_name = self.route(request)
-        agent = self._registry.get(agent_name)
-        if agent is None and agent_name != AgentName.API_DISCOVERY:
-            logger.warning(
-                "AgentRouter: no agent registered for %r; falling back to API_DISCOVERY",
-                agent_name,
-            )
-            agent_name = AgentName.API_DISCOVERY
-            agent = self._registry.get(agent_name)
+        agent_name, agent = self._resolve_agent_with_fallback(self.route(request))
         if agent is None:
             raise ValueError(f"No agent registered for name: {agent_name!r}")
         logger.info("AgentRouter streaming from agent=%s session=%s", agent_name, request.session_id)
