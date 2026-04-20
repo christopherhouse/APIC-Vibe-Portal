@@ -25,6 +25,7 @@ from apic_vibe_portal_bff.routers.admin_access_policies import router as admin_r
 from apic_vibe_portal_bff.routers.api_catalog import CatalogApiError, catalog_api_error_handler
 from apic_vibe_portal_bff.routers.api_compare import router as compare_router
 from apic_vibe_portal_bff.routers.chat import ChatApiError, chat_api_error_handler
+from apic_vibe_portal_bff.routers.governance import router as governance_router
 from apic_vibe_portal_bff.routers.search import SearchApiError, search_api_error_handler
 from apic_vibe_portal_bff.telemetry.middleware import OTelEnrichmentMiddleware
 from apic_vibe_portal_bff.telemetry.otel_setup import configure_telemetry
@@ -95,6 +96,7 @@ def create_app() -> FastAPI:
     app.include_router(chat.router)
     app.include_router(admin_router)
     app.include_router(compare_router)
+    app.include_router(governance_router)
 
     # --- Exception handlers ------------------------------------------------
     app.add_exception_handler(CatalogApiError, catalog_api_error_handler)  # type: ignore[arg-type]
