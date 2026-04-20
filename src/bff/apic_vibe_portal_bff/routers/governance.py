@@ -100,7 +100,7 @@ async def get_governance_scores(
 @router.get("/rules")
 async def get_governance_rules(
     service: GovernanceServiceDep,
-    _accessible_api_ids: AccessibleApiIdsDep,
+    _auth: AccessibleApiIdsDep,  # Enforces authentication; value not used by rules endpoint
 ) -> list[dict[str, Any]]:
     """Get available governance rules.
 
