@@ -8,6 +8,7 @@ import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
 
+from apic_vibe_portal_bff.clients.ai_search_client import AISearchClient, AISearchClientError
 from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient
 from apic_vibe_portal_bff.utils.logger import sanitize_for_log
 
@@ -18,6 +19,8 @@ from .prompts import SYSTEM_PROMPT
 from .rules.compliance_checker import ComplianceChecker
 
 logger = logging.getLogger(__name__)
+
+_RAG_TOP_K = 5  # Number of search results to return
 
 
 class GovernanceSecurityTrimmingMiddleware:
@@ -43,6 +46,8 @@ class GovernanceSecurityTrimmingMiddleware:
     _SINGLE_API_TOOLS: frozenset[str] = frozenset(
         {"check_api_compliance", "get_governance_score", "get_remediation_guidance"}
     )
+
+    # Note: search_apis is not in this list because it enforces security via OData filters
 
     async def process(self, context: Any, call_next: Any) -> None:
         """Intercept a governance tool call and enforce the access list."""
@@ -70,8 +75,9 @@ class GovernanceAgent(BaseAgent):
     """Agent specialised in API governance assessment and compliance checking.
 
     Uses Microsoft Agent Framework (MAF) for tool-calling orchestration.
-    Five tools are exposed to the LLM:
+    Six tools are exposed to the LLM:
 
+    - ``search_apis`` — Search the catalog to resolve API names from natural language queries
     - ``check_api_compliance`` — Run all governance rules against an API
     - ``get_governance_score`` — Calculate overall governance score (0-100)
     - ``list_non_compliant_apis`` — Find APIs failing specific rules
@@ -82,6 +88,9 @@ class GovernanceAgent(BaseAgent):
     ----------
     maf_client:
         MAF ``OpenAIChatClient`` instance.
+    search_client:
+        :class:`~apic_vibe_portal_bff.clients.ai_search_client.AISearchClient`
+        for catalog search to resolve API names.
     api_center_client:
         :class:`~apic_vibe_portal_bff.clients.api_center_client.ApiCenterClient`
         for fetching API metadata.
@@ -97,12 +106,14 @@ class GovernanceAgent(BaseAgent):
     def __init__(
         self,
         maf_client: Any,
+        search_client: AISearchClient,
         api_center_client: ApiCenterClient,
         checker: ComplianceChecker | None = None,
         history_provider: Any | None = None,
         model: str = "gpt-4o",
     ) -> None:
         self._maf_client = maf_client
+        self._search = search_client
         self._api_center = api_center_client
         self._checker = checker or ComplianceChecker()
         self._history_provider = history_provider
@@ -170,6 +181,71 @@ class GovernanceAgent(BaseAgent):
     # ------------------------------------------------------------------
     # Tool factories
     # ------------------------------------------------------------------
+
+    def _make_search_tool(self) -> Any:
+        """Create the ``search_apis`` MAF tool for resolving API names."""
+        from agent_framework import tool
+
+        agent_self = self
+
+        @tool(
+            name="search_apis",
+            description=(
+                "Search the enterprise API catalog to find APIs by name or description. "
+                "Use this to resolve API names when the user refers to an API by a descriptive "
+                "name rather than its exact ID. Returns API names that can be used with other tools."
+            ),
+        )
+        def search_apis(query: str) -> str:
+            """Search for APIs matching a query.
+
+            Parameters
+            ----------
+            query:
+                Natural-language search query describing the API to find
+                (e.g. 'star wars', 'weather service', 'payment processing').
+            """
+            # Security trimming: restrict to accessible APIs
+            accessible_api_ids: list[str] | None = getattr(agent_self._request_context, "accessible_api_ids", None)
+            security_filter: str | None = None
+            if accessible_api_ids is not None:
+                if not accessible_api_ids:
+                    return "No APIs are accessible for your account."
+                ids_csv = ",".join(accessible_api_ids)
+                security_filter = f"search.in(apiName, '{ids_csv}', ',')"
+
+            try:
+                raw = agent_self._search.search(
+                    search_text=query,
+                    top=_RAG_TOP_K,
+                    query_type="semantic",
+                    semantic_query=query,
+                    filter_expression=security_filter,
+                )
+                results = raw.get("results", [])
+            except AISearchClientError:
+                logger.warning("search_apis tool: AI Search unavailable")
+                return "Search is currently unavailable. Please try again later."
+
+            if not results:
+                return f"No APIs found matching '{query}'. The API may not exist in the catalog."
+
+            lines: list[str] = []
+            for r in results:
+                api_name = r.get("apiName", "Unknown")
+                title = r.get("title", "")
+                kind = r.get("kind", "")
+                lifecycle = r.get("lifecycleStage", "")
+                desc = r.get("description", "")
+                lines.append(
+                    f"- **{api_name}**: {title}\n  Kind: {kind}, Lifecycle: {lifecycle}\n  {desc[:200]}..."
+                    if len(desc) > 200
+                    else f"- **{api_name}**: {title}\n  Kind: {kind}, Lifecycle: {lifecycle}\n  {desc}"
+                )
+
+            return "\n\n".join([f"Found {len(results)} API(s) matching '{query}':\n"] + lines)
+
+        return search_apis
 
     def _make_check_api_compliance_tool(self) -> Any:
         """Create the ``check_api_compliance`` MAF tool."""
@@ -440,7 +516,7 @@ class GovernanceAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     def _create_agent(self) -> Any:
-        """Create the MAF :class:`~agent_framework.Agent` wired with all five tools.
+        """Create the MAF :class:`~agent_framework.Agent` wired with all six tools.
 
         :class:`GovernanceSecurityTrimmingMiddleware` is registered as agent-level
         middleware so it intercepts every single-API tool call without per-call setup.
@@ -448,6 +524,7 @@ class GovernanceAgent(BaseAgent):
         from agent_framework import Agent
 
         tools = [
+            self._make_search_tool(),
             self._make_check_api_compliance_tool(),
             self._make_get_governance_score_tool(),
             self._make_list_non_compliant_apis_tool(),
