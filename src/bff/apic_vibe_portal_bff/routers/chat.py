@@ -85,6 +85,7 @@ def _get_chat_service() -> AIChatService:
         from apic_vibe_portal_bff.agents.agent_registry import AgentRegistry
         from apic_vibe_portal_bff.agents.agent_router import AgentRouter
         from apic_vibe_portal_bff.agents.api_discovery_agent.definition import ApiDiscoveryAgent
+        from apic_vibe_portal_bff.agents.governance_agent import GovernanceAgent
         from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient
         from apic_vibe_portal_bff.clients.foundry_agent_client import FoundryAgentClient
 
@@ -104,8 +105,15 @@ def _get_chat_service() -> AIChatService:
             history_provider=history_provider,
             model=settings.openai_chat_deployment,
         )
+        governance_agent = GovernanceAgent(
+            maf_client=foundry_client.get_maf_client(),
+            api_center_client=api_center_client,
+            history_provider=history_provider,
+            model=settings.openai_chat_deployment,
+        )
         registry = AgentRegistry()
         registry.register(discovery_agent)
+        registry.register(governance_agent)
         agent_router = AgentRouter(registry)
         logger.info("Agent router initialised with Foundry endpoint=%s", settings.foundry_project_endpoint)
 
