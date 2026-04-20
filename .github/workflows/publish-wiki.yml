@@ -1,0 +1,55 @@
+name: Publish Wiki
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/wiki/**'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual publish'
+        required: false
+        default: 'Manual wiki update'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish wiki pages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Configure git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Clone wiki repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki
+
+      - name: Copy wiki pages
+        run: |
+          cp docs/wiki/*.md wiki/
+
+      - name: Commit and push
+        working-directory: wiki
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to wiki pages — skipping commit."
+          else
+            git commit -m "Update wiki from source (triggered by ${{ github.event_name }})"
+            git push
+            echo "Wiki pages published successfully."
+          fi
