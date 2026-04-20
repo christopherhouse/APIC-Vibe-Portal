@@ -50,7 +50,7 @@ class TestFoundryAgentClientInit:
 
     def test_default_api_version(self):
         client = FoundryAgentClient(project_endpoint="https://ep.azureml.ms", deployment="gpt-4o")
-        assert client._api_version == "2024-06-01"
+        assert client._api_version == "2025-03-01-preview"
 
     def test_custom_api_version(self):
         client = FoundryAgentClient(
@@ -88,7 +88,7 @@ class TestFoundryAgentClientGetMafClient:
             mock_cls.assert_called_once_with(
                 model="gpt-4o",
                 azure_endpoint="https://ep.azureml.ms",
-                api_version="2024-06-01",
+                api_version="2025-03-01-preview",
                 credential=client._credential,
             )
 

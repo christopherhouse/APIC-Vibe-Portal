@@ -82,7 +82,7 @@ class OpenAIClient:
         self,
         endpoint: str,
         deployment: str,
-        api_version: str = "2024-06-01",
+        api_version: str = "2025-03-01-preview",
         credential: Any | None = None,
     ) -> None:
         self._endpoint = endpoint.rstrip("/") if endpoint else ""
