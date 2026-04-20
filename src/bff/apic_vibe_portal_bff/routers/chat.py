@@ -58,22 +58,18 @@ def _get_chat_service() -> AIChatService:
             index_name=settings.ai_search_index_name,
         )
 
-        # Wire up MAF CosmosHistoryProvider if Cosmos DB is configured
+        # Wire up custom ChatHistoryProvider if Cosmos DB is configured
         history_provider = None
         if settings.cosmos_db_endpoint.strip():
             try:
-                from agent_framework.azure import CosmosHistoryProvider
-                from azure.identity import DefaultAzureCredential
+                from apic_vibe_portal_bff.agents.chat_history_provider import ChatHistoryProvider
+                from apic_vibe_portal_bff.data.cosmos_client import get_container
 
-                history_provider = CosmosHistoryProvider(
-                    endpoint=settings.cosmos_db_endpoint,
-                    database_name=settings.cosmos_db_database_name,
-                    container_name=settings.cosmos_db_chat_container,
-                    credential=DefaultAzureCredential(),
-                )
-                logger.info("Using MAF CosmosHistoryProvider for chat history")
+                container = get_container(settings.cosmos_db_chat_container)
+                history_provider = ChatHistoryProvider(container=container)
+                logger.info("Using custom ChatHistoryProvider for chat history")
             except Exception:
-                logger.exception("Failed to initialise CosmosHistoryProvider — falling back to InMemoryHistoryProvider")
+                logger.exception("Failed to initialise ChatHistoryProvider — falling back to None")
 
         # Wire up the agent router — required for chat to function.
         # Fail fast if Foundry is not configured or init fails.
