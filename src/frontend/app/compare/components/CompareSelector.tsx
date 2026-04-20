@@ -137,9 +137,11 @@ export default function CompareSelector({ selectedIds, onAdd, onRemove }: Compar
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
             placeholder="Type API name…"
-            inputProps={{ 'data-testid': 'compare-search-input' }}
-            InputProps={{
-              endAdornment: isSearching ? <CircularProgress size={16} /> : undefined,
+            slotProps={{
+              htmlInput: { 'data-testid': 'compare-search-input' },
+              input: {
+                endAdornment: isSearching ? <CircularProgress size={16} /> : undefined,
+              },
             }}
           />
 

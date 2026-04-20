@@ -5,6 +5,7 @@ import { ApiKind, ApiLifecycle } from '@apic-vibe-portal/shared';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 const mockApis: ApiCatalogItem[] = [

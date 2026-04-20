@@ -145,10 +145,10 @@ app/compare/
 
 ### Status History
 
-| Date | Status | Author | Notes |
-| ---- | ------ | ------ | ----- |
-| — | 🔲 Not Started | — | Task created |
-| 2026-04-20 | ✅ Complete | @copilot | Implemented BFF service + router + frontend compare page with all components |
+| Date       | Status         | Author   | Notes                                                                        |
+| ---------- | -------------- | -------- | ---------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —        | Task created                                                                 |
+| 2026-04-20 | ✅ Complete    | @copilot | Implemented BFF service + router + frontend compare page with all components |
 
 ### Technical Decisions
 

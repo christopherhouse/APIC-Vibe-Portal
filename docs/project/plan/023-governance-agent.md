@@ -112,10 +112,10 @@ Update `agent_router.py` to:
 
 ### Status History
 
-| Date       | Status      | Author  | Notes                                                               |
-| ---------- | ----------- | ------- | ------------------------------------------------------------------- |
-| —          | 🔲 Not Started | —    | Task created                                                        |
-| 2026-04-19 | ✅ Complete | copilot | Governance Agent implemented with 13 rules, 5 tools, intent routing |
+| Date       | Status         | Author  | Notes                                                               |
+| ---------- | -------------- | ------- | ------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                                        |
+| 2026-04-19 | ✅ Complete    | copilot | Governance Agent implemented with 13 rules, 5 tools, intent routing |
 
 ### Technical Decisions
 
