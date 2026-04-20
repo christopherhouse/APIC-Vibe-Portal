@@ -38,9 +38,13 @@ class ChatHistoryProvider:
     ----------
     container:
         Cosmos DB ContainerProxy for the chat-sessions container.
+    source_id:
+        Unique identifier for this provider instance. Used by the agent
+        framework for message/tool attribution. Defaults to "chat_history".
     """
 
-    def __init__(self, container: ContainerProxy) -> None:
+    def __init__(self, container: ContainerProxy, source_id: str = "chat_history") -> None:
+        self.source_id = source_id
         self._container = container
 
     async def before_run(
