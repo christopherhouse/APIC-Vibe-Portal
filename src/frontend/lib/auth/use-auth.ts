@@ -103,8 +103,7 @@ export function useAuth(): UseAuthReturn {
       .catch(() => {
         // Ignore — roles fallback is best-effort
       });
-    // `instance` and `account` are intentionally omitted — `instance` is a
-    // MSAL singleton and `account` identity is captured by `localAccountId`.
+    // `account` is intentionally omitted — its identity is captured by `localAccountId`.
   }, [isMsalConfigured, isAuthenticated, account?.localAccountId, config.bffApiScope, instance]);
 
   const effectiveRoles = idTokenRoles.length > 0 ? idTokenRoles : accessTokenRoles;
