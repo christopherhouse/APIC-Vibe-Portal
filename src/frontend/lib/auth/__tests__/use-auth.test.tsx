@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 // Setup MSAL mocks
@@ -7,6 +7,14 @@ const mockLoginRedirect = jest.fn();
 const mockLogoutRedirect = jest.fn();
 const mockAcquireTokenSilent = jest.fn();
 const mockGetActiveAccount = jest.fn();
+
+// Stable reference so useEffect deps don't trigger infinite re-renders
+const mockInstance = {
+  loginRedirect: mockLoginRedirect,
+  logoutRedirect: mockLogoutRedirect,
+  acquireTokenSilent: mockAcquireTokenSilent,
+  getActiveAccount: mockGetActiveAccount,
+};
 
 jest.mock('@azure/msal-browser', () => ({
   InteractionRequiredAuthError: class InteractionRequiredAuthError extends Error {
@@ -20,12 +28,7 @@ jest.mock('@azure/msal-browser', () => ({
 
 jest.mock('@azure/msal-react', () => ({
   useMsal: () => ({
-    instance: {
-      loginRedirect: mockLoginRedirect,
-      logoutRedirect: mockLogoutRedirect,
-      acquireTokenSilent: mockAcquireTokenSilent,
-      getActiveAccount: mockGetActiveAccount,
-    },
+    instance: mockInstance,
     inProgress: 'none',
   }),
   useIsAuthenticated: jest.fn(),
@@ -148,6 +151,96 @@ describe('useAuth', () => {
       mockGetActiveAccount.mockReturnValue(null);
       render(<TestComponent />, { wrapper: NoAuthWrapper });
       expect(screen.getByTestId('user-name')).toHaveTextContent('none');
+    });
+  });
+
+  describe('access token roles fallback', () => {
+    /**
+     * Build a mock JWT whose payload contains the given claims.
+     * The header and signature are stubs — only the payload matters.
+     */
+    function buildMockJwt(payload: Record<string, unknown>): string {
+      const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+      const body = btoa(JSON.stringify(payload));
+      return `${header}.${body}.fake-signature`;
+    }
+
+    it('falls back to access token roles when idTokenClaims has no roles', async () => {
+      mockUseIsAuthenticated.mockReturnValue(true);
+      mockGetActiveAccount.mockReturnValue({
+        name: 'Admin',
+        username: 'admin@example.com',
+        localAccountId: 'admin-1',
+        idTokenClaims: {}, // No roles in ID token
+      });
+
+      const accessToken = buildMockJwt({ roles: ['Portal.Admin'], scp: 'access_as_user' });
+      mockAcquireTokenSilent.mockResolvedValue({ accessToken });
+
+      function RolesComponent() {
+        const { user } = useAuth();
+        return <span data-testid="roles">{user?.roles.join(',') || 'none'}</span>;
+      }
+
+      await act(async () => {
+        render(<RolesComponent />, { wrapper: TestWrapper });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('roles')).toHaveTextContent('Portal.Admin');
+      });
+    });
+
+    it('prefers idTokenClaims roles over access token roles', async () => {
+      mockUseIsAuthenticated.mockReturnValue(true);
+      mockGetActiveAccount.mockReturnValue({
+        name: 'Admin',
+        username: 'admin@example.com',
+        localAccountId: 'admin-1',
+        idTokenClaims: { roles: ['Portal.User'] }, // Has roles in ID token
+      });
+
+      // Access token has different roles — should NOT be used
+      const accessToken = buildMockJwt({ roles: ['Portal.Admin'] });
+      mockAcquireTokenSilent.mockResolvedValue({ accessToken });
+
+      function RolesComponent() {
+        const { user } = useAuth();
+        return <span data-testid="roles">{user?.roles.join(',') ?? 'none'}</span>;
+      }
+
+      await act(async () => {
+        render(<RolesComponent />, { wrapper: TestWrapper });
+      });
+
+      // Should use ID token roles, not access token roles
+      expect(screen.getByTestId('roles')).toHaveTextContent('Portal.User');
+      // acquireTokenSilent should NOT have been called (ID token has roles)
+      expect(mockAcquireTokenSilent).not.toHaveBeenCalled();
+    });
+
+    it('gracefully handles acquireTokenSilent failure', async () => {
+      mockUseIsAuthenticated.mockReturnValue(true);
+      mockGetActiveAccount.mockReturnValue({
+        name: 'User',
+        username: 'user@example.com',
+        localAccountId: 'user-1',
+        idTokenClaims: {}, // No roles
+      });
+
+      mockAcquireTokenSilent.mockRejectedValue(new Error('token expired'));
+
+      function RolesComponent() {
+        const { user } = useAuth();
+        return <span data-testid="roles">{user?.roles.join(',') || 'none'}</span>;
+      }
+
+      await act(async () => {
+        render(<RolesComponent />, { wrapper: TestWrapper });
+      });
+
+      // Should still render without crashing, roles remain empty
+      expect(screen.getByTestId('roles')).toHaveTextContent('none');
     });
   });
 });
