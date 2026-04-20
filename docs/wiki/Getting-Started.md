@@ -9,7 +9,7 @@ This guide walks you through setting up a local development environment for the 
 | Node.js | >= 24 (see `.nvmrc`) | [nodejs.org](https://nodejs.org) or `nvm install` |
 | npm | >= 10 | Included with Node.js |
 | Python | 3.14 (see `.python-version`) | [python.org](https://python.org) or `pyenv install` |
-| UV | latest | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| UV | latest | `curl -LsSf https://astral.sh/uv/install.sh | sh` |
 | Azure CLI | latest | [Install Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) |
 | Docker | latest | [docker.com](https://docker.com) (optional, for container builds) |
 | Git | >= 2.40 | [git-scm.com](https://git-scm.com) |
