@@ -59,7 +59,6 @@ def _get_compare_service(
                 openai_client: Any | None = OpenAIClient(
                     endpoint=settings.openai_endpoint,
                     deployment=settings.openai_chat_deployment,
-                    api_version=settings.openai_api_version,
                 )
             else:
                 openai_client = None

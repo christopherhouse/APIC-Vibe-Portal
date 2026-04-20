@@ -48,17 +48,10 @@ class TestFoundryAgentClientInit:
         )
         assert client._credential is mock_cred
 
-    def test_default_api_version(self):
+    def test_no_api_version_attribute(self):
+        """v1 API clients should not store an api_version."""
         client = FoundryAgentClient(project_endpoint="https://ep.azureml.ms", deployment="gpt-4o")
-        assert client._api_version == "2025-03-01-preview"
-
-    def test_custom_api_version(self):
-        client = FoundryAgentClient(
-            project_endpoint="https://ep.azureml.ms",
-            deployment="gpt-4o",
-            api_version="2025-01-01",
-        )
-        assert client._api_version == "2025-01-01"
+        assert not hasattr(client, "_api_version")
 
 
 class TestFoundryAgentClientIsConfigured:
@@ -78,18 +71,24 @@ class TestFoundryAgentClientIsConfigured:
 class TestFoundryAgentClientGetMafClient:
     def test_get_maf_client_returns_openai_chat_client(self):
         mock_maf = MagicMock()
+        mock_token_provider = MagicMock()
         client = FoundryAgentClient(
             project_endpoint="https://ep.azureml.ms",
             deployment="gpt-4o",
         )
-        with patch("agent_framework.openai.OpenAIChatClient", return_value=mock_maf) as mock_cls:
+        with (
+            patch("agent_framework.openai.OpenAIChatClient", return_value=mock_maf) as mock_cls,
+            patch(
+                "apic_vibe_portal_bff.clients.foundry_agent_client.get_bearer_token_provider",
+                return_value=mock_token_provider,
+            ),
+        ):
             result = client.get_maf_client()
             assert result is mock_maf
             mock_cls.assert_called_once_with(
                 model="gpt-4o",
-                azure_endpoint="https://ep.azureml.ms",
-                api_version="2025-03-01-preview",
-                credential=client._credential,
+                base_url="https://ep.azureml.ms/openai/v1/",
+                api_key=mock_token_provider,
             )
 
     def test_get_maf_client_lazy_init(self):
@@ -98,17 +97,70 @@ class TestFoundryAgentClientGetMafClient:
             project_endpoint="https://ep.azureml.ms",
             deployment="gpt-4o",
         )
-        with patch("agent_framework.openai.OpenAIChatClient", return_value=mock_maf):
+        with (
+            patch("agent_framework.openai.OpenAIChatClient", return_value=mock_maf),
+            patch(
+                "apic_vibe_portal_bff.clients.foundry_agent_client.get_bearer_token_provider",
+                return_value=MagicMock(),
+            ),
+        ):
             first = client.get_maf_client()
             second = client.get_maf_client()
             assert first is second  # same instance returned
+
+    def test_get_maf_client_uses_v1_base_url(self):
+        """Verify the v1 base_url is constructed from the endpoint."""
+        mock_maf = MagicMock()
+        mock_token_provider = MagicMock()
+        client = FoundryAgentClient(
+            project_endpoint="https://my-foundry.api.azureml.ms",
+            deployment="gpt-4o",
+        )
+        with (
+            patch("agent_framework.openai.OpenAIChatClient", return_value=mock_maf) as mock_cls,
+            patch(
+                "apic_vibe_portal_bff.clients.foundry_agent_client.get_bearer_token_provider",
+                return_value=mock_token_provider,
+            ),
+        ):
+            client.get_maf_client()
+            call_kwargs = mock_cls.call_args[1] if mock_cls.call_args[1] else {}
+            # Falls back to positional-or-keyword args
+            if not call_kwargs:
+                call_kwargs = dict(zip(["model", "base_url", "api_key"], mock_cls.call_args[0], strict=False))
+            assert "base_url" in call_kwargs or mock_cls.call_args[1].get("base_url")
+            assert mock_cls.call_args[1]["base_url"] == "https://my-foundry.api.azureml.ms/openai/v1/"
+
+    def test_get_maf_client_uses_ai_azure_scope(self):
+        """Verify the token provider uses the ai.azure.com scope."""
+        mock_cred = MagicMock()
+        client = FoundryAgentClient(
+            project_endpoint="https://ep.azureml.ms",
+            deployment="gpt-4o",
+            credential=mock_cred,
+        )
+        with (
+            patch("agent_framework.openai.OpenAIChatClient", return_value=MagicMock()),
+            patch(
+                "apic_vibe_portal_bff.clients.foundry_agent_client.get_bearer_token_provider",
+                return_value=MagicMock(),
+            ) as mock_get_provider,
+        ):
+            client.get_maf_client()
+            mock_get_provider.assert_called_once_with(mock_cred, "https://ai.azure.com/.default")
 
 
 class TestFoundryAgentClientClose:
     def test_close_clears_client(self):
         mock_maf = MagicMock()
         client = FoundryAgentClient(project_endpoint="https://ep.azureml.ms", deployment="gpt-4o")
-        with patch("agent_framework.openai.OpenAIChatClient", return_value=mock_maf):
+        with (
+            patch("agent_framework.openai.OpenAIChatClient", return_value=mock_maf),
+            patch(
+                "apic_vibe_portal_bff.clients.foundry_agent_client.get_bearer_token_provider",
+                return_value=MagicMock(),
+            ),
+        ):
             client.get_maf_client()
             assert client._client is not None
             client.close()

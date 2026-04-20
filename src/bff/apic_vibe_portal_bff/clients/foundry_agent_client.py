@@ -1,13 +1,15 @@
 """Azure AI Foundry Agent Service client.
 
 Wraps the Microsoft Agent Framework (MAF) ``OpenAIChatClient`` and configures
-it to target an Azure AI Foundry project endpoint.  Authentication uses
-``DefaultAzureCredential`` (managed identity in production, developer
-credential chain locally).
+it to target an Azure AI Foundry project endpoint using the **v1 API**.
 
-The Foundry Agent Service exposes an Azure OpenAI-compatible API at the
-project endpoint, so the same MAF ``OpenAIChatClient`` used for direct
-Azure OpenAI can be pointed at the Foundry project URL instead.
+Authentication uses ``DefaultAzureCredential`` (managed identity in
+production, developer credential chain locally).  The credential is
+converted to a token provider with the ``https://ai.azure.com/.default``
+scope, which is passed as ``api_key`` to the MAF client so that the
+underlying ``AsyncOpenAI`` client is used (OpenAI routing) rather than
+``AsyncAzureOpenAI`` (Azure routing).  This avoids appending a dated
+``api-version`` query parameter that the v1 endpoint rejects.
 
 Error handling follows the same patterns as
 :class:`~apic_vibe_portal_bff.clients.openai_client.OpenAIClient`.
@@ -18,12 +20,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
 logger = logging.getLogger(__name__)
 
-# Azure AI Services token scope used for Foundry authentication
-_AI_SERVICES_SCOPE = "https://cognitiveservices.azure.com/.default"
+# Token scope for Azure AI Foundry v1 API
+_AI_FOUNDRY_SCOPE = "https://ai.azure.com/.default"
 
 
 # ---------------------------------------------------------------------------
@@ -52,10 +54,15 @@ class FoundryAgentUnavailableError(FoundryAgentClientError):
 
 
 class FoundryAgentClient:
-    """Client for Azure AI Foundry Agent Service.
+    """Client for Azure AI Foundry Agent Service (v1 API).
 
     Authenticates to an Azure AI Foundry project endpoint and provides a
     MAF-compatible ``OpenAIChatClient`` that agents can use for LLM calls.
+
+    Uses the v1 API approach: ``base_url={endpoint}/openai/v1/`` with a
+    bearer token provider as ``api_key``, which routes MAF through the
+    standard ``AsyncOpenAI`` client and avoids the deprecated dated
+    ``api-version`` query parameter.
 
     Parameters
     ----------
@@ -65,8 +72,6 @@ class FoundryAgentClient:
         Automatically normalised to ``https://``.
     deployment:
         Chat model deployment name (e.g. ``gpt-4o``).
-    api_version:
-        Azure OpenAI API version string.
     credential:
         Azure credential object.  Defaults to ``DefaultAzureCredential``.
     """
@@ -75,12 +80,10 @@ class FoundryAgentClient:
         self,
         project_endpoint: str,
         deployment: str,
-        api_version: str = "2025-03-01-preview",
         credential: Any | None = None,
     ) -> None:
         self._endpoint = self._normalize_endpoint(project_endpoint)
         self._deployment = deployment
-        self._api_version = api_version
         self._credential = credential or DefaultAzureCredential()
         self._client: Any | None = None
 
@@ -114,15 +117,23 @@ class FoundryAgentClient:
     # ------------------------------------------------------------------
 
     def _get_client(self) -> Any:
-        """Lazily create and return the MAF ``OpenAIChatClient`` for the Foundry endpoint."""
+        """Lazily create and return the MAF ``OpenAIChatClient`` for the Foundry v1 endpoint.
+
+        Uses OpenAI routing (``base_url`` + ``api_key``) instead of Azure
+        routing (``azure_endpoint`` + ``credential``) so that the
+        underlying ``AsyncOpenAI`` client does not append a dated
+        ``api-version`` query parameter.
+        """
         if self._client is None:
             from agent_framework.openai import OpenAIChatClient
 
+            token_provider = get_bearer_token_provider(self._credential, _AI_FOUNDRY_SCOPE)
+            base_url = f"{self._endpoint.rstrip('/')}/openai/v1/"
+
             self._client = OpenAIChatClient(
                 model=self._deployment,
-                azure_endpoint=self._endpoint,
-                api_version=self._api_version,
-                credential=self._credential,
+                base_url=base_url,
+                api_key=token_provider,
             )
         return self._client
 
