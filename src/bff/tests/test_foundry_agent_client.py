@@ -124,12 +124,9 @@ class TestFoundryAgentClientGetMafClient:
             ),
         ):
             client.get_maf_client()
-            call_kwargs = mock_cls.call_args[1] if mock_cls.call_args[1] else {}
-            # Falls back to positional-or-keyword args
-            if not call_kwargs:
-                call_kwargs = dict(zip(["model", "base_url", "api_key"], mock_cls.call_args[0], strict=False))
-            assert "base_url" in call_kwargs or mock_cls.call_args[1].get("base_url")
-            assert mock_cls.call_args[1]["base_url"] == "https://my-foundry.api.azureml.ms/openai/v1/"
+            _, call_kwargs = mock_cls.call_args
+            assert "base_url" in call_kwargs
+            assert call_kwargs["base_url"] == "https://my-foundry.api.azureml.ms/openai/v1/"
 
     def test_get_maf_client_uses_ai_azure_scope(self):
         """Verify the token provider uses the ai.azure.com scope."""
