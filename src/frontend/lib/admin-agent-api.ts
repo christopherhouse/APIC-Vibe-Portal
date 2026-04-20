@@ -4,7 +4,9 @@
  * All endpoints require the Portal.Admin role.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_BFF_API_URL || '/api';
+import { apiFetch } from './api-client';
+
+const ADMIN_AGENTS_BASE = '/admin/agents';
 
 /**
  * Agent information.
@@ -57,76 +59,24 @@ export interface AgentTestResponse {
 }
 
 /**
- * Fetch authorization token for API requests.
- */
-async function getAuthToken(): Promise<string> {
-  // In production, this would get the token from MSAL
-  // For now, we'll assume the token is available via a module
-  const { getAccessToken } = await import('@/lib/auth/use-auth');
-  const token = await getAccessToken();
-  if (!token) {
-    throw new Error('Not authenticated');
-  }
-  return token;
-}
-
-/**
  * List all registered agents.
  */
 export async function fetchAgents(): Promise<AgentInfo[]> {
-  const token = await getAuthToken();
-  const response = await fetch(`${API_BASE}/admin/agents`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to fetch agents' }));
-    throw new Error(error.message || 'Failed to fetch agents');
-  }
-
-  return response.json();
+  return apiFetch<AgentInfo[]>(ADMIN_AGENTS_BASE);
 }
 
 /**
  * Get detailed information for a specific agent.
  */
 export async function fetchAgentDetail(agentId: string): Promise<AgentDetail> {
-  const token = await getAuthToken();
-  const response = await fetch(`${API_BASE}/admin/agents/${encodeURIComponent(agentId)}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to fetch agent details' }));
-    throw new Error(error.message || 'Failed to fetch agent details');
-  }
-
-  return response.json();
+  return apiFetch<AgentDetail>(`${ADMIN_AGENTS_BASE}/${encodeURIComponent(agentId)}`);
 }
 
 /**
  * Get usage statistics for a specific agent.
  */
 export async function fetchAgentStats(agentId: string): Promise<AgentStats> {
-  const token = await getAuthToken();
-  const response = await fetch(`${API_BASE}/admin/agents/${encodeURIComponent(agentId)}/stats`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ message: 'Failed to fetch agent statistics' }));
-    throw new Error(error.message || 'Failed to fetch agent statistics');
-  }
-
-  return response.json();
+  return apiFetch<AgentStats>(`${ADMIN_AGENTS_BASE}/${encodeURIComponent(agentId)}/stats`);
 }
 
 /**
@@ -136,20 +86,8 @@ export async function testAgent(
   agentId: string,
   request: AgentTestRequest
 ): Promise<AgentTestResponse> {
-  const token = await getAuthToken();
-  const response = await fetch(`${API_BASE}/admin/agents/${encodeURIComponent(agentId)}/test`, {
+  return apiFetch<AgentTestResponse>(`${ADMIN_AGENTS_BASE}/${encodeURIComponent(agentId)}/test`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify(request),
   });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to test agent' }));
-    throw new Error(error.message || 'Failed to test agent');
-  }
-
-  return response.json();
 }
