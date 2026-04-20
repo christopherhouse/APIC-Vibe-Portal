@@ -53,6 +53,26 @@ def mock_maf_client():
 
 
 @pytest.fixture
+def mock_search_client():
+    """Mock AISearchClient for API search."""
+    client = MagicMock()
+    client.search.return_value = {
+        "results": [
+            {
+                "apiName": "weather-api",
+                "title": "Weather API",
+                "kind": "REST",
+                "lifecycleStage": "Production",
+                "description": "Provides real-time weather data",
+            }
+        ],
+        "count": 1,
+        "facets": {},
+    }
+    return client
+
+
+@pytest.fixture
 def mock_api_center():
     client = MagicMock()
     client.get_api.return_value = dict(_COMPLIANT_API)
@@ -71,7 +91,7 @@ def checker():
 
 
 @pytest.fixture
-def agent(mock_maf_client, mock_api_center, checker):
+def agent(mock_maf_client, mock_search_client, mock_api_center, checker):
     """Return a GovernanceAgent with a mocked MAF agent."""
     mock_maf_agent = MagicMock()
     mock_maf_agent.run = AsyncMock(return_value="Governance report for weather-api.")
@@ -79,6 +99,7 @@ def agent(mock_maf_client, mock_api_center, checker):
     with patch("agent_framework.Agent", return_value=mock_maf_agent):
         a = GovernanceAgent(
             maf_client=mock_maf_client,
+            search_client=mock_search_client,
             api_center_client=mock_api_center,
             checker=checker,
         )
