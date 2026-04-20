@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Box, Container, Typography, Alert, CircularProgress, Button, Grid2 as Grid } from '@mui/material';
+import { Box, Container, Typography, Alert, CircularProgress, Button, Grid } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import GovernanceOverview from './components/GovernanceOverview';
 import ScoreDistributionChart from './components/ScoreDistributionChart';
@@ -101,10 +101,10 @@ export default function GovernancePage() {
       </Box>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <ScoreDistributionChart distribution={distribution} />
         </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <RuleComplianceChart compliance={ruleCompliance} />
         </Grid>
       </Grid>
