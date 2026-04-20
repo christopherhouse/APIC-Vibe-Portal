@@ -110,6 +110,7 @@ class TestChatEndpoint:
             user_message="Follow up",
             session_id="existing-session",
             accessible_api_ids=[],
+            user_id="test-user",
         )
 
     @patch("apic_vibe_portal_bff.middleware.auth.validate_token")

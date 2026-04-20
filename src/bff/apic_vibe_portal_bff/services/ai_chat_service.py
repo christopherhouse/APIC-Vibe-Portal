@@ -5,7 +5,8 @@ API Discovery Agent backed by Azure AI Foundry).  The agent handles RAG
 retrieval, tool calling, and conversation history internally.
 
 The service layer adds per-session rate limiting, session management for
-local message caching, and history/clear operations.
+local message caching, Cosmos DB persistence via :class:`ChatSessionRepository`,
+and history/clear operations.
 """
 
 from __future__ import annotations
@@ -17,11 +18,15 @@ import uuid
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from threading import Lock
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from apic_vibe_portal_bff.clients.openai_client import OpenAIContentFilterError
+from apic_vibe_portal_bff.data.models.chat_session import ChatMessageDoc, ChatSessionDocument
 from apic_vibe_portal_bff.models.chat import ChatMessage, ChatResponse
 from apic_vibe_portal_bff.utils.logger import sanitize_for_log
+
+if TYPE_CHECKING:
+    from apic_vibe_portal_bff.data.repositories.chat_session_repository import ChatSessionRepository
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +206,10 @@ class AIChatService:
         Optional MAF ``HistoryProvider`` reference retained for
         ``clear_history`` support.  The actual conversation persistence
         is managed inside the agent.
+    chat_repository:
+        Optional :class:`~apic_vibe_portal_bff.data.repositories.chat_session_repository.ChatSessionRepository`
+        for persisting chat sessions to Cosmos DB.  When ``None``, chat
+        history is kept only in-memory (lost on process restart).
     """
 
     def __init__(
@@ -208,11 +217,13 @@ class AIChatService:
         *,
         agent_router: Any,
         history_provider: Any | None = None,
+        chat_repository: ChatSessionRepository | None = None,
     ) -> None:
         if agent_router is None:
             raise ValueError("agent_router is required — the direct RAG fallback has been removed")
         self._agent_router = agent_router
         self._history_provider = history_provider
+        self._chat_repository = chat_repository
         self._sessions = SessionManager()
 
     @property
@@ -225,7 +236,11 @@ class AIChatService:
     # ------------------------------------------------------------------
 
     async def chat(
-        self, user_message: str, session_id: str | None = None, accessible_api_ids: list[str] | None = None
+        self,
+        user_message: str,
+        session_id: str | None = None,
+        accessible_api_ids: list[str] | None = None,
+        user_id: str | None = None,
     ) -> ChatResponse:
         """Process a chat message through the agent system.
 
@@ -242,6 +257,8 @@ class AIChatService:
             When ``None``, no security filter is applied (admin bypass).
             When a list, the agent restricts context to the named APIs
             so the AI cannot reference inaccessible APIs.
+        user_id:
+            Authenticated user's OID.  Required for Cosmos DB persistence.
 
         Returns a :class:`ChatResponse` with the assistant's answer and citations.
         """
@@ -263,10 +280,15 @@ class AIChatService:
         session.add_message("assistant", agent_response.content)
 
         now = _utc_iso_now()
+        msg_id = str(uuid.uuid4())
+
+        # Persist to Cosmos DB if repository and user_id are available
+        self._persist_messages(session, user_id)
+
         return ChatResponse(
             sessionId=session.session_id,
             message=ChatMessage(
-                id=str(uuid.uuid4()),
+                id=msg_id,
                 role="assistant",
                 content=agent_response.content,
                 citations=agent_response.citations or None,
@@ -283,6 +305,7 @@ class AIChatService:
         user_message: str,
         session_id: str | None = None,
         accessible_api_ids: list[str] | None = None,
+        user_id: str | None = None,
     ) -> AsyncGenerator[str]:
         """Stream a chat response as SSE events.
 
@@ -298,6 +321,8 @@ class AIChatService:
         accessible_api_ids:
             When ``None``, no security filter is applied (admin bypass).
             When a list, the agent restricts context to the named APIs.
+        user_id:
+            Authenticated user's OID.  Required for Cosmos DB persistence.
 
         Yields SSE-formatted strings for each token chunk.
         The final event includes citations and metadata.
@@ -345,6 +370,9 @@ class AIChatService:
         session.add_message("user", user_message)
         session.add_message("assistant", full_content)
 
+        # Persist to Cosmos DB if repository and user_id are available
+        self._persist_messages(session, user_id)
+
         now = _utc_iso_now()
         message_id = str(uuid.uuid4())
         final_event = {
@@ -364,39 +392,86 @@ class AIChatService:
     # History
     # ------------------------------------------------------------------
 
-    def get_history(self, session_id: str) -> list[ChatMessage]:
+    def get_history(self, session_id: str, user_id: str | None = None) -> list[ChatMessage]:
         """Return the conversation history for a session.
 
-        Uses stable IDs and timestamps stored alongside each message
-        rather than generating new ones on every call.  If a MAF
-        ``HistoryProvider`` is configured, it will have received the
-        same messages during the ``Agent.run()`` call; this method reads
-        from the local in-memory cache for consistency.
+        Checks the in-memory cache first.  If no in-memory session exists
+        and a ``ChatSessionRepository`` is configured, falls back to
+        reading from Cosmos DB.
+
+        Parameters
+        ----------
+        session_id:
+            The chat session identifier.
+        user_id:
+            Authenticated user's OID.  Required for Cosmos DB lookup.
         """
         session = self._sessions.get(session_id)
-        if session is None:
-            return []
-
-        messages: list[ChatMessage] = []
-        for msg in session.get_history_messages():
-            messages.append(
-                ChatMessage(
-                    id=msg.get("id", str(uuid.uuid4())),
-                    role=msg["role"],
-                    content=msg["content"],
-                    timestamp=msg.get("timestamp", _utc_iso_now()),
+        if session is not None:
+            messages: list[ChatMessage] = []
+            for msg in session.get_history_messages():
+                messages.append(
+                    ChatMessage(
+                        id=msg.get("id", str(uuid.uuid4())),
+                        role=msg["role"],
+                        content=msg["content"],
+                        timestamp=msg.get("timestamp", _utc_iso_now()),
+                    )
                 )
-            )
-        return messages
+            return messages
 
-    def clear_history(self, session_id: str) -> bool:
+        # Fallback: read from Cosmos DB
+        if self._chat_repository is not None and user_id:
+            try:
+                doc = self._chat_repository.find_by_id(session_id, user_id)
+                if doc is not None:
+                    raw_messages = doc.get("messages", [])
+                    return [
+                        ChatMessage(
+                            id=m.get("id", str(uuid.uuid4())),
+                            role=m["role"],
+                            content=m["content"],
+                            timestamp=m.get("timestamp", _utc_iso_now()),
+                        )
+                        for m in raw_messages
+                        if m.get("role") != "system"
+                    ]
+            except Exception:
+                logger.exception(
+                    "Failed to read chat history from Cosmos DB for session %s",
+                    sanitize_for_log(session_id),
+                )
+
+        return []
+
+    def clear_history(self, session_id: str, user_id: str | None = None) -> bool:
         """Clear the conversation history for a session.
 
-        Removes the in-memory session and, if a MAF ``HistoryProvider``
-        with a ``clear`` method is configured, also clears persisted
-        history.
+        Removes the in-memory session, soft-deletes the Cosmos DB document
+        (if the repository is configured), and clears the MAF history
+        provider if it has a ``clear`` method.
+
+        Parameters
+        ----------
+        session_id:
+            The chat session identifier.
+        user_id:
+            Authenticated user's OID.  Required for Cosmos DB soft-delete.
         """
         deleted = self._sessions.delete(session_id)
+
+        # Soft-delete from Cosmos DB
+        if self._chat_repository is not None and user_id:
+            try:
+                result = self._chat_repository.soft_delete(session_id, user_id)
+                if result is not None:
+                    deleted = True
+            except Exception:
+                logger.exception(
+                    "Failed to soft-delete chat session from Cosmos DB for session %s",
+                    sanitize_for_log(session_id),
+                )
+
         # Also clear from the MAF history provider if it supports it
         if hasattr(self._history_provider, "clear"):
             try:
@@ -407,6 +482,74 @@ class AIChatService:
                     sanitize_for_log(session_id),
                 )
         return deleted
+
+    # ------------------------------------------------------------------
+    # Cosmos DB persistence
+    # ------------------------------------------------------------------
+
+    def _persist_messages(self, session: _ChatSession, user_id: str | None) -> None:
+        """Persist the current in-memory session to Cosmos DB.
+
+        Creates a new ``ChatSessionDocument`` on the first call for a given
+        session, and replaces the existing document on subsequent calls.
+
+        This method is best-effort: failures are logged but never raised
+        so the chat response is still returned to the caller.
+        """
+        if self._chat_repository is None or not user_id:
+            return
+
+        try:
+            # Build the messages list from the in-memory session
+            cosmos_messages = [
+                ChatMessageDoc(
+                    id=msg.get("id", str(uuid.uuid4())),
+                    role=msg["role"],
+                    content=msg["content"],
+                    timestamp=msg.get("timestamp", _utc_iso_now()),
+                ).model_dump()
+                for msg in session.messages
+            ]
+
+            # Try to read the existing document first
+            existing = self._chat_repository.find_by_id(session.session_id, user_id)
+
+            if existing is not None:
+                # Update existing document with new messages
+                existing["messages"] = cosmos_messages
+                existing["updatedAt"] = _utc_iso_now()
+                self._chat_repository.update(existing)
+                logger.debug(
+                    "Updated chat session %s in Cosmos DB (%d messages)",
+                    session.session_id,
+                    len(cosmos_messages),
+                )
+            else:
+                # Derive a title from the first user message
+                first_user_msg = next(
+                    (m["content"] for m in session.messages if m.get("role") == "user"),
+                    "",
+                )
+                title = first_user_msg[:80] if first_user_msg else ""
+
+                doc = ChatSessionDocument.new(
+                    session_id=session.session_id,
+                    user_id=user_id,
+                    title=title,
+                )
+                cosmos_dict = doc.to_cosmos_dict()
+                cosmos_dict["messages"] = cosmos_messages
+                self._chat_repository.create(cosmos_dict)
+                logger.info(
+                    "Created chat session %s in Cosmos DB for user %s",
+                    session.session_id,
+                    sanitize_for_log(user_id),
+                )
+        except Exception:
+            logger.exception(
+                "Failed to persist chat session %s to Cosmos DB",
+                sanitize_for_log(session.session_id),
+            )
 
 
 # ---------------------------------------------------------------------------
