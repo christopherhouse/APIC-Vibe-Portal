@@ -122,7 +122,7 @@ def run() -> None:
     openai_client = AzureOpenAI(
         azure_endpoint=settings.openai_endpoint,
         azure_deployment=settings.openai_embedding_deployment,
-        api_version="2024-02-01",
+        api_version=settings.openai_api_version,
         azure_ad_token_provider=lambda: credential.get_token("https://cognitiveservices.azure.com/.default").token,
     )
 

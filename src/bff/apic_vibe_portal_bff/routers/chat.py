@@ -91,6 +91,7 @@ def _get_chat_service() -> AIChatService:
         foundry_client = FoundryAgentClient(
             project_endpoint=settings.foundry_project_endpoint,
             deployment=settings.openai_chat_deployment,
+            api_version=settings.openai_api_version,
         )
         api_center_client = ApiCenterClient(
             base_url=settings.api_center_endpoint,
