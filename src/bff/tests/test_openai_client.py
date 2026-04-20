@@ -52,10 +52,10 @@ def _inject_mock_client(client: OpenAIClient) -> MagicMock:
 
 
 def _inject_mock_chat_client(client: OpenAIClient) -> MagicMock:
-    """Inject a mock ``AsyncAzureOpenAI`` chat client into the wrapper.
+    """Inject a mock ``AsyncOpenAI`` chat client into the wrapper.
 
     The mock simulates ``chat_client.chat.completions.create(...)``
-    which is the direct ``AsyncAzureOpenAI`` client used for chat completions.
+    which is the direct ``AsyncOpenAI`` client used for chat completions.
     """
     mock_chat_client = MagicMock()
     mock_chat_client.chat.completions.create = AsyncMock()
@@ -105,17 +105,9 @@ class TestOpenAIClientInit:
         c = OpenAIClient(endpoint="", deployment="gpt-4o", credential=mock_credential)
         assert c._endpoint == ""
 
-    def test_default_api_version(self, client):
-        assert client._api_version == "2025-03-01-preview"
-
-    def test_custom_api_version(self, mock_credential):
-        c = OpenAIClient(
-            endpoint="https://test.openai.azure.com",
-            deployment="gpt-4o",
-            api_version="2025-01-01",
-            credential=mock_credential,
-        )
-        assert c._api_version == "2025-01-01"
+    def test_no_api_version_attribute(self, client):
+        """v1 API clients should not store an api_version."""
+        assert not hasattr(client, "_api_version")
 
 
 # ---------------------------------------------------------------------------
@@ -127,7 +119,7 @@ class TestTokenAcquisition:
     def test_get_token_calls_credential(self, client, mock_credential):
         token = client._get_token()
         assert token == "test-token"
-        mock_credential.get_token.assert_called_once_with("https://cognitiveservices.azure.com/.default")
+        mock_credential.get_token.assert_called_once_with("https://ai.azure.com/.default")
 
 
 # ---------------------------------------------------------------------------

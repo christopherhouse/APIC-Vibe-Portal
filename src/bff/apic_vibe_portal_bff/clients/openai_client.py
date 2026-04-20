@@ -4,6 +4,11 @@ Uses the ``agent-framework`` package to create an AI agent backed by Azure
 OpenAI.  The agent uses ``DefaultAzureCredential`` for authentication and
 exposes both synchronous-style and streaming chat interfaces.
 
+Both the MAF agent path and the direct chat-completions path use the
+**v1 API** (``/openai/v1/`` base URL), which removes the need for dated
+``api-version`` query parameters.  Authentication uses a bearer token
+provider with the ``https://ai.azure.com/.default`` scope.
+
 Error handling is consistent with the existing BFF client patterns.
 """
 
@@ -12,12 +17,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
 logger = logging.getLogger(__name__)
 
-# Scope for Azure Cognitive Services token
-_COGNITIVE_SERVICES_SCOPE = "https://cognitiveservices.azure.com/.default"
+# Token scope for Azure AI / Azure OpenAI v1 API
+_AI_FOUNDRY_SCOPE = "https://ai.azure.com/.default"
 
 
 # ---------------------------------------------------------------------------
@@ -64,7 +69,12 @@ class OpenAIUnavailableError(OpenAIClientError):
 
 
 class OpenAIClient:
-    """Thin wrapper around the Azure OpenAI Python SDK via MAF.
+    """Thin wrapper around the Azure OpenAI Python SDK via MAF (v1 API).
+
+    Uses the v1 API approach: ``base_url={endpoint}/openai/v1/`` with a
+    bearer token provider as ``api_key``, which routes through the standard
+    ``AsyncOpenAI`` client and avoids the deprecated dated ``api-version``
+    query parameter.
 
     Parameters
     ----------
@@ -72,8 +82,6 @@ class OpenAIClient:
         Azure OpenAI service endpoint URL.
     deployment:
         The deployment name for the chat model (e.g. ``gpt-4o``).
-    api_version:
-        Azure OpenAI API version.
     credential:
         Azure credential object.  Defaults to ``DefaultAzureCredential``.
     """
@@ -82,55 +90,58 @@ class OpenAIClient:
         self,
         endpoint: str,
         deployment: str,
-        api_version: str = "2025-03-01-preview",
         credential: Any | None = None,
     ) -> None:
         self._endpoint = endpoint.rstrip("/") if endpoint else ""
         self._deployment = deployment
-        self._api_version = api_version
         self._credential = credential or DefaultAzureCredential()
         self._client: Any | None = None
         self._chat_client: Any | None = None
 
     def _get_client(self) -> Any:
-        """Lazily create and return the MAF ``OpenAIChatClient``."""
+        """Lazily create and return the MAF ``OpenAIChatClient`` using the v1 API.
+
+        Uses OpenAI routing (``base_url`` + ``api_key``) instead of Azure
+        routing (``azure_endpoint`` + ``credential``) so that the
+        underlying ``AsyncOpenAI`` client does not append a dated
+        ``api-version`` query parameter.
+        """
         if self._client is None:
             from agent_framework.openai import OpenAIChatClient
 
+            token_provider = get_bearer_token_provider(self._credential, _AI_FOUNDRY_SCOPE)
+            base_url = f"{self._endpoint.rstrip('/')}/openai/v1/"
+
             self._client = OpenAIChatClient(
                 model=self._deployment,
-                azure_endpoint=self._endpoint,
-                api_version=self._api_version,
-                credential=self._credential,
+                base_url=base_url,
+                api_key=token_provider,
             )
         return self._client
 
     def _get_chat_client(self) -> Any:
-        """Lazily create and return an ``AsyncAzureOpenAI`` client for chat completions.
+        """Lazily create and return an ``AsyncOpenAI`` client for chat completions (v1 API).
 
-        MAF's ``OpenAIChatClient`` uses ``responses_mode=True`` which sets the
-        base URL to ``{endpoint}/openai/v1/`` — correct for the Responses API
-        but incorrect for the Chat Completions API (``/openai/deployments/...``).
-        This method creates a direct ``AsyncAzureOpenAI`` client that uses the
-        standard ``azure_endpoint`` parameter, producing correct URL paths for
-        the Chat Completions endpoint.
+        Uses the v1 API approach: ``base_url={endpoint}/openai/v1/`` with a
+        bearer token provider as ``api_key``.  This avoids the deprecated
+        dated ``api-version`` query parameter that ``AsyncAzureOpenAI``
+        would append.
         """
         if self._chat_client is None:
-            from azure.identity import get_bearer_token_provider
-            from openai import AsyncAzureOpenAI
+            from openai import AsyncOpenAI
 
-            token_provider = get_bearer_token_provider(self._credential, _COGNITIVE_SERVICES_SCOPE)
-            self._chat_client = AsyncAzureOpenAI(
-                azure_endpoint=self._endpoint,
-                azure_deployment=self._deployment,
-                api_version=self._api_version,
-                azure_ad_token_provider=token_provider,
+            token_provider = get_bearer_token_provider(self._credential, _AI_FOUNDRY_SCOPE)
+            base_url = f"{self._endpoint.rstrip('/')}/openai/v1/"
+
+            self._chat_client = AsyncOpenAI(
+                base_url=base_url,
+                api_key=token_provider,
             )
         return self._chat_client
 
     def _get_token(self) -> str:
-        """Obtain an Entra ID token for Azure Cognitive Services."""
-        token = self._credential.get_token(_COGNITIVE_SERVICES_SCOPE)
+        """Obtain an Entra ID token for Azure AI Foundry v1 API."""
+        token = self._credential.get_token(_AI_FOUNDRY_SCOPE)
         return token.token
 
     def _handle_error(self, exc: Exception, context: str) -> None:
