@@ -28,6 +28,27 @@ logger = logging.getLogger(__name__)
 _AI_FOUNDRY_SCOPE = "https://ai.azure.com/.default"
 
 
+def _async_token_provider(credential: Any) -> Any:
+    """Return an **async** callable that provides a bearer token.
+
+    ``get_bearer_token_provider`` returns a *synchronous* callable.  Newer
+    versions of the OpenAI SDK ``await`` the ``api_key`` provider inside
+    ``AsyncOpenAI._refresh_api_key``.  If the provider is synchronous the
+    ``await`` receives a plain ``str`` and raises
+    ``TypeError: 'str' object can't be awaited``.
+
+    Wrapping the sync provider in a thin ``async`` function satisfies the
+    SDK contract while keeping the existing ``DefaultAzureCredential``
+    (sync) auth path.
+    """
+    sync_provider = get_bearer_token_provider(credential, _AI_FOUNDRY_SCOPE)
+
+    async def _provider() -> str:
+        return sync_provider()
+
+    return _provider
+
+
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
@@ -127,7 +148,7 @@ class FoundryAgentClient:
         if self._client is None:
             from agent_framework.openai import OpenAIChatClient
 
-            token_provider = get_bearer_token_provider(self._credential, _AI_FOUNDRY_SCOPE)
+            token_provider = _async_token_provider(self._credential)
             base_url = f"{self._endpoint.rstrip('/')}/openai/v1/"
 
             self._client = OpenAIChatClient(

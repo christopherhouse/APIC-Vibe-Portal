@@ -85,11 +85,11 @@ class TestFoundryAgentClientGetMafClient:
         ):
             result = client.get_maf_client()
             assert result is mock_maf
-            mock_cls.assert_called_once_with(
-                model="gpt-4o",
-                base_url="https://ep.azureml.ms/openai/v1/",
-                api_key=mock_token_provider,
-            )
+            call_kwargs = mock_cls.call_args[1]
+            assert call_kwargs["model"] == "gpt-4o"
+            assert call_kwargs["base_url"] == "https://ep.azureml.ms/openai/v1/"
+            # api_key is now an async wrapper around the sync token provider
+            assert callable(call_kwargs["api_key"])
 
     def test_get_maf_client_lazy_init(self):
         mock_maf = MagicMock()
