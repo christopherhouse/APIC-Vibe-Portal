@@ -115,11 +115,9 @@ class TestCompare:
 
         result = svc.compare(["api-1", "api-2"])
 
-        aspect_names = {row.aspect.split(".")[0] for row in result.aspects}
         # Every top-level aspect should be represented
         for aspect in ALL_ASPECTS:
             assert any(row.aspect.startswith(aspect) for row in result.aspects)
-        _ = aspect_names  # suppress unused-var
 
     def test_respects_aspect_filter(self):
         a1 = _make_api("api-1")

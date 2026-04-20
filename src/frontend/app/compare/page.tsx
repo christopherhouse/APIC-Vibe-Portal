@@ -59,7 +59,7 @@ export default function ComparePage() {
     } else {
       setResult(null);
     }
-  }, [compareParam, isAuthenticated, runComparison, selectedIds]);
+  }, [compareParam, isAuthenticated, runComparison]);
 
   // URL helpers
   const updateCompare = (ids: string[]) => {

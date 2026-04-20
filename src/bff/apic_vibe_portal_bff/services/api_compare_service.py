@@ -371,7 +371,8 @@ class ApiCompareService:
             return None
 
         api_summaries = "\n".join(
-            f"- {s.title} (kind={s.kind}, lifecycle={s.lifecycle_stage}): {s.description[:200]}" for s in result.apis
+            f"- {s.title} (kind={s.kind}, lifecycle={s.lifecycle_stage}): {(s.description or '')[:200]}"
+            for s in result.apis
         )
         aspect_lines = []
         for row in result.aspects:

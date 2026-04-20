@@ -75,7 +75,7 @@ export default function ApiCard({ api, listMode = false }: ApiCardProps) {
               <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
                 Updated {formatDate(api.updatedAt)}
               </Typography>
-              <CompareAddButton apiId={api.id} variant="icon" />
+              <CompareAddButton apiId={api.name} variant="icon" />
             </Box>
           </CardContent>
         </CardActionArea>
@@ -117,7 +117,7 @@ export default function ApiCard({ api, listMode = false }: ApiCardProps) {
               <Typography variant="caption" color="text.secondary">
                 Updated {formatDate(api.updatedAt)}
               </Typography>
-              <CompareAddButton apiId={api.id} variant="icon" />
+              <CompareAddButton apiId={api.name} variant="icon" />
             </Box>
           </Box>
         </CardContent>
