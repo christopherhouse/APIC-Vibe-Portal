@@ -109,6 +109,8 @@ Aspect comparison data:
 Write 3-5 clear paragraphs in plain English. Do not use tables. Be specific and actionable.
 """
 
+_MAX_DESCRIPTION_LENGTH = 200
+
 
 class ApiCompareService:
     """Generates structured multi-API comparisons.
@@ -341,7 +343,7 @@ class ApiCompareService:
             try:
                 nums = [int(v) for v in raw_values]
                 best_idx = nums.index(max(nums))
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
 
         values = []
@@ -371,7 +373,8 @@ class ApiCompareService:
             return None
 
         api_summaries = "\n".join(
-            f"- {s.title} (kind={s.kind}, lifecycle={s.lifecycle_stage}): {(s.description or '')[:200]}"
+            f"- {s.title} (kind={s.kind}, lifecycle={s.lifecycle_stage}): "
+            f"{(s.description or '')[:_MAX_DESCRIPTION_LENGTH]}"
             for s in result.apis
         )
         aspect_lines = []

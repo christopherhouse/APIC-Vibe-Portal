@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
@@ -17,6 +17,7 @@ import { fetchCatalogApis } from '@/lib/catalog-api';
 
 const MAX_COMPARE = 5;
 const MIN_COMPARE = 2;
+const DEBOUNCE_MS = 300;
 
 export interface CompareSelectorProps {
   selectedIds: string[];
@@ -28,16 +29,7 @@ export default function CompareSelector({ selectedIds, onAdd, onRemove }: Compar
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ApiCatalogItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const debounceRef = useCallback(
-    (() => {
-      let timer: ReturnType<typeof setTimeout>;
-      return (fn: () => void, ms: number) => {
-        clearTimeout(timer);
-        timer = setTimeout(fn, ms);
-      };
-    })(),
-    []
-  );
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const search = useCallback(async (q: string) => {
     if (!q.trim()) {
@@ -62,7 +54,8 @@ export default function CompareSelector({ selectedIds, onAdd, onRemove }: Compar
 
   const handleInputChange = (value: string) => {
     setQuery(value);
-    debounceRef(() => void search(value), 300);
+    clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => void search(value), DEBOUNCE_MS);
   };
 
   const canAddMore = selectedIds.length < MAX_COMPARE;

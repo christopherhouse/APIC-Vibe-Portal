@@ -26,8 +26,8 @@ export default function CompareAiAnalysis({ result, onAnalysisLoaded }: CompareA
     setIsLoading(true);
     setError(null);
     try {
-      const apiIds = result.apis.map((a) => a.name);
-      const updated = await compareApisWithAi({ apiIds });
+      const apiNames = result.apis.map((a) => a.name);
+      const updated = await compareApisWithAi({ apiIds: apiNames });
       onAnalysisLoaded(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate AI analysis');

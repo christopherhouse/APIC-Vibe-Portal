@@ -139,7 +139,7 @@ def compare_apis(
         _raise_error(422, "INVALID_REQUEST", str(exc))
     except Exception as exc:
         logger.error("compare_apis failed", extra={"error": str(exc)})
-        _raise_error(500, "COMPARE_ERROR", str(exc))
+        _raise_error(500, "COMPARE_ERROR", "An error occurred while comparing APIs")
 
 
 @router.post(
@@ -159,4 +159,4 @@ def compare_apis_with_ai(
         _raise_error(422, "INVALID_REQUEST", str(exc))
     except Exception as exc:
         logger.error("compare_apis_with_ai failed", extra={"error": str(exc)})
-        _raise_error(500, "COMPARE_ERROR", str(exc))
+        _raise_error(500, "COMPARE_ERROR", "An error occurred while generating comparison")
