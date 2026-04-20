@@ -106,7 +106,7 @@ class TestOpenAIClientInit:
         assert c._endpoint == ""
 
     def test_default_api_version(self, client):
-        assert client._api_version == "2024-06-01"
+        assert client._api_version == "2025-03-01-preview"
 
     def test_custom_api_version(self, mock_credential):
         c = OpenAIClient(
