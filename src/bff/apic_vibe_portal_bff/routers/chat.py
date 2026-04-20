@@ -44,9 +44,8 @@ def _get_chat_service() -> AIChatService:
     """Return a shared :class:`AIChatService` instance.
 
     In production the service is created once with a real agent router
-    backed by Azure AI Foundry, an optional ``CosmosHistoryProvider``
-    for Cosmos DB-backed chat history, and a ``ChatSessionRepository``
-    for explicit chat session persistence.
+    backed by Azure AI Foundry and an optional ``CosmosHistoryProvider``
+    for Cosmos DB-backed chat history.
     Tests override this dependency via ``app.dependency_overrides``.
     """
     global _service_instance  # noqa: PLW0603
@@ -58,19 +57,6 @@ def _get_chat_service() -> AIChatService:
             endpoint=settings.ai_search_endpoint,
             index_name=settings.ai_search_index_name,
         )
-
-        # Wire up ChatSessionRepository for explicit Cosmos DB persistence
-        chat_repository = None
-        if settings.cosmos_db_endpoint.strip():
-            try:
-                from apic_vibe_portal_bff.data.cosmos_client import get_container
-                from apic_vibe_portal_bff.data.repositories.chat_session_repository import ChatSessionRepository
-
-                container = get_container(settings.cosmos_db_chat_container)
-                chat_repository = ChatSessionRepository(container)
-                logger.info("ChatSessionRepository initialised for container=%s", settings.cosmos_db_chat_container)
-            except Exception:
-                logger.exception("Failed to initialise ChatSessionRepository — chat history will not be persisted")
 
         # Wire up MAF CosmosHistoryProvider if Cosmos DB is configured
         history_provider = None
@@ -125,7 +111,6 @@ def _get_chat_service() -> AIChatService:
         _service_instance = AIChatService(
             agent_router=agent_router,
             history_provider=history_provider,
-            chat_repository=chat_repository,
         )
     return _service_instance
 
@@ -207,7 +192,6 @@ async def chat(
             user_message=request.message,
             session_id=request.session_id,
             accessible_api_ids=accessible_api_ids,
-            user_id=user.oid,
         )
     except ChatRateLimitError:
         _raise_error(429, "RATE_LIMIT_EXCEEDED", "Too many messages. Please wait before sending another.")
@@ -256,7 +240,6 @@ async def chat_stream(
             user_message=request.message,
             session_id=request.session_id,
             accessible_api_ids=accessible_api_ids,
-            user_id=user.oid,
         ),
         media_type="text/event-stream",
         headers={
@@ -278,7 +261,7 @@ def get_chat_history(
     service: AIChatService = Depends(_get_chat_service),  # noqa: B008
 ) -> ChatHistoryResponse:
     """Retrieve conversation history for a session."""
-    messages = service.get_history(session_id, user_id=user.oid)
+    messages = service.get_history(session_id)
     return ChatHistoryResponse(
         sessionId=session_id,
         messages=messages,
@@ -295,5 +278,5 @@ def clear_chat_history(
     service: AIChatService = Depends(_get_chat_service),  # noqa: B008
 ) -> dict[str, Any]:
     """Clear conversation history for a session."""
-    deleted = service.clear_history(session_id, user_id=user.oid)
+    deleted = service.clear_history(session_id)
     return {"deleted": deleted, "sessionId": session_id}
