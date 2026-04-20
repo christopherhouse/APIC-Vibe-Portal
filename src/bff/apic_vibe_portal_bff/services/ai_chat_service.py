@@ -392,6 +392,24 @@ class AIChatService:
     # History
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _to_chat_messages(raw_messages: list[dict[str, str]]) -> list[ChatMessage]:
+        """Convert raw message dicts to :class:`ChatMessage` objects.
+
+        Filters out ``system`` messages and assigns fallback IDs/timestamps
+        when the original values are missing.
+        """
+        return [
+            ChatMessage(
+                id=m.get("id", str(uuid.uuid4())),
+                role=m["role"],
+                content=m["content"],
+                timestamp=m.get("timestamp", _utc_iso_now()),
+            )
+            for m in raw_messages
+            if m.get("role") != "system"
+        ]
+
     def get_history(self, session_id: str, user_id: str | None = None) -> list[ChatMessage]:
         """Return the conversation history for a session.
 
@@ -408,34 +426,14 @@ class AIChatService:
         """
         session = self._sessions.get(session_id)
         if session is not None:
-            messages: list[ChatMessage] = []
-            for msg in session.get_history_messages():
-                messages.append(
-                    ChatMessage(
-                        id=msg.get("id", str(uuid.uuid4())),
-                        role=msg["role"],
-                        content=msg["content"],
-                        timestamp=msg.get("timestamp", _utc_iso_now()),
-                    )
-                )
-            return messages
+            return self._to_chat_messages(session.get_history_messages())
 
         # Fallback: read from Cosmos DB
         if self._chat_repository is not None and user_id:
             try:
                 doc = self._chat_repository.find_by_id(session_id, user_id)
                 if doc is not None:
-                    raw_messages = doc.get("messages", [])
-                    return [
-                        ChatMessage(
-                            id=m.get("id", str(uuid.uuid4())),
-                            role=m["role"],
-                            content=m["content"],
-                            timestamp=m.get("timestamp", _utc_iso_now()),
-                        )
-                        for m in raw_messages
-                        if m.get("role") != "system"
-                    ]
+                    return self._to_chat_messages(doc.get("messages", []))
             except Exception:
                 logger.exception(
                     "Failed to read chat history from Cosmos DB for session %s",
