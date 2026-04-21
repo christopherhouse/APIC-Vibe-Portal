@@ -22,12 +22,14 @@ import SecurityIcon from '@mui/icons-material/Security';
 import GavelIcon from '@mui/icons-material/Gavel';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import { useAuth } from '@/lib/auth/use-auth';
 import { useSidebarContext } from '@/lib/sidebar-context';
 
 const DRAWER_WIDTH = 240;
 const MINI_DRAWER_WIDTH = 56;
 const ADMIN_ROLE = 'Portal.Admin';
+const MAINTAINER_ROLE = 'Portal.Maintainer';
 
 interface NavItem {
   label: string;
@@ -51,6 +53,11 @@ const secondaryNavItems: NavItem[] = [
 ];
 
 const adminNavItems: NavItem[] = [
+  {
+    label: 'Analytics',
+    icon: <BarChartIcon />,
+    href: '/analytics',
+  },
   {
     label: 'Access Policies',
     icon: <SecurityIcon />,
@@ -102,7 +109,9 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { isOpen } = useSidebarContext();
   const { user } = useAuth();
-  const isAdmin = Boolean(user?.roles.includes(ADMIN_ROLE));
+  const isAdmin = Boolean(
+    user?.roles.includes(ADMIN_ROLE) || user?.roles.includes(MAINTAINER_ROLE)
+  );
 
   return (
     <Drawer
