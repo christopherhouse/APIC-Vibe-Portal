@@ -113,7 +113,10 @@ export default function SearchBar() {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showDropdown) {
-      if (e.key === 'Enter') navigateToSearch(inputValue);
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        navigateToSearch(inputValue);
+      }
       return;
     }
 
