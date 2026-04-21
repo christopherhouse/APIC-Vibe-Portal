@@ -115,3 +115,6 @@ logs
 # Temporary files
 tmp/
 temp/
+
+# Azure Load Testing — generated run config (contains resolved Key Vault URIs)
+tests/load/load-test-config-run.yaml

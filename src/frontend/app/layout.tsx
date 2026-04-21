@@ -25,6 +25,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        {/* Skip-to-content link for keyboard / screen-reader users */}
+        <a href="#main-content" className="skip-to-content">
+          Skip to main content
+        </a>
         <AppRouterCacheProvider>
           <ThemeProvider theme={theme}>
             <CssBaseline />
@@ -40,12 +44,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       <Box sx={{ display: 'flex', flex: 1 }}>
                         <Sidebar />
                         <Box
+                          id="main-content"
                           component="main"
+                          tabIndex={-1}
                           sx={{
                             flexGrow: 1,
                             p: 3,
                             mt: 'var(--header-height)',
                             minHeight: `calc(100vh - var(--header-height) - var(--footer-height))`,
+                            // Suppress the focus ring only for pointer/mouse activation.
+                            // Keyboard users still see a visible focus ring after pressing
+                            // the skip-to-content link, because :focus-visible remains active.
+                            '&:focus:not(:focus-visible)': { outline: 'none' },
                           }}
                         >
                           {children}

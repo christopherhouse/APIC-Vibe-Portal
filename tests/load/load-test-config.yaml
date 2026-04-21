@@ -4,8 +4,12 @@
 # Used by the azure/load-testing GitHub Action to configure and run JMeter
 # tests against the APIC Vibe Portal BFF API.
 #
-# Environment variables and secrets are injected by the GitHub Actions
-# workflow (load-test.yml).  The JMeter test plan reads them via __P().
+# Secrets are sourced directly from Azure Key Vault by the ALT managed
+# identity — TOKEN_CLIENT_SECRET is never stored in plain text in the
+# workflow or this file.
+#
+# Environment variables (non-sensitive) are injected by load-test.yml.
+# The JMeter test plan reads all values via __P() property references.
 #
 # Reference:
 #   https://learn.microsoft.com/azure/load-testing/reference-test-config-yaml
@@ -14,31 +18,46 @@
 version: v0.1
 testId: apic-vibe-portal-bff-load-test
 displayName: APIC Vibe Portal – BFF API Load Test
-description: BFF API load test – health, catalog, and environment endpoints
+description: >
+  Multi-scenario load test covering catalog browsing (100 VUs), hybrid AI
+  search (50 VUs), and AI chat (20 VUs). OAuth 2.0 client-credentials JWT
+  is acquired once in a JMeter SetupThreadGroup before load begins.
 testPlan: bff-load-test.jmx
 engineInstances: 1
 
 # ---------------------------------------------------------------------------
-# Failure criteria – the test run is marked as FAILED if any of these are met
-# NOTE: Request-level criteria names (e.g. "Health Check", "List APIs") must
-#       exactly match the sampler testname attributes in bff-load-test.jmx.
-#       If you rename a sampler there, update the criteria here too.
+# Secrets — sourced from Key Vault by the ALT managed identity at run time.
+# The URI placeholder __KEYVAULT_SECRET_URI__ is substituted at CI time by
+# load-test.yml using the Key Vault name resolved from infra outputs.
+# ---------------------------------------------------------------------------
+secrets:
+  - name: TOKEN_CLIENT_SECRET
+    value: __KEYVAULT_SECRET_URI__
+
+# ---------------------------------------------------------------------------
+# Failure criteria – the test run is marked as FAILED if any of these are met.
+# Sampler names must exactly match the testname attributes in bff-load-test.jmx.
 # ---------------------------------------------------------------------------
 failureCriteria:
   # Overall error rate must stay below 5%
   - percentage(error) > 5
-  # Average response time must stay below 2 seconds
+  # Overall average response time must stay below 2 seconds
   - avg(response_time_ms) > 2000
-  # 95th percentile response time must stay below 5 seconds
+  # 95th-percentile response time must stay below 5 seconds
   - p95(response_time_ms) > 5000
-  # Health Check must respond in under 500ms on average
+  # Health check must respond under 500ms on average
   - Health Check: avg(response_time_ms) > 500
-  # List APIs must respond in under 3 seconds on average
+  # Catalog list must respond under 3 seconds on average
   - List APIs: avg(response_time_ms) > 3000
+  # Search must respond under 3 seconds on average
+  - Search APIs: avg(response_time_ms) > 3000
+  # Chat may be slower (AI inference) — allow up to 30 seconds average
+  - Chat Message: avg(response_time_ms) > 30000
 
 # ---------------------------------------------------------------------------
-# Auto-stop – stop the test early if error rate is extreme
+# Auto-stop – abort the run early if the error rate becomes extreme
 # ---------------------------------------------------------------------------
 autoStop:
   errorPercentage: 80
   timeWindow: 60
+

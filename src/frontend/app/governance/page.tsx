@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { Box, Container, Typography, Alert, CircularProgress, Button, Grid } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import GovernanceOverview from './components/GovernanceOverview';
-import ScoreDistributionChart from './components/ScoreDistributionChart';
-import RuleComplianceChart from './components/RuleComplianceChart';
 import ApiScoreTable from './components/ApiScoreTable';
 import CompletenessOverview from './components/CompletenessOverview';
 import CompletenessLeaderboard from './components/CompletenessLeaderboard';
@@ -25,6 +24,16 @@ import {
   type CompletenessOverviewData,
   type LeaderboardData,
 } from '@/lib/metadata-api';
+
+// Lazy-load heavy Recharts-based chart components to reduce initial bundle size
+const ScoreDistributionChart = dynamic(() => import('./components/ScoreDistributionChart'), {
+  ssr: false,
+  loading: () => <CircularProgress size={24} />,
+});
+const RuleComplianceChart = dynamic(() => import('./components/RuleComplianceChart'), {
+  ssr: false,
+  loading: () => <CircularProgress size={24} />,
+});
 
 export default function GovernancePage() {
   const [summary, setSummary] = useState<GovernanceSummary | null>(null);
