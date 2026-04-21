@@ -87,8 +87,8 @@ Complete usage analytics, metadata scoring, performance optimization, and launch
 | [022](022-foundry-agent-setup.md)        | Foundry Agent Service Setup & First Agent    | ✅     | 002, 006, 016, 017, 014, 020 |
 | [023](023-governance-agent.md)           | Governance & Compliance Agent                | ✅     | 022, 009, 016                |
 | [024](024-api-comparison-feature.md)     | API Comparison Feature                       | ✅     | 009, 010, 012, 022, 023      |
-| [025](025-governance-dashboard-ui.md)    | Governance Dashboard UI                      | 🔲     | 005, 016, 023, 010, 008, 020 |
-| [026](026-multi-agent-orchestration.md)  | Multi-Agent Orchestration & Agent Management | 🔲     | 022, 023, 008                |
+| [025](025-governance-dashboard-ui.md)    | Governance Dashboard UI                      | ✅     | 005, 016, 023, 010, 008, 020 |
+| [026](026-multi-agent-orchestration.md)  | Multi-Agent Orchestration & Agent Management | ✅     | 022, 023, 008                |
 | [027](027-phase2-integration-testing.md) | Phase 2 Integration Testing & Polish         | ✅     | 021, 022–026                 |
 
 ### Phase 3 — Analytics & Polish

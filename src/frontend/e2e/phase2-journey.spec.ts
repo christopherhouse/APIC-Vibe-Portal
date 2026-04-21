@@ -360,7 +360,7 @@ test.describe('Full Phase 2 User Journey', () => {
     await expect(page.getByTestId('api-score-row-users-api')).toBeVisible();
 
     // -----------------------------------------------------------------------
-    // Step 5: Click a failing API to see compliance detail
+    // Step 5: Click an API row to see compliance detail
     // -----------------------------------------------------------------------
     await page.getByTestId('api-score-row-payments-api').click();
     await expect(page).toHaveURL(/\/governance\/payments-api/);
@@ -512,8 +512,14 @@ test.describe('Phase 2 Polish — Loading and Error States', () => {
     });
 
     await page.goto('/governance');
-    // Loading spinner should appear briefly
-    // Then data loads
+
+    const governanceLoading = page.getByTestId('governance-loading');
+
+    // Loading spinner should appear briefly before the dashboard renders.
+    await expect(governanceLoading).toBeVisible({ timeout: 10000 });
+    await expect(governanceLoading).toBeHidden({ timeout: 10000 });
+
+    // Then data loads.
     await expect(page.getByTestId('governance-dashboard')).toBeVisible({ timeout: 10000 });
   });
 
@@ -533,18 +539,7 @@ test.describe('Phase 2 Polish — Loading and Error States', () => {
   });
 
   test('compare page shows error state when comparison fails', async ({ page }) => {
-    await page.addInitScript(() => {
-      (
-        window as Window & {
-          __PLAYWRIGHT_USER__?: { name: string; email: string; id: string; roles: string[] };
-        }
-      ).__PLAYWRIGHT_USER__ = {
-        name: 'Alex Developer',
-        email: 'alex@contoso.com',
-        id: 'user-alex-1',
-        roles: ['Portal.User'],
-      };
-    });
+    await setMockUser(page, MOCK_USER);
 
     await page.route('**/api/compare', async (route) => {
       await route.fulfill({
