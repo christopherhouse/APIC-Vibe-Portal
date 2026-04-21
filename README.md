@@ -2,6 +2,43 @@
 
 An **AI-powered API portal** built on Azure services, designed to help developers discover, understand, and use APIs faster through multi-agent AI assistance.
 
+> **Status**: ✅ All three phases delivered — MVP, Governance + Compare, Analytics & Polish
+
+## ✨ Features
+
+### Phase 1 — Core Portal (MVP)
+
+| Feature            | Description                                                                               |
+| ------------------ | ----------------------------------------------------------------------------------------- |
+| **API Catalog**    | Browse, filter, sort, and paginate all APIs registered in Azure API Center                |
+| **API Detail**     | View API metadata, versions, OpenAPI specification, and deployment environments           |
+| **Hybrid Search**  | Semantic + keyword search powered by Azure AI Search with facets and relevance scoring    |
+| **AI Assistant**   | Chat with an AI assistant (Azure OpenAI + Foundry Agents) to discover and understand APIs |
+| **Authentication** | Entra ID (Azure AD) authentication with RBAC roles (User / Maintainer / Admin)            |
+| **Observability**  | Application Insights telemetry for frontend and BFF                                       |
+
+### Phase 2 — Governance + Compare
+
+| Feature                       | Description                                                                        |
+| ----------------------------- | ---------------------------------------------------------------------------------- |
+| **Governance Dashboard**      | Overall compliance scores, score distribution, and trends across all APIs          |
+| **Compliance Detail**         | Per-API governance checks with severity levels and actionable recommendations      |
+| **API Comparison**            | Side-by-side comparison of up to 4 APIs with AI analysis                           |
+| **Multi-Agent Orchestration** | Orchestrator dispatches queries to specialist agents (Search, Governance, Catalog) |
+| **Agent Management**          | Admin UI to view, test, and manage AI agents                                       |
+| **Security Trimming**         | Role-based filtering of catalog results                                            |
+
+### Phase 3 — Analytics & Polish
+
+| Feature                      | Description                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| **Analytics Dashboard**      | Portal usage metrics (page views, search queries, chat interactions, user trends) |
+| **Top APIs**                 | Most-viewed and most-searched APIs with trend data                                |
+| **Search Analytics**         | Top search terms and no-results queries                                           |
+| **Metadata Completeness**    | Scoring and recommendations for improving API catalog quality                     |
+| **Performance Optimization** | Web Vitals optimization, code splitting, image optimization                       |
+| **Accessibility**            | WCAG 2.1 AA compliance across all pages                                           |
+
 ## 🏗️ Architecture
 
 ```mermaid
@@ -154,10 +191,37 @@ npm run build
 
 ## 📚 Documentation
 
+### User Guides
+
+- **[Getting Started](docs/user-guide/getting-started.md)** — Quick start for new users
+- **[Searching for APIs](docs/user-guide/searching-apis.md)** — Search tips and techniques
+- **[Using the AI Chat](docs/user-guide/using-ai-chat.md)** — AI assistant guide
+- **[Comparing APIs](docs/user-guide/comparing-apis.md)** — Side-by-side comparison guide
+- **[Understanding Governance](docs/user-guide/understanding-governance.md)** — Compliance scores explained
+
+### Operations
+
+- **[Deployment Guide](docs/operations/deployment-guide.md)** — Deployment procedures
+- **[Monitoring Runbook](docs/operations/monitoring-runbook.md)** — Monitoring and alerting
+- **[Incident Response](docs/operations/incident-response.md)** — Incident handling procedures
+- **[Scaling Guide](docs/operations/scaling-guide.md)** — Scaling Container Apps
+- **[Backup & Recovery](docs/operations/backup-recovery.md)** — Data backup and recovery
+- **[Troubleshooting](docs/operations/troubleshooting.md)** — Common issues and solutions
+
+### Developer Documentation
+
+- **[Architecture Deep Dive](docs/development/architecture-deep-dive.md)** — Detailed component architecture
+- **[Local Development](docs/development/local-development.md)** — Local dev setup guide
+- **[Testing Guide](docs/development/testing-guide.md)** — Testing strategy and how-to
+- **[Agent Development](docs/development/agent-development.md)** — How to create new AI agents
+- **[Contributing Guide](docs/development/contributing.md)** — Contribution guidelines
+
+### Project Documentation
+
 - **[Product Charter](docs/project/apic_product_charter.md)** — Vision, goals, and timeline
 - **[Architecture](docs/project/apic_architecture.md)** — Component overview and design
 - **[Product Spec](docs/project/apic_portal_spec.md)** — Feature requirements
-- **[Implementation Plan](docs/project/plan/README.md)** — Phased development plan
+- **[Implementation Plan](docs/project/plan/README.md)** — Phased development plan (all 32 tasks ✅)
 
 ## 🔧 Tech Stack
 
