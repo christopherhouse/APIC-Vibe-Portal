@@ -8,12 +8,13 @@ describe('ApiTabs', () => {
     mockOnChange.mockClear();
   });
 
-  it('renders all four tabs', () => {
+  it('renders all five tabs', () => {
     render(<ApiTabs value="overview" onChange={mockOnChange} />);
     expect(screen.getByText('Overview')).toBeInTheDocument();
     expect(screen.getByText('Versions')).toBeInTheDocument();
     expect(screen.getByText('Specification')).toBeInTheDocument();
     expect(screen.getByText('Deployments')).toBeInTheDocument();
+    expect(screen.getByText('Metadata Quality')).toBeInTheDocument();
   });
 
   it('has correct data-testid', () => {
@@ -40,10 +41,12 @@ describe('ApiTabs', () => {
     fireEvent.click(screen.getByText('Versions'));
     fireEvent.click(screen.getByText('Specification'));
     fireEvent.click(screen.getByText('Deployments'));
+    fireEvent.click(screen.getByText('Metadata Quality'));
 
-    expect(mockOnChange).toHaveBeenCalledTimes(3);
+    expect(mockOnChange).toHaveBeenCalledTimes(4);
     expect(mockOnChange).toHaveBeenCalledWith('versions');
     expect(mockOnChange).toHaveBeenCalledWith('specification');
     expect(mockOnChange).toHaveBeenCalledWith('deployments');
+    expect(mockOnChange).toHaveBeenCalledWith('metadata-quality');
   });
 });

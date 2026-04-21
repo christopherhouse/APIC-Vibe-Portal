@@ -29,7 +29,7 @@ describe('CompletenessOverview', () => {
     expect(gradeElements.length).toBeGreaterThanOrEqual(1);
     // The h3 element is the prominent average grade display
     const gradeHeading = gradeElements.find(
-      (el) => el.tagName === 'DIV' && el.classList.contains('MuiTypography-h3'),
+      (el) => el.tagName === 'DIV' && el.classList.contains('MuiTypography-h3')
     );
     expect(gradeHeading).toBeDefined();
   });

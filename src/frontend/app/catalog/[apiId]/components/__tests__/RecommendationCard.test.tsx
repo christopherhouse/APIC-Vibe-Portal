@@ -21,9 +21,7 @@ describe('RecommendationCard', () => {
 
   it('displays the title with priority', () => {
     render(<RecommendationCard recommendation={mockRec} />);
-    expect(
-      screen.getByText('#1 — Add a detailed API description'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('#1 — Add a detailed API description')).toBeInTheDocument();
   });
 
   it('displays the description', () => {
