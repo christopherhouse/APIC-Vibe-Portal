@@ -19,6 +19,9 @@ import ChatIcon from '@mui/icons-material/Chat';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import SecurityIcon from '@mui/icons-material/Security';
+import GavelIcon from '@mui/icons-material/Gavel';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import { useAuth } from '@/lib/auth/use-auth';
 import { useSidebarContext } from '@/lib/sidebar-context';
 
@@ -38,6 +41,8 @@ const mainNavItems: NavItem[] = [
   { label: 'Home', icon: <HomeIcon />, href: '/' },
   { label: 'API Catalog', icon: <ApiIcon />, href: '/catalog' },
   { label: 'AI Assistant', icon: <ChatIcon />, href: '/chat', prefetch: false },
+  { label: 'Governance', icon: <GavelIcon />, href: '/governance' },
+  { label: 'Compare', icon: <CompareArrowsIcon />, href: '/compare' },
 ];
 
 const secondaryNavItems: NavItem[] = [
@@ -50,6 +55,11 @@ const adminNavItems: NavItem[] = [
     label: 'Access Policies',
     icon: <SecurityIcon />,
     href: '/admin/access-policies',
+  },
+  {
+    label: 'Agent Management',
+    icon: <SmartToyIcon />,
+    href: '/admin/agents',
   },
 ];
 
