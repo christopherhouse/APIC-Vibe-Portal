@@ -45,17 +45,28 @@ export const AnalyticsContext = createContext<AnalyticsContextValue | null>(null
 // ---------------------------------------------------------------------------
 
 /**
- * Generate a short random session ID.
+ * Generate a short random session ID using the Web Crypto API.
  *
- * Uses `crypto.randomUUID()` when available; falls back to a simple
- * `Math.random()`-based string for environments that lack the API.
+ * Uses `crypto.randomUUID()` when available (all modern browsers and Node 14.17+).
+ * Falls back to `crypto.getRandomValues()` for environments that have the API but
+ * lack `randomUUID`.
  */
 function generateSessionId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
+  if (typeof crypto !== 'undefined') {
+    if (typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    if (typeof crypto.getRandomValues === 'function') {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    }
   }
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+  // Last resort: use Date.now with a counter to guarantee uniqueness within a session.
+  return `${Date.now().toString(36)}-${(++_sessionCounter).toString(36)}`;
 }
+
+let _sessionCounter = 0;
 
 // ---------------------------------------------------------------------------
 // Provider component

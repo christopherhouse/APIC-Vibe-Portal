@@ -139,9 +139,9 @@ Design schema for querying:
 
 ### Status History
 
-| Date       | Status         | Author  | Notes                                      |
-| ---------- | -------------- | ------- | ------------------------------------------ |
-| —          | 🔲 Not Started | —       | Task created                               |
+| Date       | Status         | Author  | Notes                                                |
+| ---------- | -------------- | ------- | ---------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                         |
 | 2026-04-21 | ✅ Complete    | copilot | Full implementation including tests; all checks pass |
 
 ### Technical Decisions
