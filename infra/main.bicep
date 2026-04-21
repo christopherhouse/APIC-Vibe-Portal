@@ -346,6 +346,7 @@ module loadTesting 'modules/load-testing.bicep' = {
     location: location
     loadTestName: resourceNames.loadTest
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
+    keyVaultName: keyVault.outputs.keyVaultName
     tags: tags
   }
 }
@@ -396,11 +397,11 @@ output appInsightsConnectionString string = monitoring.outputs.appInsightsConnec
 @description('Application Insights Instrumentation Key')
 output appInsightsInstrumentationKey string = monitoring.outputs.appInsightsInstrumentationKey
 
-@description('Key Vault URI')
-output keyVaultUri string = keyVault.outputs.keyVaultUri
-
 @description('Key Vault Name')
 output keyVaultName string = keyVault.outputs.keyVaultName
+
+@description('Key Vault URI')
+output keyVaultUri string = keyVault.outputs.keyVaultUri
 
 @description('Container Registry Login Server')
 output acrLoginServer string = containerRegistry.outputs.loginServer

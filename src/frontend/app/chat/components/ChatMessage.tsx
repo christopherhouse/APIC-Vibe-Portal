@@ -9,6 +9,7 @@
  */
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
@@ -16,10 +17,12 @@ import Tooltip from '@mui/material/Tooltip';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
 import { useTheme } from '@mui/material/styles';
-import ReactMarkdown from 'react-markdown';
 import type { ChatMessage as ChatMessageType } from '@apic-vibe-portal/shared';
 import ChatCitations from './ChatCitations';
 import { formatDate } from '@/lib/utils';
+
+// Lazy-load react-markdown to keep the initial chat bundle lean
+const ReactMarkdown = dynamic(() => import('react-markdown'), { ssr: false });
 
 export interface ChatMessageProps {
   message: ChatMessageType;

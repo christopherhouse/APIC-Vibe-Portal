@@ -7,15 +7,19 @@
   OAuth 2.0 client credentials flow is used to acquire a bearer token from
   Entra ID before sending requests to the BFF API.
 
-  Parameters (supplied via Azure Load Testing env vars):
-    - TARGET_HOST        : BFF FQDN (e.g. apicvibe-bff-dev.nicedesert-xxx.eastus.azurecontainerapps.io)
-    - TENANT_ID          : Entra ID tenant ID
-    - TOKEN_CLIENT_ID    : Service principal client ID for load testing
-    - TOKEN_CLIENT_SECRET: Service principal client secret (secret ref)
-    - TOKEN_SCOPE        : Token scope (e.g. api://<bff-client-id>/.default)
-    - THREAD_COUNT       : Number of concurrent virtual users (default 10)
-    - RAMP_UP_SECONDS    : Ramp-up period in seconds (default 30)
-    - LOOP_COUNT         : Number of iterations per thread (default 50)
+  Parameters (supplied via Azure Load Testing env vars / secrets):
+    - TARGET_HOST           : BFF FQDN (e.g. apicvibe-bff-dev.nicedesert-xxx.eastus.azurecontainerapps.io)
+    - TARGET_PORT           : BFF port (default 443)
+    - PROTOCOL              : http or https (default https)
+    - TENANT_ID             : Entra ID tenant ID
+    - TOKEN_CLIENT_ID       : Service principal client ID for load testing
+    - TOKEN_CLIENT_SECRET   : Service principal client secret (injected from Key Vault via ALT)
+    - TOKEN_SCOPE           : Token scope (e.g. api://<bff-client-id>/.default)
+    - RAMP_UP_SECONDS       : Ramp-up period shared across all scenarios (default 60)
+    - DURATION_SECONDS      : Steady-state duration per scenario (default 180)
+    - CATALOG_THREADS       : Concurrent VUs for catalog scenario (default 100)
+    - SEARCH_THREADS        : Concurrent VUs for search scenario (default 50)
+    - CHAT_THREADS          : Concurrent VUs for chat scenario (default 20)
 -->
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6">
   <hashTree>
@@ -68,19 +72,29 @@
             <stringProp name="Argument.value">${__P(TOKEN_SCOPE,)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
-          <elementProp name="THREAD_COUNT" elementType="Argument">
-            <stringProp name="Argument.name">THREAD_COUNT</stringProp>
-            <stringProp name="Argument.value">${__P(THREAD_COUNT,10)}</stringProp>
-            <stringProp name="Argument.metadata">=</stringProp>
-          </elementProp>
           <elementProp name="RAMP_UP_SECONDS" elementType="Argument">
             <stringProp name="Argument.name">RAMP_UP_SECONDS</stringProp>
-            <stringProp name="Argument.value">${__P(RAMP_UP_SECONDS,30)}</stringProp>
+            <stringProp name="Argument.value">${__P(RAMP_UP_SECONDS,60)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
-          <elementProp name="LOOP_COUNT" elementType="Argument">
-            <stringProp name="Argument.name">LOOP_COUNT</stringProp>
-            <stringProp name="Argument.value">${__P(LOOP_COUNT,50)}</stringProp>
+          <elementProp name="DURATION_SECONDS" elementType="Argument">
+            <stringProp name="Argument.name">DURATION_SECONDS</stringProp>
+            <stringProp name="Argument.value">${__P(DURATION_SECONDS,180)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="CATALOG_THREADS" elementType="Argument">
+            <stringProp name="Argument.name">CATALOG_THREADS</stringProp>
+            <stringProp name="Argument.value">${__P(CATALOG_THREADS,100)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="SEARCH_THREADS" elementType="Argument">
+            <stringProp name="Argument.name">SEARCH_THREADS</stringProp>
+            <stringProp name="Argument.value">${__P(SEARCH_THREADS,50)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="CHAT_THREADS" elementType="Argument">
+            <stringProp name="Argument.name">CHAT_THREADS</stringProp>
+            <stringProp name="Argument.value">${__P(CHAT_THREADS,20)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
         </collectionProp>
@@ -177,20 +191,22 @@
       </hashTree>
 
       <!-- ================================================================
-           Main Thread Group: BFF API Load Test
+           Thread Group 1: API Catalog Browsing (100 concurrent users)
+           Simulates users paging through the catalog with filters.
            ================================================================ -->
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="BFF API Load" enabled="true">
-        <stringProp name="ThreadGroup.num_threads">${THREAD_COUNT}</stringProp>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Catalog Browsing" enabled="true">
+        <stringProp name="ThreadGroup.num_threads">${CATALOG_THREADS}</stringProp>
         <stringProp name="ThreadGroup.ramp_time">${RAMP_UP_SECONDS}</stringProp>
-        <boolProp name="ThreadGroup.scheduler">false</boolProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">${DURATION_SECONDS}</stringProp>
+        <stringProp name="ThreadGroup.delay">0</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
-          <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">${LOOP_COUNT}</stringProp>
+          <boolProp name="LoopController.continue_forever">true</boolProp>
+          <stringProp name="LoopController.loops">-1</stringProp>
         </elementProp>
       </ThreadGroup>
       <hashTree>
 
-        <!-- HTTP defaults for all samplers in this group -->
         <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Defaults" enabled="true">
           <stringProp name="HTTPSampler.domain">${TARGET_HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${TARGET_PORT}</stringProp>
@@ -198,7 +214,115 @@
         </ConfigTestElement>
         <hashTree/>
 
-        <!-- Authorization header for all requests -->
+        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Auth Header" enabled="true">
+          <collectionProp name="HeaderManager.headers">
+            <elementProp name="Authorization" elementType="Header">
+              <stringProp name="Header.name">Authorization</stringProp>
+              <stringProp name="Header.value">Bearer ${__property(BEARER_TOKEN)}</stringProp>
+            </elementProp>
+            <elementProp name="Accept" elementType="Header">
+              <stringProp name="Header.name">Accept</stringProp>
+              <stringProp name="Header.value">application/json</stringProp>
+            </elementProp>
+          </collectionProp>
+        </HeaderManager>
+        <hashTree/>
+
+        <!-- Health check (lightweight baseline) -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Health Check" enabled="true">
+          <stringProp name="HTTPSampler.path">/health</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert 200" enabled="true">
+            <collectionProp name="Asserion.test_strings"><stringProp name="49586">200</stringProp></collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <!-- List APIs page 1 -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="List APIs" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/catalog?page=1&amp;pageSize=20</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert 200" enabled="true">
+            <collectionProp name="Asserion.test_strings"><stringProp name="49586">200</stringProp></collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <!-- List APIs filtered by lifecycle -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="List APIs – Production" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/catalog?page=1&amp;pageSize=20&amp;lifecycle=production</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert 200" enabled="true">
+            <collectionProp name="Asserion.test_strings"><stringProp name="49586">200</stringProp></collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <!-- List Environments -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="List Environments" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/environments</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert 200" enabled="true">
+            <collectionProp name="Asserion.test_strings"><stringProp name="49586">200</stringProp></collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <ConstantTimer guiclass="ConstantTimerGui" testclass="ConstantTimer" testname="Think Time" enabled="true">
+          <stringProp name="ConstantTimer.delay">${__Random(1000,3000)}</stringProp>
+        </ConstantTimer>
+        <hashTree/>
+
+      </hashTree>
+
+      <!-- ================================================================
+           Thread Group 2: API Search (50 concurrent users)
+           Simulates users querying the hybrid AI search endpoint.
+           ================================================================ -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="API Search" enabled="true">
+        <stringProp name="ThreadGroup.num_threads">${SEARCH_THREADS}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${RAMP_UP_SECONDS}</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">${DURATION_SECONDS}</stringProp>
+        <stringProp name="ThreadGroup.delay">0</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
+          <boolProp name="LoopController.continue_forever">true</boolProp>
+          <stringProp name="LoopController.loops">-1</stringProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+
+        <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Defaults" enabled="true">
+          <stringProp name="HTTPSampler.domain">${TARGET_HOST}</stringProp>
+          <stringProp name="HTTPSampler.port">${TARGET_PORT}</stringProp>
+          <stringProp name="HTTPSampler.protocol">${PROTOCOL}</stringProp>
+        </ConfigTestElement>
+        <hashTree/>
+
         <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Auth Header" enabled="true">
           <collectionProp name="HeaderManager.headers">
             <elementProp name="Authorization" elementType="Header">
@@ -213,89 +337,132 @@
         </HeaderManager>
         <hashTree/>
 
-        <!-- ============================================================
-             Scenario 1: Health Check
-             ============================================================ -->
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Health Check" enabled="true">
-          <stringProp name="HTTPSampler.path">/health</stringProp>
-          <stringProp name="HTTPSampler.method">GET</stringProp>
+        <!--
+          POST /api/search
+          Body: SearchRequest JSON — query rotated via __Random to vary load.
+        -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Search APIs" enabled="true">
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">${__groovy(
+                  def queries = ["payment api","user authentication","product catalog","order management","inventory","notification service","shipping tracking","analytics events"]
+                  def q = queries[new Random().nextInt(queries.size())]
+                  '{"query":"' + q + '","pagination":{"page":1,"pageSize":10}}'
+                ,)}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+          <stringProp name="HTTPSampler.path">/api/search</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
         </HTTPSamplerProxy>
         <hashTree>
           <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert 200" enabled="true">
-            <collectionProp name="Asserion.test_strings">
-              <stringProp name="49586">200</stringProp>
-            </collectionProp>
+            <collectionProp name="Asserion.test_strings"><stringProp name="49586">200</stringProp></collectionProp>
             <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
             <intProp name="Assertion.test_type">8</intProp>
           </ResponseAssertion>
           <hashTree/>
         </hashTree>
 
-        <!-- ============================================================
-             Scenario 2: Health Ready Check
-             ============================================================ -->
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Health Ready" enabled="true">
-          <stringProp name="HTTPSampler.path">/health/ready</stringProp>
-          <stringProp name="HTTPSampler.method">GET</stringProp>
-          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
-          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
-        </HTTPSamplerProxy>
-        <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert 200" enabled="true">
-            <collectionProp name="Asserion.test_strings">
-              <stringProp name="49586">200</stringProp>
-            </collectionProp>
-            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
-            <intProp name="Assertion.test_type">8</intProp>
-          </ResponseAssertion>
-          <hashTree/>
-        </hashTree>
-
-        <!-- ============================================================
-             Scenario 3: List APIs (catalog browsing)
-             ============================================================ -->
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="List APIs" enabled="true">
-          <stringProp name="HTTPSampler.path">/api/catalog</stringProp>
-          <stringProp name="HTTPSampler.method">GET</stringProp>
-          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
-          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
-        </HTTPSamplerProxy>
-        <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert 200" enabled="true">
-            <collectionProp name="Asserion.test_strings">
-              <stringProp name="49586">200</stringProp>
-            </collectionProp>
-            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
-            <intProp name="Assertion.test_type">8</intProp>
-          </ResponseAssertion>
-          <hashTree/>
-        </hashTree>
-
-        <!-- ============================================================
-             Scenario 4: List API Environments
-             ============================================================ -->
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="List Environments" enabled="true">
-          <stringProp name="HTTPSampler.path">/api/environments</stringProp>
-          <stringProp name="HTTPSampler.method">GET</stringProp>
-          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
-          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
-        </HTTPSamplerProxy>
-        <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert 200" enabled="true">
-            <collectionProp name="Asserion.test_strings">
-              <stringProp name="49586">200</stringProp>
-            </collectionProp>
-            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
-            <intProp name="Assertion.test_type">8</intProp>
-          </ResponseAssertion>
-          <hashTree/>
-        </hashTree>
-
-        <!-- Think time between requests (random 1-3 seconds) -->
         <ConstantTimer guiclass="ConstantTimerGui" testclass="ConstantTimer" testname="Think Time" enabled="true">
-          <stringProp name="ConstantTimer.delay">${__Random(1000,3000)}</stringProp>
+          <stringProp name="ConstantTimer.delay">${__Random(500,2000)}</stringProp>
+        </ConstantTimer>
+        <hashTree/>
+
+      </hashTree>
+
+      <!-- ================================================================
+           Thread Group 3: AI Chat (20 concurrent users)
+           Simulates users asking questions via the synchronous chat endpoint.
+           ================================================================ -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="AI Chat" enabled="true">
+        <stringProp name="ThreadGroup.num_threads">${CHAT_THREADS}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${RAMP_UP_SECONDS}</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">${DURATION_SECONDS}</stringProp>
+        <stringProp name="ThreadGroup.delay">0</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
+          <boolProp name="LoopController.continue_forever">true</boolProp>
+          <stringProp name="LoopController.loops">-1</stringProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+
+        <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Defaults" enabled="true">
+          <stringProp name="HTTPSampler.domain">${TARGET_HOST}</stringProp>
+          <stringProp name="HTTPSampler.port">${TARGET_PORT}</stringProp>
+          <stringProp name="HTTPSampler.protocol">${PROTOCOL}</stringProp>
+        </ConfigTestElement>
+        <hashTree/>
+
+        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Auth Header" enabled="true">
+          <collectionProp name="HeaderManager.headers">
+            <elementProp name="Authorization" elementType="Header">
+              <stringProp name="Header.name">Authorization</stringProp>
+              <stringProp name="Header.value">Bearer ${__property(BEARER_TOKEN)}</stringProp>
+            </elementProp>
+            <elementProp name="Content-Type" elementType="Header">
+              <stringProp name="Header.name">Content-Type</stringProp>
+              <stringProp name="Header.value">application/json</stringProp>
+            </elementProp>
+          </collectionProp>
+        </HeaderManager>
+        <hashTree/>
+
+        <!--
+          POST /api/chat
+          Body: ChatRequest — { "message": "...", "sessionId": null }
+          Session IDs are left null so each iteration starts a fresh session,
+          keeping the test stateless and parallelisable.
+          The synchronous (non-streaming) endpoint is used for latency measurement.
+        -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Chat Message" enabled="true">
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">${__groovy(
+                  def messages = [
+                    "What payment APIs are available?",
+                    "Show me REST APIs in production",
+                    "Which APIs handle user authentication?",
+                    "List deprecated APIs",
+                    "Find APIs related to inventory management"
+                  ]
+                  def msg = messages[new Random().nextInt(messages.size())]
+                  '{"message":"' + msg + '"}'
+                ,)}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+          <stringProp name="HTTPSampler.path">/api/chat</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <!-- Chat responses can be slow — set connect+response timeout to 30s -->
+          <stringProp name="HTTPSampler.connect_timeout">5000</stringProp>
+          <stringProp name="HTTPSampler.response_timeout">30000</stringProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert 200" enabled="true">
+            <collectionProp name="Asserion.test_strings"><stringProp name="49586">200</stringProp></collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <!-- Longer think time between chat turns to simulate reading responses -->
+        <ConstantTimer guiclass="ConstantTimerGui" testclass="ConstantTimer" testname="Think Time" enabled="true">
+          <stringProp name="ConstantTimer.delay">${__Random(3000,8000)}</stringProp>
         </ConstantTimer>
         <hashTree/>
 

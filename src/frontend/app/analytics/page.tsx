@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Alert,
   Box,
@@ -27,10 +28,19 @@ import {
 } from '@/lib/analytics-api';
 import AnalyticsOverview from './components/AnalyticsOverview';
 import TimeRangeSelector from './components/TimeRangeSelector';
-import UsageTrendChart from './components/UsageTrendChart';
-import PopularApisChart from './components/PopularApisChart';
-import SearchQueryList from './components/SearchQueryList';
 import ExportButton from './components/ExportButton';
+import SearchQueryList from './components/SearchQueryList';
+
+// Lazy-load heavy Recharts-based chart components to reduce initial bundle size
+const UsageTrendChart = dynamic(() => import('./components/UsageTrendChart'), {
+  ssr: false,
+  loading: () => <CircularProgress size={24} />,
+});
+const PopularApisChart = dynamic(() => import('./components/PopularApisChart'), {
+  ssr: false,
+  loading: () => <CircularProgress size={24} />,
+});
+
 
 const ALLOWED_ROLES = ['Portal.Admin', 'Portal.Maintainer'];
 

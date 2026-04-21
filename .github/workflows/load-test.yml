@@ -65,6 +65,7 @@ jobs:
 
           LOAD_TEST_NAME=$(echo "$DEPLOYMENT" | jq -r '.loadTestName.value')
           BFF_APP_NAME=$(echo "$DEPLOYMENT" | jq -r '.bffAppName.value')
+          KEY_VAULT_NAME=$(echo "$DEPLOYMENT" | jq -r '.keyVaultName.value')
 
           if [ "$LOAD_TEST_NAME" = "null" ] || [ -z "$LOAD_TEST_NAME" ]; then
             echo "::error::Load test resource name not found in deployment outputs. Deploy infrastructure first."
@@ -85,7 +86,17 @@ jobs:
           fi
 
           echo "bff-host=$BFF_FQDN" >> $GITHUB_OUTPUT
+          echo "key-vault-name=$KEY_VAULT_NAME" >> $GITHUB_OUTPUT
           echo "BFF Host: $BFF_FQDN"
+
+      - name: Patch Key Vault secret URI into ALT config
+        run: |
+          KV_NAME="${{ steps.infra.outputs.key-vault-name }}"
+          KV_SECRET_URI="https://${KV_NAME}.vault.azure.net/secrets/loadtest-client-secret/"
+          # Write patched copy alongside the JMX so relative testPlan path resolves
+          sed "s|__KEYVAULT_SECRET_URI__|${KV_SECRET_URI}|g" \
+            tests/load/load-test-config.yaml > tests/load/load-test-config-run.yaml
+          echo "Patched TOKEN_CLIENT_SECRET URI: ${KV_SECRET_URI}"
 
       - name: Build load test parameters
         id: lt-params
@@ -99,37 +110,32 @@ jobs:
           CLEAN_SCOPE=$(printf '%s' "${{ vars.LOADTEST_TOKEN_SCOPE }}" | tr -d '\r\n')
 
           ENV_JSON=$(jq -c -n \
-            --arg host   "$CLEAN_HOST" \
-            --arg tenant "$CLEAN_TENANT" \
-            --arg client "$CLEAN_CLIENT" \
-            --arg scope  "$CLEAN_SCOPE" \
+            --arg host            "$CLEAN_HOST" \
+            --arg tenant          "$CLEAN_TENANT" \
+            --arg client          "$CLEAN_CLIENT" \
+            --arg scope           "$CLEAN_SCOPE" \
             '[
-              {"name":"TARGET_HOST",      "value":$host},
-              {"name":"TARGET_PORT",      "value":"443"},
-              {"name":"PROTOCOL",         "value":"https"},
-              {"name":"TENANT_ID",        "value":$tenant},
-              {"name":"TOKEN_CLIENT_ID",  "value":$client},
-              {"name":"TOKEN_SCOPE",      "value":$scope},
-              {"name":"THREAD_COUNT",     "value":"10"},
-              {"name":"RAMP_UP_SECONDS",  "value":"30"},
-              {"name":"LOOP_COUNT",       "value":"50"}
+              {"name":"TARGET_HOST",       "value":$host},
+              {"name":"TARGET_PORT",       "value":"443"},
+              {"name":"PROTOCOL",          "value":"https"},
+              {"name":"TENANT_ID",         "value":$tenant},
+              {"name":"TOKEN_CLIENT_ID",   "value":$client},
+              {"name":"TOKEN_SCOPE",       "value":$scope},
+              {"name":"RAMP_UP_SECONDS",   "value":"60"},
+              {"name":"DURATION_SECONDS",  "value":"180"},
+              {"name":"CATALOG_THREADS",   "value":"100"},
+              {"name":"SEARCH_THREADS",    "value":"50"},
+              {"name":"CHAT_THREADS",      "value":"20"}
             ]')
           echo "env-json=$ENV_JSON" >> "$GITHUB_OUTPUT"
-
-          CLEAN_SECRET=$(printf '%s' "${{ secrets.LOADTEST_CLIENT_SECRET }}" | tr -d '\r\n')
-          SECRETS_JSON=$(jq -c -n \
-            --arg secret "$CLEAN_SECRET" \
-            '[{"name":"TOKEN_CLIENT_SECRET","value":$secret}]')
-          echo "secrets-json=$SECRETS_JSON" >> "$GITHUB_OUTPUT"
 
       - name: Run Azure Load Test
         uses: azure/load-testing@v1
         with:
-          loadTestConfigFile: tests/load/load-test-config.yaml
+          loadTestConfigFile: tests/load/load-test-config-run.yaml
           loadTestResource: ${{ steps.infra.outputs.load-test-resource }}
           resourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
           env: ${{ steps.lt-params.outputs.env-json }}
-          secrets: ${{ steps.lt-params.outputs.secrets-json }}
 
       - name: Upload load test results
         if: always()
