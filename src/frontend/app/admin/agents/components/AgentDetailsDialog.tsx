@@ -82,7 +82,7 @@ export default function AgentDetailsDialog({ open, agentId, onClose }: AgentDeta
                 <Typography variant="h6" gutterBottom>
                   {detail.name}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" paragraph>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                   {detail.description}
                 </Typography>
                 <Chip
