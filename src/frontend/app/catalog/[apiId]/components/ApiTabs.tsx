@@ -5,7 +5,12 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 
-export type ApiTabValue = 'overview' | 'versions' | 'specification' | 'deployments';
+export type ApiTabValue =
+  | 'overview'
+  | 'versions'
+  | 'specification'
+  | 'deployments'
+  | 'metadata-quality';
 
 export interface ApiTabsProps {
   value: ApiTabValue;
@@ -17,6 +22,7 @@ const TAB_OPTIONS: { value: ApiTabValue; label: string }[] = [
   { value: 'versions', label: 'Versions' },
   { value: 'specification', label: 'Specification' },
   { value: 'deployments', label: 'Deployments' },
+  { value: 'metadata-quality', label: 'Metadata Quality' },
 ];
 
 export default function ApiTabs({ value, onChange }: ApiTabsProps) {
