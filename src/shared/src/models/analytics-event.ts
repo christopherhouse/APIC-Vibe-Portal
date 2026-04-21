@@ -53,8 +53,8 @@ export interface SpecDownloadEvent {
 /** Chat interaction event — captures metadata only, never message content. */
 export interface ChatInteractionEvent {
   type: 'chat_interaction';
-  /** Anonymised session identifier. */
-  sessionId: string;
+  /** Anonymised chat conversation identifier (distinct from the analytics session ID). */
+  chatSessionId: string;
   /** Number of messages exchanged in the session. */
   messageCount: number;
   /** Name of the AI agent that handled the session. */
@@ -93,8 +93,6 @@ export interface FilterAppliedEvent {
 /** User session summary event — sent on session end or page unload. */
 export interface UserSessionEvent {
   type: 'user_session';
-  /** SHA-256 hash of the user ID — never the raw identifier. */
-  userIdHash: string;
   /** Total session duration in seconds. */
   sessionDuration: number;
   /** Total number of pages visited in this session. */
@@ -137,7 +135,8 @@ export interface AnalyticsEventEnvelope {
   sessionId?: string;
 }
 
-/** Batch of event envelopes submitted to the BFF in a single request. */
+/** Batch of event envelopes submitted to the BFF in a single request. Must contain at least one event. */
 export interface AnalyticsEventBatch {
-  events: AnalyticsEventEnvelope[];
+  /** Non-empty array of event envelopes.  The BFF will reject an empty batch with 422. */
+  events: [AnalyticsEventEnvelope, ...AnalyticsEventEnvelope[]];
 }

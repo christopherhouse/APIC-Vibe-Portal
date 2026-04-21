@@ -131,8 +131,19 @@ export class EventBuffer {
       });
 
       if (res.ok) {
-        const data = (await res.json()) as { accepted?: number };
-        this._onFlush?.(data.accepted ?? batch.length, undefined);
+        if (res.status === 204) {
+          // No-content response — treat as full acceptance.
+          this._onFlush?.(batch.length, undefined);
+        } else {
+          let accepted = batch.length;
+          try {
+            const data = (await res.json()) as { accepted?: number };
+            accepted = data.accepted ?? batch.length;
+          } catch {
+            // Non-JSON body — fall back to batch length.
+          }
+          this._onFlush?.(accepted, undefined);
+        }
       } else {
         this._onFlush?.(0, new Error(`HTTP ${res.status}`));
       }

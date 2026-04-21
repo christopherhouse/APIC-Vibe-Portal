@@ -48,15 +48,23 @@ def regular_client(app: FastAPI) -> TestClient:
 
 @pytest.fixture
 def unauth_client(app: FastAPI) -> TestClient:
-    """Test client with no role override (dependency raises 403)."""
+    """Test client that exercises default unauthenticated behavior.
 
-    def _deny():
+    The ``get_current_user`` dependency raises 401 when no user is present
+    in request state (no auth middleware is mounted in the test app).
+    The analytics role dependency is also forced to 403 for the admin-only
+    GET endpoints.
+    """
+
+    def _deny_role():
         from fastapi import HTTPException
 
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    app.dependency_overrides[analytics._require_analytics_role] = _deny
-    app.dependency_overrides[get_current_user] = _deny
+    # Only override the analytics role guard — GET endpoints need it.
+    # The POST /events endpoint only requires get_current_user, which will
+    # naturally raise 401 since no auth middleware sets request.state.user.
+    app.dependency_overrides[analytics._require_analytics_role] = _deny_role
     return TestClient(app)
 
 
@@ -123,9 +131,9 @@ class TestPostAnalyticsEvents:
         response = regular_client.post("/api/analytics/events", json=bad_batch)
         assert response.status_code == 422
 
-    def test_returns_403_for_unauthenticated_request(self, unauth_client: TestClient) -> None:
+    def test_returns_401_for_unauthenticated_request(self, unauth_client: TestClient) -> None:
         response = unauth_client.post("/api/analytics/events", json=_VALID_BATCH)
-        assert response.status_code == 403
+        assert response.status_code == 401
 
     def test_accepts_api_view_event(self, regular_client: TestClient) -> None:
         batch = {
@@ -158,6 +166,46 @@ class TestPostAnalyticsEvents:
         }
         response = regular_client.post("/api/analytics/events", json=batch)
         assert response.status_code == 202
+
+    def test_returns_422_for_event_type_exceeding_max_length(self, regular_client: TestClient) -> None:
+        batch = {
+            "events": [
+                {
+                    "event": {"type": "x" * 65},
+                    "clientTimestamp": "2026-04-21T12:00:00Z",
+                    "pagePath": "/search",
+                }
+            ]
+        }
+        response = regular_client.post("/api/analytics/events", json=batch)
+        assert response.status_code == 422
+
+    def test_returns_422_for_extra_field_exceeding_max_length(self, regular_client: TestClient) -> None:
+        batch = {
+            "events": [
+                {
+                    "event": {"type": "page_view", "page": "x" * 501},
+                    "clientTimestamp": "2026-04-21T12:00:00Z",
+                    "pagePath": "/",
+                }
+            ]
+        }
+        response = regular_client.post("/api/analytics/events", json=batch)
+        assert response.status_code == 422
+
+    def test_returns_422_for_too_many_extra_fields(self, regular_client: TestClient) -> None:
+        extra_fields = {f"field_{i}": f"value_{i}" for i in range(21)}
+        batch = {
+            "events": [
+                {
+                    "event": {"type": "page_view", **extra_fields},
+                    "clientTimestamp": "2026-04-21T12:00:00Z",
+                    "pagePath": "/",
+                }
+            ]
+        }
+        response = regular_client.post("/api/analytics/events", json=batch)
+        assert response.status_code == 422
 
 
 # ---------------------------------------------------------------------------

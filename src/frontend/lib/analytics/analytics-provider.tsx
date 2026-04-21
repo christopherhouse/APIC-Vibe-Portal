@@ -104,7 +104,7 @@ export default function AnalyticsProvider({ children, endpoint, fetchFn }: Analy
     const prev = prevPathnameRef.current;
 
     if (prev !== null && prev !== pathname) {
-      // Record duration for the page we're leaving.
+      // Record the exit event for the page we're leaving (with duration).
       const duration = now - pageEnterTimeRef.current;
       buffer.push({
         event: { type: 'page_view', page: prev, duration },
@@ -112,11 +112,19 @@ export default function AnalyticsProvider({ children, endpoint, fetchFn }: Analy
         pagePath: prev,
         sessionId,
       });
+
+      // Record the entry event for the page we're entering (no duration yet).
+      buffer.push({
+        event: { type: 'page_view', page: pathname },
+        clientTimestamp: new Date(now).toISOString(),
+        pagePath: pathname,
+        sessionId,
+      });
     } else if (prev === null) {
       // First render — track initial page view without duration.
       buffer.push({
         event: { type: 'page_view', page: pathname },
-        clientTimestamp: new Date().toISOString(),
+        clientTimestamp: new Date(now).toISOString(),
         pagePath: pathname,
         sessionId,
       });
@@ -126,14 +134,32 @@ export default function AnalyticsProvider({ children, endpoint, fetchFn }: Analy
     pageEnterTimeRef.current = now;
   }, [pathname, buffer, sessionId]);
 
-  // Flush on page hide / unload.
+  // Flush on page hide / unload, capturing the last page's duration.
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
+        if (!isDoNotTrackEnabled() && prevPathnameRef.current !== null) {
+          const duration = Date.now() - pageEnterTimeRef.current;
+          buffer.push({
+            event: { type: 'page_view', page: prevPathnameRef.current, duration },
+            clientTimestamp: new Date(pageEnterTimeRef.current).toISOString(),
+            pagePath: prevPathnameRef.current,
+            sessionId,
+          });
+        }
         void buffer.flush();
       }
     };
     const handleBeforeUnload = () => {
+      if (!isDoNotTrackEnabled() && prevPathnameRef.current !== null) {
+        const duration = Date.now() - pageEnterTimeRef.current;
+        buffer.push({
+          event: { type: 'page_view', page: prevPathnameRef.current, duration },
+          clientTimestamp: new Date(pageEnterTimeRef.current).toISOString(),
+          pagePath: prevPathnameRef.current,
+          sessionId,
+        });
+      }
       void buffer.flush();
     };
 
@@ -144,7 +170,7 @@ export default function AnalyticsProvider({ children, endpoint, fetchFn }: Analy
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [buffer]);
+  }, [buffer, sessionId]);
 
   // Destroy the buffer timer on unmount.
   useEffect(() => {

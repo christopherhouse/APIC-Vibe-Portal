@@ -65,16 +65,23 @@ def hash_user_id(user_id: str, salt: str = "") -> str:
 def sanitize_event_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     """Return a copy of *metadata* with PII-containing string values redacted.
 
-    String values that match a known PII pattern are replaced with the literal
-    string ``'<redacted>'``.  Other value types are left unchanged.
+    Sanitization is applied recursively so that strings nested inside
+    sub-dicts and lists are also examined.  String values that match a known
+    PII pattern are replaced with the literal string ``'<redacted>'``.
+    Other value types are left unchanged.
     """
-    cleaned: dict[str, Any] = {}
-    for key, value in metadata.items():
-        if isinstance(value, str) and _contains_pii(value):
-            cleaned[key] = "<redacted>"
-        else:
-            cleaned[key] = value
-    return cleaned
+    return {key: _sanitize_value(value) for key, value in metadata.items()}
+
+
+def _sanitize_value(value: Any) -> Any:
+    """Recursively sanitize a single value."""
+    if isinstance(value, str):
+        return "<redacted>" if _contains_pii(value) else value
+    if isinstance(value, dict):
+        return {k: _sanitize_value(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_value(item) for item in value]
+    return value
 
 
 # ---------------------------------------------------------------------------

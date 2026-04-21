@@ -65,6 +65,22 @@ class TestSanitizeEventMetadata:
     def test_empty_dict_returns_empty_dict(self) -> None:
         assert sanitize_event_metadata({}) == {}
 
+    def test_redacts_pii_in_nested_dict(self) -> None:
+        result = sanitize_event_metadata({"meta": {"contact": "evil@hacker.io", "count": 5}})
+        assert result["meta"]["contact"] == "<redacted>"
+        assert result["meta"]["count"] == 5
+
+    def test_redacts_pii_in_nested_list(self) -> None:
+        result = sanitize_event_metadata({"notes": ["clean value", "bad@email.com", "also clean"]})
+        assert result["notes"][0] == "clean value"
+        assert result["notes"][1] == "<redacted>"
+        assert result["notes"][2] == "also clean"
+
+    def test_deep_nesting_is_sanitized(self) -> None:
+        data = {"level1": {"level2": {"pii": "reach@me.com"}}}
+        result = sanitize_event_metadata(data)
+        assert result["level1"]["level2"]["pii"] == "<redacted>"
+
 
 # ---------------------------------------------------------------------------
 # AnalyticsService.record_events

@@ -17,8 +17,8 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, Request, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, status
+from pydantic import BaseModel, Field, field_validator
 
 from apic_vibe_portal_bff.middleware.auth import AuthenticatedUser
 from apic_vibe_portal_bff.middleware.rbac import get_current_user, require_any_role
@@ -55,11 +55,33 @@ def _range_days(time_range: str) -> int:
 
 
 class AnalyticsEventPayload(BaseModel):
-    """Raw analytics event payload (open schema — any JSON object is accepted)."""
+    """Raw analytics event payload.
+
+    The schema is intentionally permissive (extra fields allowed) so that
+    new event types can be added on the frontend without a BFF deploy.
+    Individual string values are capped at 500 characters and the total
+    number of extra keys is limited to 20 to prevent log flooding.
+    """
 
     model_config = {"extra": "allow"}
 
-    type: str = Field(..., description="Event type discriminator.")
+    type: str = Field(..., max_length=64, description="Event type discriminator.")
+
+    @field_validator("type")
+    @classmethod
+    def _validate_type(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Event type must be a non-empty string.")
+        return v
+
+    def model_post_init(self, __context: Any) -> None:
+        """Enforce size constraints on extra fields after validation."""
+        extra = self.__pydantic_extra__ or {}
+        if len(extra) > 20:
+            raise ValueError("Too many event payload fields (max 20 extra fields allowed).")
+        for key, value in extra.items():
+            if isinstance(value, str) and len(value) > 500:
+                raise ValueError(f"Event payload field '{key}' exceeds maximum length of 500 characters.")
 
 
 class AnalyticsEventEnvelope(BaseModel):
@@ -95,7 +117,6 @@ class AnalyticsEventBatchResponse(BaseModel):
     response_model=AnalyticsEventBatchResponse,
 )
 async def post_analytics_events(
-    request: Request,
     body: AnalyticsEventBatchRequest,
     user: AuthUserDep,
 ) -> AnalyticsEventBatchResponse:

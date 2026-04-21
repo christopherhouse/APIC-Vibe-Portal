@@ -16,7 +16,7 @@
 
 'use client';
 
-import { useCallback, useContext } from 'react';
+import { useCallback, useContext, useMemo } from 'react';
 import type {
   AnalyticsEvent,
   ApiViewEvent,
@@ -78,18 +78,55 @@ export function useAnalytics(): { track: TrackHelpers } {
     [ctx]
   );
 
-  const track: TrackHelpers = {
-    searchQuery: useCallback((params) => push({ type: 'search_query', ...params }), [push]),
-    apiView: useCallback((params) => push({ type: 'api_view', ...params }), [push]),
-    specDownload: useCallback((params) => push({ type: 'spec_download', ...params }), [push]),
-    chatInteraction: useCallback((params) => push({ type: 'chat_interaction', ...params }), [push]),
-    comparisonMade: useCallback((params) => push({ type: 'comparison_made', ...params }), [push]),
-    governanceViewed: useCallback(
-      (params) => push({ type: 'governance_viewed', ...params }),
-      [push]
-    ),
-    filterApplied: useCallback((params) => push({ type: 'filter_applied', ...params }), [push]),
-  };
+  const searchQuery = useCallback(
+    (params: Omit<SearchQueryEvent, 'type'>) => push({ type: 'search_query', ...params }),
+    [push]
+  );
+  const apiView = useCallback(
+    (params: Omit<ApiViewEvent, 'type'>) => push({ type: 'api_view', ...params }),
+    [push]
+  );
+  const specDownload = useCallback(
+    (params: Omit<SpecDownloadEvent, 'type'>) => push({ type: 'spec_download', ...params }),
+    [push]
+  );
+  const chatInteraction = useCallback(
+    (params: Omit<ChatInteractionEvent, 'type'>) => push({ type: 'chat_interaction', ...params }),
+    [push]
+  );
+  const comparisonMade = useCallback(
+    (params: Omit<ComparisonMadeEvent, 'type'>) => push({ type: 'comparison_made', ...params }),
+    [push]
+  );
+  const governanceViewed = useCallback(
+    (params: Omit<GovernanceViewedEvent, 'type'>) => push({ type: 'governance_viewed', ...params }),
+    [push]
+  );
+  const filterApplied = useCallback(
+    (params: Omit<FilterAppliedEvent, 'type'>) => push({ type: 'filter_applied', ...params }),
+    [push]
+  );
+
+  const track = useMemo<TrackHelpers>(
+    () => ({
+      searchQuery,
+      apiView,
+      specDownload,
+      chatInteraction,
+      comparisonMade,
+      governanceViewed,
+      filterApplied,
+    }),
+    [
+      searchQuery,
+      apiView,
+      specDownload,
+      chatInteraction,
+      comparisonMade,
+      governanceViewed,
+      filterApplied,
+    ]
+  );
 
   return { track };
 }

@@ -92,12 +92,13 @@ describe('AnalyticsEvent type safety', () => {
   it('accepts a valid ChatInteractionEvent', () => {
     const event: ChatInteractionEvent = {
       type: 'chat_interaction',
-      sessionId: 'sess-1',
+      chatSessionId: 'chat-sess-1',
       messageCount: 5,
       agentUsed: 'api-discovery',
     };
     assertType<AnalyticsEvent>(event);
     expect(event.messageCount).toBe(5);
+    expect(event.chatSessionId).toBe('chat-sess-1');
   });
 
   it('accepts a valid ComparisonMadeEvent', () => {
@@ -133,7 +134,6 @@ describe('AnalyticsEvent type safety', () => {
   it('accepts a valid UserSessionEvent', () => {
     const event: UserSessionEvent = {
       type: 'user_session',
-      userIdHash: 'abc123def456',
       sessionDuration: 300,
       pagesVisited: 5,
     };
@@ -174,7 +174,7 @@ describe('AnalyticsEventEnvelope', () => {
 // ---------------------------------------------------------------------------
 
 describe('AnalyticsEventBatch', () => {
-  it('holds an array of event envelopes', () => {
+  it('holds a non-empty array of event envelopes', () => {
     const batch: AnalyticsEventBatch = {
       events: [
         {
@@ -194,8 +194,18 @@ describe('AnalyticsEventBatch', () => {
     expect(batch.events[1].event.type).toBe('api_view');
   });
 
-  it('accepts an empty events array', () => {
-    const batch: AnalyticsEventBatch = { events: [] };
-    expect(batch.events).toHaveLength(0);
+  it('requires at least one event (non-empty tuple type)', () => {
+    // Compile-time: AnalyticsEventBatch.events is [AnalyticsEventEnvelope, ...AnalyticsEventEnvelope[]]
+    // This test ensures a single-element batch is a valid AnalyticsEventBatch.
+    const batch: AnalyticsEventBatch = {
+      events: [
+        {
+          event: { type: 'page_view', page: '/home' },
+          clientTimestamp: '2026-04-21T12:00:00Z',
+          pagePath: '/home',
+        },
+      ],
+    };
+    expect(batch.events).toHaveLength(1);
   });
 });
