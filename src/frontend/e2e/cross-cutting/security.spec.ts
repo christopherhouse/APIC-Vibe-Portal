@@ -55,21 +55,15 @@ async function mockCatalog(page: Page) {
 }
 
 test.describe('Security — RBAC access control', () => {
-  test('regular user cannot access admin analytics page', async ({ page }) => {
+  test('regular user cannot access analytics page', async ({ page }) => {
     await setMockUser(page, REGULAR_USER);
     await mockCatalog(page);
 
-    await page.goto('/admin/analytics');
+    await page.goto('/analytics');
 
-    // Should show access denied or redirect — not admin content
-    const heading = page.getByRole('heading');
-    await expect(heading).toBeVisible({ timeout: 5000 });
-    const text = await heading.textContent();
-    // Either access denied or redirected to catalog
-    const isRestricted =
-      /access denied|forbidden|not authorized|catalog/i.test(text ?? '') ||
-      page.url().includes('/catalog');
-    expect(isRestricted).toBe(true);
+    // Regular users should see access denied on the analytics page
+    await expect(page.getByTestId('access-denied-icon')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/access denied/i)).toBeVisible();
   });
 
   test('regular user cannot access admin agents page', async ({ page }) => {
@@ -87,7 +81,7 @@ test.describe('Security — RBAC access control', () => {
     expect(isRestricted).toBe(true);
   });
 
-  test('admin user can access admin analytics page', async ({ page }) => {
+  test('admin user can access analytics page', async ({ page }) => {
     await setMockUser(page, ADMIN_USER);
     await mockCatalog(page);
 
@@ -100,7 +94,7 @@ test.describe('Security — RBAC access control', () => {
       })
     );
 
-    await page.goto('/admin/analytics');
+    await page.goto('/analytics');
     // Should show analytics content (not access denied)
     await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 5000 });
   });

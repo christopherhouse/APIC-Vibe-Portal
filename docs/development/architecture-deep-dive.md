@@ -53,11 +53,13 @@ src/frontend/app/
 │   └── page.tsx            # Governance dashboard
 ├── compare/
 │   └── page.tsx            # API comparison
+├── analytics/
+│   └── page.tsx            # Analytics dashboard (Portal.Admin / Portal.Maintainer)
 └── admin/
-    ├── analytics/
-    │   └── page.tsx        # Analytics dashboard
-    └── agents/
-        └── page.tsx        # Agent management
+    ├── agents/
+    │   └── page.tsx        # Agent management (Portal.Admin)
+    └── access-policies/
+        └── page.tsx        # Access policies (Portal.Admin)
 ```
 
 ### State Management

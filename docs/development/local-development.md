@@ -58,19 +58,26 @@ cp .env.example .env.local
 Edit `.env.local` and fill in at minimum:
 
 ```ini
-# Required for authentication
-AZURE_TENANT_ID=<your-tenant-id>
-AZURE_CLIENT_ID=<your-app-registration-client-id>
+# Required for Entra ID authentication (server-side MSAL config)
+MSAL_CLIENT_ID=<your-spa-client-id>
+MSAL_AUTHORITY=https://login.microsoftonline.com/<your-tenant-id>
+MSAL_REDIRECT_URI=http://localhost:3000
+BFF_API_SCOPE=api://<your-bff-client-id>/.default
 
-# Frontend BFF URL (default for local dev)
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+# BFF URL — frontend server-side proxy reads this to reach the BFF
+# Defaults to http://localhost:8000 when unset
+# BFF_URL=http://localhost:8000
 
 # Azure services (optional for frontend-only development)
 AZURE_OPENAI_ENDPOINT=https://<your-openai>.openai.azure.com/
 AZURE_OPENAI_API_KEY=<your-key>
 AZURE_SEARCH_ENDPOINT=https://<your-search>.search.windows.net
-AZURE_SEARCH_KEY=<your-key>
-COSMOS_DB_ENDPOINT=https://<your-cosmos>.documents.azure.com:443/
+AZURE_SEARCH_API_KEY=<your-key>
+AZURE_COSMOS_ENDPOINT=https://<your-cosmos>.documents.azure.com:443/
+AZURE_COSMOS_KEY=<your-key>
+
+# Application Insights (read at runtime via /api/config/telemetry — not baked in at build)
+APPLICATIONINSIGHTS_CONNECTION_STRING=InstrumentationKey=...
 ```
 
 > **Tip**: If you only need to work on UI/frontend changes, the E2E tests use mock BFF responses, so you may not need real Azure credentials.

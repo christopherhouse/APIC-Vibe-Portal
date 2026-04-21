@@ -259,16 +259,10 @@ test.describe('API Owner Journey', () => {
     await setMockUser(page, API_OWNER_USER);
     await setupApiOwnerMocks(page);
 
-    // Navigate to analytics
-    await page.goto('/admin/analytics');
-
-    // If access denied for non-admin, verify correct behavior
-    const heading = page.getByRole('heading');
-    await expect(heading).toBeVisible({ timeout: 5000 });
-
-    // Either shows analytics or access denied — both are valid for maintainer role
-    const text = await heading.textContent();
-    expect(text).toBeTruthy();
+    // Portal.Maintainer role is allowed to view analytics
+    await page.goto('/analytics');
+    await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('analytics-dashboard')).toBeVisible({ timeout: 5000 });
   });
 
   test('API owner can navigate between governance and catalog', async ({ page }) => {

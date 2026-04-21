@@ -18,7 +18,7 @@ Common issues and their solutions for the APIC Vibe Portal AI.
 
 - If BFF calls are failing with CORS errors: verify the BFF Container App's allowed origins setting
 - If auth fails: check that the Entra ID app registration is still valid and the redirect URI is correct
-- If the frontend cannot reach the BFF: verify `NEXT_PUBLIC_API_BASE_URL` is correct
+- If the frontend cannot reach the BFF: verify `BFF_URL` (server-side env var) is set correctly on the frontend Container App
 
 ---
 
@@ -29,7 +29,7 @@ Common issues and their solutions for the APIC Vibe Portal AI.
 **Diagnosis**:
 
 1. Check browser console for MSAL errors
-2. Verify the Entra ID tenant ID and client ID in environment variables
+2. Verify `MSAL_CLIENT_ID`, `MSAL_AUTHORITY`, and `MSAL_REDIRECT_URI` are set correctly on the frontend Container App
 3. Check that the redirect URI matches what is registered in the app registration
 
 **Solutions**:

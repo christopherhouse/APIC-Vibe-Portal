@@ -2,12 +2,12 @@
  * Performance E2E benchmarks.
  *
  * Measures key performance metrics for critical user-facing pages using the
- * browser's Navigation Timing and Performance APIs.  Tests validate that
- * pages meet the following targets (per the product spec):
+ * browser's Navigation Timing API (PerformanceNavigationTiming).  Tests validate
+ * that pages meet the following targets:
  *
- *   - Time to Interactive (TTI): < 3 seconds
- *   - Largest Contentful Paint (LCP): < 2.5 seconds
- *   - Page load (DOMContentLoaded): < 2 seconds
+ *   - DOMContentLoaded: < 2 seconds
+ *   - Full page load (load event): < 3 seconds
+ *   - Total resource count: < 150 (reasonable cap for dev mode)
  *
  * All BFF calls are intercepted to eliminate network variability.
  * Tests run against the locally-served Next.js dev or build server.

@@ -390,7 +390,7 @@ test.describe('Regression — Phase 3: Admin Analytics', () => {
   test('admin can access analytics dashboard', async ({ page }) => {
     await setMockUser(page, ADMIN_USER);
     await setupCoreMocks(page);
-    await page.goto('/admin/analytics');
+    await page.goto('/analytics');
 
     await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 5000 });
   });
@@ -398,15 +398,11 @@ test.describe('Regression — Phase 3: Admin Analytics', () => {
   test('regular user is blocked from analytics dashboard', async ({ page }) => {
     await setMockUser(page, REGULAR_USER);
     await setupCoreMocks(page);
-    await page.goto('/admin/analytics');
+    await page.goto('/analytics');
 
-    // Should not show analytics content
-    const heading = page.getByRole('heading');
-    await expect(heading).toBeVisible({ timeout: 5000 });
-    const text = await heading.textContent();
-    expect(
-      /access denied|forbidden|catalog/i.test(text ?? '') || page.url().includes('/catalog')
-    ).toBe(true);
+    // Regular users see access denied on the analytics page
+    await expect(page.getByTestId('access-denied-icon')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/access denied/i)).toBeVisible();
   });
 });
 

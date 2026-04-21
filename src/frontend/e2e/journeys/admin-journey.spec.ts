@@ -221,7 +221,7 @@ test.describe('Admin Journey', () => {
     await setMockUser(page, ADMIN_USER);
     await setupAdminMocks(page);
 
-    await page.goto('/admin/analytics');
+    await page.goto('/analytics');
     await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 5000 });
 
     // KPI cards should be visible
@@ -258,7 +258,7 @@ test.describe('Admin Journey', () => {
     await expect(page.getByRole('heading', { name: /governance/i })).toBeVisible();
 
     // Go to analytics
-    await page.goto('/admin/analytics');
+    await page.goto('/analytics');
     await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 5000 });
 
     // Go to agent management

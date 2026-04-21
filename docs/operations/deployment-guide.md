@@ -30,24 +30,28 @@ Copy `.env.example` to `.env.local` (never commit `.env.local`):
 cp .env.example .env.local
 ```
 
-Required environment variables:
+Required environment variables (aligned with `.env.example`):
 
-| Variable                                     | Description                                                  |
-| -------------------------------------------- | ------------------------------------------------------------ |
-| `AZURE_TENANT_ID`                            | Entra ID tenant ID                                           |
-| `AZURE_CLIENT_ID`                            | App registration client ID                                   |
-| `NEXT_PUBLIC_API_BASE_URL`                   | BFF API base URL                                             |
-| `NEXT_PUBLIC_APP_INSIGHTS_CONNECTION_STRING` | Application Insights connection string                       |
-| `AZURE_OPENAI_ENDPOINT`                      | Azure OpenAI endpoint URL                                    |
-| `AZURE_OPENAI_API_KEY`                       | Azure OpenAI API key (use Key Vault reference in production) |
-| `AZURE_SEARCH_ENDPOINT`                      | Azure AI Search endpoint                                     |
-| `AZURE_SEARCH_KEY`                           | Azure AI Search admin key                                    |
-| `COSMOS_DB_ENDPOINT`                         | Azure Cosmos DB endpoint                                     |
-| `API_CENTER_SUBSCRIPTION_ID`                 | Azure subscription containing API Center                     |
-| `API_CENTER_RESOURCE_GROUP`                  | Resource group for API Center                                |
-| `API_CENTER_SERVICE_NAME`                    | Azure API Center service name                                |
+| Variable                                | Description                                                                    |
+| --------------------------------------- | ------------------------------------------------------------------------------ |
+| `MSAL_CLIENT_ID`                        | SPA app registration client ID (served to browser via `/api/config/msal`)      |
+| `MSAL_AUTHORITY`                        | Entra ID authority URL                                                         |
+| `MSAL_REDIRECT_URI`                     | Redirect URI registered in Entra ID                                            |
+| `BFF_API_SCOPE`                         | BFF API scope for access token acquisition                                     |
+| `BFF_URL`                               | BFF base URL (frontend server-side proxy; defaults to `http://localhost:8000`) |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | App Insights connection string (served via `/api/config/telemetry`)            |
+| `AZURE_OPENAI_ENDPOINT`                 | Azure OpenAI endpoint URL                                                      |
+| `AZURE_OPENAI_API_KEY`                  | Azure OpenAI API key (use Managed Identity in production)                      |
+| `AZURE_SEARCH_ENDPOINT`                 | Azure AI Search endpoint                                                       |
+| `AZURE_SEARCH_API_KEY`                  | Azure AI Search admin key (use Managed Identity in production)                 |
+| `AZURE_COSMOS_ENDPOINT`                 | Azure Cosmos DB endpoint                                                       |
+| `AZURE_COSMOS_KEY`                      | Cosmos DB key (use Managed Identity in production)                             |
+| `AZURE_APIC_ENDPOINT`                   | Azure API Center data plane endpoint                                           |
+| `AZURE_APIC_SERVICE_NAME`               | Azure API Center service name                                                  |
+| `AZURE_APIC_SUBSCRIPTION_ID`            | Azure subscription containing API Center                                       |
+| `AZURE_APIC_RESOURCE_GROUP`             | Resource group for API Center                                                  |
 
-> **Security**: Store all secrets in **Azure Key Vault** and reference them in Container Apps secrets. Never commit secrets to source control.
+> **Security**: Store all secrets in **Azure Key Vault** and reference them in Container Apps secrets. Never commit secrets to source control. Production deployments use **Managed Identity** — API keys are only needed for local development.
 
 ## Automated Deployment (CI/CD)
 

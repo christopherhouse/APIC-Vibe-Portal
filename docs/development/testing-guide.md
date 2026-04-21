@@ -53,12 +53,11 @@ Located in `src/frontend/e2e/`.
 ```
 e2e/
 ├── smoke/                     # Basic health and auth smoke tests
-├── features/                  # Feature-specific tests (catalog, search, chat…)
 ├── journeys/                  # Full user journey tests
 ├── cross-cutting/             # Accessibility, performance, security
 ├── regression/                # Full regression suite
 ├── mock-server/               # Shared mock BFF server
-└── *.spec.ts                  # Legacy flat test files (still valid)
+└── *.spec.ts                  # Feature tests (catalog, search, chat, governance, …)
 ```
 
 **Tools**:

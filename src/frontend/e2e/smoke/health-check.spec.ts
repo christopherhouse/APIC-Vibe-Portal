@@ -70,6 +70,20 @@ test.describe('Smoke — BFF health endpoint', () => {
       })
     );
 
+    // Navigate to the app first so relative fetch URLs resolve against the
+    // Next.js baseURL instead of about:blank.
+    await page.route('**/api/catalog*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [],
+          meta: { page: 1, pageSize: 20, totalCount: 0, totalPages: 0 },
+        }),
+      })
+    );
+    await page.goto('/catalog');
+
     // Trigger a fetch to the mocked health endpoint from the page context
     const response = await page.evaluate(async () => {
       const res = await fetch('/health');
