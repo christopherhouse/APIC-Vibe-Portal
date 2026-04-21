@@ -213,7 +213,7 @@ class ChatHistoryProvider(HistoryProvider):
         }
 
         try:
-            self._container.upsert_item(body=document, partition_key=session_id)
+            self._container.upsert_item(body=document)
             logger.debug("Saved %d messages for session %s", len(messages), session_id)
         except Exception:
             logger.exception("Failed to save messages for session %s", session_id)
