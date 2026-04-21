@@ -109,7 +109,7 @@ export default function ApiScoreTable({ scores }: ApiScoreTableProps) {
           value={filterText}
           onChange={(e) => setFilterText(e.target.value)}
           placeholder="Search by API name, ID, or category"
-          data-testid="api-score-table-filter"
+          slotProps={{ htmlInput: { 'data-testid': 'api-score-table-filter' } }}
         />
       </Box>
 
