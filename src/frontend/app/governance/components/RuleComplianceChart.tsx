@@ -81,7 +81,7 @@ export default function RuleComplianceChart({ compliance }: RuleComplianceChartP
               }}
             />
             <Tooltip
-              formatter={(value: number) => `${value.toFixed(1)}%`}
+              formatter={(value) => typeof value === 'number' ? `${value.toFixed(1)}%` : String(value)}
               contentStyle={{ fontSize: 12 }}
             />
             <Bar dataKey="complianceRate" name="Compliance Rate">
