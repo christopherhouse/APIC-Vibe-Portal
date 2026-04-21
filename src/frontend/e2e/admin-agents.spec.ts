@@ -242,11 +242,8 @@ test.describe('Admin Agents — Details dialog', () => {
 
     await expect(page.getByText('Api Discovery')).toBeVisible();
 
-    // Click "View Details" for first agent
-    await page
-      .getByRole('button', { name: /view details/i })
-      .first()
-      .click();
+    // Click "Details" for first agent (button label is "Details" in AgentCard)
+    await page.getByTestId('details-api_discovery').click();
 
     // Dialog should open with agent information
     await expect(page.getByRole('dialog')).toBeVisible();
@@ -269,11 +266,8 @@ test.describe('Admin Agents — Test dialog', () => {
 
     await expect(page.getByText('Api Discovery')).toBeVisible();
 
-    // Click "Test" for first agent card
-    await page
-      .getByRole('button', { name: /^test$/i })
-      .first()
-      .click();
+    // Click "Test" for first agent card (button label is "Test" in AgentCard)
+    await page.getByTestId('test-api_discovery').click();
 
     // Dialog should open
     await expect(page.getByRole('dialog')).toBeVisible();
