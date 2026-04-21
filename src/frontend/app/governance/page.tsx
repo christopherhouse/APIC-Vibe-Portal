@@ -7,6 +7,8 @@ import GovernanceOverview from './components/GovernanceOverview';
 import ScoreDistributionChart from './components/ScoreDistributionChart';
 import RuleComplianceChart from './components/RuleComplianceChart';
 import ApiScoreTable from './components/ApiScoreTable';
+import CompletenessOverview from './components/CompletenessOverview';
+import CompletenessLeaderboard from './components/CompletenessLeaderboard';
 import {
   fetchGovernanceSummary,
   fetchGovernanceScores,
@@ -17,12 +19,22 @@ import {
   type ScoreDistribution,
   type RuleCompliance,
 } from '@/lib/governance-api';
+import {
+  fetchCompletenessOverview,
+  fetchCompletenessLeaderboard,
+  type CompletenessOverviewData,
+  type LeaderboardData,
+} from '@/lib/metadata-api';
 
 export default function GovernancePage() {
   const [summary, setSummary] = useState<GovernanceSummary | null>(null);
   const [scores, setScores] = useState<ApiGovernanceScore[]>([]);
   const [distribution, setDistribution] = useState<ScoreDistribution | null>(null);
   const [ruleCompliance, setRuleCompliance] = useState<RuleCompliance[]>([]);
+  const [completenessOverview, setCompletenessOverview] = useState<CompletenessOverviewData | null>(
+    null
+  );
+  const [leaderboard, setLeaderboard] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,16 +42,21 @@ export default function GovernancePage() {
     setLoading(true);
     setError(null);
     try {
-      const [summaryData, scoresData, distributionData, complianceData] = await Promise.all([
-        fetchGovernanceSummary(),
-        fetchGovernanceScores(),
-        fetchScoreDistribution(),
-        fetchRuleCompliance(),
-      ]);
+      const [summaryData, scoresData, distributionData, complianceData, overviewData, boardData] =
+        await Promise.all([
+          fetchGovernanceSummary(),
+          fetchGovernanceScores(),
+          fetchScoreDistribution(),
+          fetchRuleCompliance(),
+          fetchCompletenessOverview(),
+          fetchCompletenessLeaderboard(),
+        ]);
       setSummary(summaryData);
       setScores(scoresData);
       setDistribution(distributionData);
       setRuleCompliance(complianceData);
+      setCompletenessOverview(overviewData);
+      setLeaderboard(boardData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load governance data');
     } finally {
@@ -115,6 +132,18 @@ export default function GovernancePage() {
         </Typography>
         <ApiScoreTable scores={scores} />
       </Box>
+
+      {completenessOverview && (
+        <Box sx={{ mb: 4 }}>
+          <CompletenessOverview overview={completenessOverview} />
+        </Box>
+      )}
+
+      {leaderboard && (
+        <Box sx={{ mb: 4 }}>
+          <CompletenessLeaderboard leaderboard={leaderboard} />
+        </Box>
+      )}
     </Container>
   );
 }

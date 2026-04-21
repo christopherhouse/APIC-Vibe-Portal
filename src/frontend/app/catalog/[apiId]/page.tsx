@@ -16,6 +16,7 @@ import ApiMetadata from './components/ApiMetadata';
 import ApiVersionList from './components/ApiVersionList';
 import ApiSpecViewer from './components/ApiSpecViewer';
 import ApiDeployments from './components/ApiDeployments';
+import MetadataQualityTab from './components/MetadataQualityTab';
 import SpecDownloadButton from './components/SpecDownloadButton';
 import CompareAddButton from '@/app/compare/components/CompareAddButton';
 
@@ -106,6 +107,8 @@ export default function ApiDetailPage() {
         {activeTab === 'deployments' && (
           <ApiDeployments deployments={deployments} isLoading={isLoading} />
         )}
+
+        {activeTab === 'metadata-quality' && apiId && <MetadataQualityTab apiId={apiId} />}
       </Box>
     </Container>
   );
