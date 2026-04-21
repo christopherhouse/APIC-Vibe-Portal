@@ -1,10 +1,10 @@
 """Unit tests for custom ChatHistoryProvider."""
 
 import uuid
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
+from agent_framework import Message
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 
 from apic_vibe_portal_bff.agents.chat_history_provider import ChatHistoryProvider
@@ -137,45 +137,61 @@ async def test_save_messages_existing_session(provider, mock_container):
 
 
 @pytest.mark.asyncio
-async def test_before_run_new_session(provider, mock_container):
-    """Test before_run with a new session (no existing messages)."""
+async def test_get_messages_new_session(provider, mock_container):
+    """Test get_messages with a new session (no existing messages)."""
     session_id = str(uuid.uuid4())
-    new_messages = [{"role": "user", "content": "Hello"}]
     mock_container.read_item.side_effect = CosmosResourceNotFoundError()
 
-    result = await provider.before_run(session_id=session_id, messages=new_messages)
+    result = await provider.get_messages(session_id=session_id)
 
-    assert result == new_messages
+    assert result == []
 
 
 @pytest.mark.asyncio
-async def test_before_run_existing_session(provider, mock_container):
-    """Test before_run with existing messages."""
+async def test_get_messages_existing_session(provider, mock_container):
+    """Test get_messages with existing messages."""
     session_id = str(uuid.uuid4())
     existing = [{"role": "user", "content": "Hello"}]
-    new_messages = [{"role": "assistant", "content": "Hi"}]
     mock_container.read_item.return_value = {
         "id": session_id,
         "messages": existing,
     }
 
-    result = await provider.before_run(session_id=session_id, messages=new_messages)
+    result = await provider.get_messages(session_id=session_id)
 
-    assert len(result) == 2
-    assert result[0] == existing[0]
-    assert result[1] == new_messages[0]
+    assert len(result) == 1
+    assert isinstance(result[0], Message)
 
 
 @pytest.mark.asyncio
-async def test_after_run(provider, mock_container):
-    """Test after_run saves messages."""
+async def test_get_messages_no_session_id(provider, mock_container):
+    """Test get_messages with no session_id returns empty list."""
+    result = await provider.get_messages(session_id=None)
+
+    assert result == []
+    mock_container.read_item.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_save_messages(provider, mock_container):
+    """Test save_messages saves messages."""
     session_id = str(uuid.uuid4())
-    messages = [{"role": "user", "content": "Hello"}]
+    messages = [Message(role="user", contents=["Hello"])]
     mock_container.read_item.side_effect = CosmosResourceNotFoundError()
 
-    await provider.after_run(session_id=session_id, messages=messages)
+    await provider.save_messages(session_id=session_id, messages=messages)
 
     mock_container.upsert_item.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_save_messages_no_session_id(provider, mock_container):
+    """Test save_messages with no session_id does nothing."""
+    messages = [Message(role="user", contents=["Hello"])]
+
+    await provider.save_messages(session_id=None, messages=messages)
+
+    mock_container.upsert_item.assert_not_called()
 
 
 def test_clear_success(provider, mock_container):
