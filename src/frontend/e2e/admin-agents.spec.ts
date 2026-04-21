@@ -209,7 +209,7 @@ test.describe('Admin Agents — agent list', () => {
 
     await expect(page.getByRole('heading', { name: /agent management/i })).toBeVisible();
     await expect(page.getByText('Api Discovery')).toBeVisible();
-    await expect(page.getByText('Governance')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Governance' })).toBeVisible();
 
     await page.screenshot({ path: screenshotPath('agents-list'), fullPage: true });
   });

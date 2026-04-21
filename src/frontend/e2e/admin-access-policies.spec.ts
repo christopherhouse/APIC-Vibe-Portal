@@ -415,6 +415,34 @@ test.describe('New Policy dialog', () => {
 
     const policies = [...MOCK_POLICIES];
 
+    // Mock catalog so the dialog's API dropdown has options to select
+    await page.route('**/api/catalog*', async (route) => {
+      if (!route.request().url().includes('/api/catalog/')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: [
+              {
+                id: 'api-brand-new',
+                name: 'brand-new-api',
+                title: 'Brand New API',
+                description: 'A brand new API for testing',
+                kind: 'REST',
+                lifecycleStage: 'preview',
+                versions: [],
+                deployments: [],
+                updatedAt: '2026-01-01T00:00:00Z',
+              },
+            ],
+            meta: { page: 1, pageSize: 100, totalCount: 1, totalPages: 1 },
+          }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
     // First load: empty
     await page.route('**/api/admin/access-policies', async (route) => {
       if (route.request().method() === 'GET') {
@@ -433,7 +461,9 @@ test.describe('New Policy dialog', () => {
     await expect(page.getByTestId('policies-table')).toBeVisible();
 
     await page.getByTestId('add-policy-button').click();
+    // In create mode the API name is an Autocomplete — type to filter then select the option
     await page.getByTestId('api-name-input').fill('brand-new-api');
+    await page.getByRole('option', { name: /brand-new-api/i }).click();
     await page.getByTestId('save-policy-button').click();
 
     // After save, dialog should close and table should remain
