@@ -92,7 +92,6 @@ class ApiAccessPolicyRepository(BaseRepository):
 
         result = self._container.upsert_item(
             body=body,
-            partition_key=policy.api_name,
             response_hook=_make_simple_ru_hook(self._container.id, "upsert"),
         )
         return ApiAccessPolicyDocument.model_validate(result)
