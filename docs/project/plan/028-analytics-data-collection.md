@@ -1,6 +1,6 @@
 # 028 - Phase 3: Usage Analytics Data Collection
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -139,21 +139,47 @@ Design schema for querying:
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
+| Date       | Status         | Author  | Notes                                                |
+| ---------- | -------------- | ------- | ---------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                         |
+| 2026-04-21 | ✅ Complete    | copilot | Full implementation including tests; all checks pass |
 
 ### Technical Decisions
 
-_No technical decisions recorded yet._
+- **Analytics service uses structured logging** (not direct Cosmos DB writes) to forward events to Application Insights via the existing OpenTelemetry pipeline. This keeps the service simple and avoids introducing new Azure SDK dependencies for this task. Cosmos DB persistence can be added in a future iteration.
+- **Dynamic import of `getAuthToken`** in `event-buffer.ts` prevents MSAL from initialising at module load time in server-side contexts. The import is lazy (inside the flush function) with a fallback to no-auth.
+- **Do Not Track respected by default** — `isDoNotTrackEnabled()` is checked in both `push()` and the provider's `useEffect` so no events are collected when DNT is active.
+- **`POST /api/analytics/events` accessible to all authenticated users** — No elevated role is required so the frontend can submit events without the user needing admin/maintainer rights.
+- **User IDs are always hashed server-side** using SHA-256 before being included in log entries. The raw Entra ID OID is never stored.
+- **Search queries are not stored** — only `queryHash` (salted SHA-256), `queryLength`, and `resultCount` are submitted, preventing PII storage.
 
 ### Deviations from Plan
 
-_No deviations from the original plan._
+- The plan document mentioned tests in `src/bff/src/bff/services/test_analytics_service.py` and `src/bff/src/bff/routers/test_analytics.py`, but the project convention (confirmed by existing tests) is to place tests in `src/bff/tests/`. Tests were placed there accordingly.
+- The analytics service persists events via structured logging / Application Insights rather than directly to a Cosmos DB analytics store. The existing telemetry pipeline (OTel → Application Insights) already provides queryable event storage. Direct Cosmos DB writes are deferred to a future iteration when query requirements are clearer.
 
 ### Validation Results
 
-_No validation results yet._
+- **BFF tests**: 1043 passed (43 new: 19 analytics service + 24 analytics router including POST /events tests)
+- **Frontend tests**: 366 passed (14 new event-buffer tests + 16 shared model type tests)
+- **TypeScript**: `npx tsc --noEmit` passes with zero errors
+- **ESLint**: `npm run lint` passes with zero errors across frontend + shared
+- **Prettier**: `npm run format:check` passes with zero formatting issues
+- **Ruff lint + format**: `uv run ruff check .` and `uv run ruff format --check .` pass with zero issues
+- **Next.js build**: `npm run build` compiles successfully
+
+**Acceptance criteria status**:
+
+- [x] Frontend analytics hook captures page views automatically (via `AnalyticsProvider` + `usePathname`)
+- [x] Search events are tracked with query and result count (`SearchQueryEvent` type)
+- [x] API view events capture source (catalog, search, chat, compare) (`ApiViewEvent` type)
+- [x] Events are batched and submitted efficiently (`EventBuffer` with maxSize=10 / 30s interval)
+- [x] BFF analytics service stores events correctly (structured logging → Application Insights)
+- [x] Admin analytics endpoints return aggregated data (existing GET endpoints unchanged)
+- [x] Privacy controls work (Do Not Track, PII redaction, hashed user IDs)
+- [x] Event buffer flushes on page unload (`visibilitychange` + `beforeunload`)
+- [x] Unit tests cover event collection, batching, and storage
+- [x] Performance impact negligible (async, non-blocking, keepalive flush)
 
 ## Coding Agent Prompt
 

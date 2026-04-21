@@ -26,6 +26,20 @@ export type {
 } from './models/data-models.js';
 export type { User } from './models/user.js';
 export type { PaginationParams, PaginationMeta, PaginatedResponse } from './models/pagination.js';
+export type {
+  AnalyticsEvent,
+  PageViewEvent,
+  SearchQueryEvent,
+  ApiViewEvent,
+  SpecDownloadEvent,
+  ChatInteractionEvent,
+  ComparisonMadeEvent,
+  GovernanceViewedEvent,
+  FilterAppliedEvent,
+  UserSessionEvent,
+  AnalyticsEventEnvelope,
+  AnalyticsEventBatch,
+} from './models/analytics-event.js';
 
 // DTOs
 export type { ApiCatalogItem, ApiCatalogResponse } from './dto/api-catalog-response.js';

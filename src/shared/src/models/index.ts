@@ -7,3 +7,17 @@ export type { SearchResult, SearchFacets, SearchFacet, SearchFacetValue } from '
 export type { ChatMessage, ChatSession, Citation, ChatRole } from './chat-message.js';
 export type { User } from './user.js';
 export type { PaginationParams, PaginationMeta, PaginatedResponse } from './pagination.js';
+export type {
+  AnalyticsEvent,
+  PageViewEvent,
+  SearchQueryEvent,
+  ApiViewEvent,
+  SpecDownloadEvent,
+  ChatInteractionEvent,
+  ComparisonMadeEvent,
+  GovernanceViewedEvent,
+  FilterAppliedEvent,
+  UserSessionEvent,
+  AnalyticsEventEnvelope,
+  AnalyticsEventBatch,
+} from './analytics-event.js';
