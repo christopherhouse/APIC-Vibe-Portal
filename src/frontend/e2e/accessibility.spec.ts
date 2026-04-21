@@ -89,7 +89,16 @@ test.describe('Accessibility — search page', () => {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ results: [], totalCount: 0, facets: {}, queryDuration: 10 }),
+        body: JSON.stringify({
+          results: [],
+          totalCount: 0,
+          facets: {
+            kind: [],
+            lifecycle: [],
+            tags: [],
+          },
+          queryDuration: 10,
+        }),
       })
     );
     await page.goto('/search');

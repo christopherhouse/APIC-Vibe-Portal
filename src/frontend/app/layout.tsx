@@ -52,7 +52,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                             p: 3,
                             mt: 'var(--header-height)',
                             minHeight: `calc(100vh - var(--header-height) - var(--footer-height))`,
-                            '&:focus': { outline: 'none' },
+                            // Suppress the focus ring only for pointer/mouse activation.
+                            // Keyboard users still see a visible focus ring after pressing
+                            // the skip-to-content link, because :focus-visible remains active.
+                            '&:focus:not(:focus-visible)': { outline: 'none' },
                           }}
                         >
                           {children}
