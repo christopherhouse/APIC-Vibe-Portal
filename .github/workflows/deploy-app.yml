@@ -24,16 +24,14 @@ permissions:
   packages: write
 
 jobs:
-  build-and-push-frontend:
-    name: Build and Push Frontend Image
+  prepare:
+    name: Resolve ACR
     runs-on: ubuntu-latest
     environment: dev
     outputs:
-      image-tag: ${{ steps.meta.outputs.version }}
+      acr-name: ${{ steps.acr.outputs.name }}
+      acr-login-server: ${{ steps.acr.outputs.login-server }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
       - name: Azure Login (OIDC)
         uses: azure/login@v3
         with:
@@ -60,35 +58,22 @@ jobs:
           echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
           echo "login-server=${ACR_NAME}.azurecr.io" >> $GITHUB_OUTPUT
 
-      - name: Login to ACR
-        run: az acr login --name ${{ steps.acr.outputs.name }}
-
-      - name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ steps.acr.outputs.login-server }}/frontend
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ./src/frontend/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-  build-and-push-bff:
-    name: Build and Push BFF Image
+  build-containers:
+    name: Build and Push ${{ matrix.component }} Image
     runs-on: ubuntu-latest
     environment: dev
+    needs: prepare
+    strategy:
+      matrix:
+        include:
+          - component: frontend
+            dockerfile: ./src/frontend/Dockerfile
+          - component: bff
+            dockerfile: ./src/bff/Dockerfile
+          - component: indexer
+            dockerfile: ./src/indexer/Dockerfile
     outputs:
+      # All matrix variants produce the same git-ref-based tag, so last-writer is stable.
       image-tag: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout code
@@ -101,33 +86,14 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Get ACR name
-        id: acr
-        run: |
-          DEPLOYMENT_NAME=$(az deployment group list \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
-            -o tsv)
-          if [ -z "$DEPLOYMENT_NAME" ]; then
-            echo "::error::No successful infrastructure deployment found in resource group ${{ vars.AZURE_RESOURCE_GROUP }}"
-            exit 1
-          fi
-          echo "Using infrastructure deployment: $DEPLOYMENT_NAME"
-          ACR_NAME=$(az deployment group show \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name "$DEPLOYMENT_NAME" \
-            --query properties.outputs.acrName.value -o tsv)
-          echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
-          echo "login-server=${ACR_NAME}.azurecr.io" >> $GITHUB_OUTPUT
-
       - name: Login to ACR
-        run: az acr login --name ${{ steps.acr.outputs.name }}
+        run: az acr login --name ${{ needs.prepare.outputs.acr-name }}
 
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ${{ steps.acr.outputs.login-server }}/bff
+          images: ${{ needs.prepare.outputs.acr-login-server }}/${{ matrix.component }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -139,67 +105,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: ./src/bff/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-  build-and-push-indexer:
-    name: Build and Push Indexer Image
-    runs-on: ubuntu-latest
-    environment: dev
-    outputs:
-      image-tag: ${{ steps.meta.outputs.version }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Azure Login (OIDC)
-        uses: azure/login@v3
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Get ACR name
-        id: acr
-        run: |
-          DEPLOYMENT_NAME=$(az deployment group list \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
-            -o tsv)
-          if [ -z "$DEPLOYMENT_NAME" ]; then
-            echo "::error::No successful infrastructure deployment found in resource group ${{ vars.AZURE_RESOURCE_GROUP }}"
-            exit 1
-          fi
-          echo "Using infrastructure deployment: $DEPLOYMENT_NAME"
-          ACR_NAME=$(az deployment group show \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name "$DEPLOYMENT_NAME" \
-            --query properties.outputs.acrName.value -o tsv)
-          echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
-          echo "login-server=${ACR_NAME}.azurecr.io" >> $GITHUB_OUTPUT
-
-      - name: Login to ACR
-        run: az acr login --name ${{ steps.acr.outputs.name }}
-
-      - name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ steps.acr.outputs.login-server }}/indexer
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ./src/indexer/Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -207,7 +113,7 @@ jobs:
   deploy-dev:
     name: Deploy to Dev
     runs-on: ubuntu-latest
-    needs: [build-and-push-frontend, build-and-push-bff, build-and-push-indexer]
+    needs: [build-containers]
     if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'dev'
     environment:
       name: dev
@@ -319,9 +225,9 @@ jobs:
             --redis-host ${{ steps.infra.outputs.redis-host }} \
             --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
-            --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
-            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }} \
-            --indexer-image-tag ${{ needs.build-and-push-indexer.outputs.image-tag }} \
+            --frontend-image-tag ${{ needs.build-containers.outputs.image-tag }} \
+            --bff-image-tag ${{ needs.build-containers.outputs.image-tag }} \
+            --indexer-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
             --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
             --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }} OPENAI_API_VERSION=${{ vars.OPENAI_API_VERSION }}"
@@ -329,7 +235,7 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [build-and-push-frontend, build-and-push-bff, build-and-push-indexer]
+    needs: [build-containers]
     if: github.event.inputs.environment == 'staging'
     environment:
       name: staging
@@ -441,9 +347,9 @@ jobs:
             --redis-host ${{ steps.infra.outputs.redis-host }} \
             --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
-            --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
-            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }} \
-            --indexer-image-tag ${{ needs.build-and-push-indexer.outputs.image-tag }} \
+            --frontend-image-tag ${{ needs.build-containers.outputs.image-tag }} \
+            --bff-image-tag ${{ needs.build-containers.outputs.image-tag }} \
+            --indexer-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
             --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
             --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }} OPENAI_API_VERSION=${{ vars.OPENAI_API_VERSION }}"
@@ -451,7 +357,7 @@ jobs:
   deploy-prod:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [build-and-push-frontend, build-and-push-bff, build-and-push-indexer]
+    needs: [build-containers]
     if: github.event.inputs.environment == 'prod'
     environment:
       name: prod
@@ -563,9 +469,9 @@ jobs:
             --redis-host ${{ steps.infra.outputs.redis-host }} \
             --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
-            --frontend-image-tag ${{ needs.build-and-push-frontend.outputs.image-tag }} \
-            --bff-image-tag ${{ needs.build-and-push-bff.outputs.image-tag }} \
-            --indexer-image-tag ${{ needs.build-and-push-indexer.outputs.image-tag }} \
+            --frontend-image-tag ${{ needs.build-containers.outputs.image-tag }} \
+            --bff-image-tag ${{ needs.build-containers.outputs.image-tag }} \
+            --indexer-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
             --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
             --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }} OPENAI_API_VERSION=${{ vars.OPENAI_API_VERSION }}"
