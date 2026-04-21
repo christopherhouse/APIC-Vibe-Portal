@@ -67,7 +67,7 @@ describe('ApiScoreTable', () => {
     const user = userEvent.setup();
     render(<ApiScoreTable scores={mockScores} />);
 
-    const filterInput = screen.getByTestId('api-score-table-filter').querySelector('input')!;
+    const filterInput = screen.getByTestId('api-score-table-filter') as HTMLInputElement;
     await user.type(filterInput, 'payments');
 
     expect(screen.getByTestId('api-score-row-payments-api')).toBeInTheDocument();
@@ -78,7 +78,7 @@ describe('ApiScoreTable', () => {
     const user = userEvent.setup();
     render(<ApiScoreTable scores={mockScores} />);
 
-    const filterInput = screen.getByTestId('api-score-table-filter').querySelector('input')!;
+    const filterInput = screen.getByTestId('api-score-table-filter') as HTMLInputElement;
     await user.type(filterInput, 'zzznomatch');
 
     expect(screen.getByText('No APIs match your filter')).toBeInTheDocument();

@@ -150,6 +150,7 @@ export default function PolicyDialog({
                   label="API Name"
                   required
                   helperText="Select the API from the catalog."
+                  inputProps={{ ...params.inputProps, 'data-testid': 'api-name-input' }}
                 />
               )}
             />
