@@ -156,10 +156,10 @@ Perform systematic performance optimization and accessibility improvements acros
 
 ### Status History
 
-| Date | Status | Author | Notes |
-| ---- | ------ | ------ | ----- |
-| — | 🔲 Not Started | — | Task created |
-| 2026-04-21 | ✅ Complete | @copilot | All frontend, BFF, accessibility, and load-test deliverables implemented |
+| Date       | Status         | Author   | Notes                                                                    |
+| ---------- | -------------- | -------- | ------------------------------------------------------------------------ |
+| —          | 🔲 Not Started | —        | Task created                                                             |
+| 2026-04-21 | ✅ Complete    | @copilot | All frontend, BFF, accessibility, and load-test deliverables implemented |
 
 ### Technical Decisions
 

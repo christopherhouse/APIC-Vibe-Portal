@@ -20,9 +20,7 @@ const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 /** Run axe on the current page and assert zero critical/serious violations. */
 async function checkAccessibility(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .withTags(AXE_TAGS)
-    .analyze();
+  const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
 
   const critical = results.violations.filter((v) => v.impact === 'critical');
   const serious = results.violations.filter((v) => v.impact === 'serious');
@@ -57,7 +55,16 @@ async function mockCatalogApi(page: Page) {
           description: `Description for test API ${i + 1}`,
           kind: 'rest',
           lifecycleStage: 'production',
-          versions: [{ id: 'v1', name: 'v1', title: 'v1', lifecycleStage: 'production', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }],
+          versions: [
+            {
+              id: 'v1',
+              name: 'v1',
+              title: 'v1',
+              lifecycleStage: 'production',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          ],
           deployments: [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),

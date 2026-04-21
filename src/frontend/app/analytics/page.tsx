@@ -41,7 +41,6 @@ const PopularApisChart = dynamic(() => import('./components/PopularApisChart'), 
   loading: () => <CircularProgress size={24} />,
 });
 
-
 const ALLOWED_ROLES = ['Portal.Admin', 'Portal.Maintainer'];
 
 export default function AnalyticsDashboardPage() {

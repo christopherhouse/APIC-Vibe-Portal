@@ -12,10 +12,10 @@ any environment via the **Load Test (Azure App Testing)** GitHub Actions workflo
 
 ## Files
 
-| File | Purpose |
-|------|---------|
-| `tests/load/bff-load-test.jmx` | JMeter test plan — three parallel thread groups: catalog browsing (100 VUs), AI search (50 VUs), AI chat (20 VUs) |
-| `tests/load/load-test-config.yaml` | Azure Load Testing YAML config — references the JMX, failure criteria, and Key Vault secret URI |
+| File                               | Purpose                                                                                                           |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `tests/load/bff-load-test.jmx`     | JMeter test plan — three parallel thread groups: catalog browsing (100 VUs), AI search (50 VUs), AI chat (20 VUs) |
+| `tests/load/load-test-config.yaml` | Azure Load Testing YAML config — references the JMX, failure criteria, and Key Vault secret URI                   |
 
 ## JWT / Authentication
 
@@ -28,10 +28,10 @@ in plain text in the workflow or source code.
 
 ## Required GitHub / Azure configuration
 
-| Item | Where |
-|------|-------|
-| `LOADTEST_CLIENT_ID` | GitHub Actions repository variable |
-| `LOADTEST_TOKEN_SCOPE` | GitHub Actions repository variable (e.g. `api://<bff-client-id>/.default`) |
+| Item                     | Where                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `LOADTEST_CLIENT_ID`     | GitHub Actions repository variable                                                                     |
+| `LOADTEST_TOKEN_SCOPE`   | GitHub Actions repository variable (e.g. `api://<bff-client-id>/.default`)                             |
 | `loadtest-client-secret` | Azure Key Vault secret (created out-of-band; ALT identity has `Key Vault Secrets User` role via Bicep) |
 
 ## Workflow triggers
