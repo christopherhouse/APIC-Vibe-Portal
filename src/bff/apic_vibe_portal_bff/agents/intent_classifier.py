@@ -1,8 +1,7 @@
 """Intent classifier for routing user queries to appropriate agents.
 
 The classifier analyzes user intent and recommends which agent should handle
-the request. Supports both rule-based classification and fallback to LLM-based
-classification when confidence is low.
+the request. Uses a keyword/rule-based approach for fast, deterministic routing.
 """
 
 from __future__ import annotations

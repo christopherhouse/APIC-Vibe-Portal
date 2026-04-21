@@ -128,9 +128,9 @@ app/admin/agents/
 
 ### Status History
 
-| Date       | Status         | Author  | Notes                                                                                                        |
-| ---------- | -------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
-| —          | 🔲 Not Started | —       | Task created                                                                                                 |
+| Date       | Status         | Author  | Notes                                                                                                         |
+| ---------- | -------------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —       | Task created                                                                                                  |
 | 2026-04-20 | ✅ Complete    | @claude | Implemented multi-agent orchestration with intent classification, context management, and admin UI (55 tests) |
 
 ### Technical Decisions

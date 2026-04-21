@@ -16,7 +16,12 @@ import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
 
-import { fetchAgentDetail, fetchAgentStats, type AgentDetail, type AgentStats } from '@/lib/admin-agent-api';
+import {
+  fetchAgentDetail,
+  fetchAgentStats,
+  type AgentDetail,
+  type AgentStats,
+} from '@/lib/admin-agent-api';
 
 interface AgentDetailsDialogProps {
   open: boolean;
@@ -80,7 +85,11 @@ export default function AgentDetailsDialog({ open, agentId, onClose }: AgentDeta
                 <Typography variant="body2" color="text.secondary" paragraph>
                   {detail.description}
                 </Typography>
-                <Chip label={detail.status} color={detail.status === 'active' ? 'success' : 'default'} size="small" />
+                <Chip
+                  label={detail.status}
+                  color={detail.status === 'active' ? 'success' : 'default'}
+                  size="small"
+                />
               </Box>
 
               <Divider />
@@ -131,7 +140,11 @@ export default function AgentDetailsDialog({ open, agentId, onClose }: AgentDeta
                 <Typography variant="subtitle1" gutterBottom>
                   Configuration
                 </Typography>
-                <Typography variant="body2" component="pre" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.875rem' }}>
+                <Typography
+                  variant="body2"
+                  component="pre"
+                  sx={{ whiteSpace: 'pre-wrap', fontSize: '0.875rem' }}
+                >
                   {JSON.stringify(detail.configuration, null, 2)}
                 </Typography>
               </Box>

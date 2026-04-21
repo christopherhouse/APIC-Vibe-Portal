@@ -345,7 +345,7 @@ async def test_agent(
             responseTimeMs=response_time_ms,
             success=True,
         )
-    except Exception as e:
+    except Exception:
         end_time = datetime.now(UTC)
         response_time_ms = (end_time - start_time).total_seconds() * 1000
         logger.exception("Agent test failed: agent_id=%s", agent_id)
@@ -355,5 +355,5 @@ async def test_agent(
             response="",
             responseTimeMs=response_time_ms,
             success=False,
-            error=str(e),
+            error="Agent test failed. Check server logs for details.",
         )

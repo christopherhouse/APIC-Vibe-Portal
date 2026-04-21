@@ -66,6 +66,14 @@ class AgentOrchestrator:
         """
         # Get or create context for this session
         session_id = request.session_id or "default"
+        # Normalize session_id on the request so the agent uses the same session
+        if request.session_id is None:
+            request = AgentRequest(
+                message=request.message,
+                session_id=session_id,
+                accessible_api_ids=request.accessible_api_ids,
+                metadata=request.metadata,
+            )
         context = self._context_manager.get_or_create_context(session_id)
 
         # Classify intent
@@ -79,16 +87,6 @@ class AgentOrchestrator:
             recommended_agent,
         )
 
-        # Check if we need to hand off to a different agent
-        if context.current_agent != recommended_agent:
-            # Record the hand-off
-            context.record_handoff(
-                from_agent=context.current_agent,
-                to_agent=recommended_agent,
-                reason=f"Intent classification: {classification.category}",
-                context_summary=context.get_context_summary(),
-            )
-
         # Get the agent with fallback to Discovery
         agent = self._registry.get(recommended_agent)
         if agent is None:
@@ -101,6 +99,15 @@ class AgentOrchestrator:
 
         if agent is None:
             raise ValueError(f"No agent available for intent {classification.category}")
+
+        # Record hand-off only after we know the effective agent
+        if context.current_agent != recommended_agent:
+            context.record_handoff(
+                from_agent=context.current_agent,
+                to_agent=recommended_agent,
+                reason=f"Intent classification: {classification.category}",
+                context_summary=context.get_context_summary(),
+            )
 
         # Dispatch to agent
         logger.info(
@@ -150,6 +157,14 @@ class AgentOrchestrator:
         """
         # Get or create context for this session
         session_id = request.session_id or "default"
+        # Normalize session_id on the request so the agent uses the same session
+        if request.session_id is None:
+            request = AgentRequest(
+                message=request.message,
+                session_id=session_id,
+                accessible_api_ids=request.accessible_api_ids,
+                metadata=request.metadata,
+            )
         context = self._context_manager.get_or_create_context(session_id)
 
         # Classify intent
@@ -163,21 +178,7 @@ class AgentOrchestrator:
             recommended_agent,
         )
 
-        # Check if we need to hand off to a different agent
-        if context.current_agent != recommended_agent:
-            # Record the hand-off
-            context.record_handoff(
-                from_agent=context.current_agent,
-                to_agent=recommended_agent,
-                reason=f"Intent classification: {classification.category}",
-                context_summary=context.get_context_summary(),
-            )
-
-            # Optionally yield a notification about the hand-off
-            notification = f"[Connecting to {recommended_agent.replace('_', ' ').title()} specialist...]\n\n"
-            yield notification
-
-        # Get the agent with fallback to Discovery
+        # Get the agent with fallback to Discovery (resolve before recording handoff)
         agent = self._registry.get(recommended_agent)
         if agent is None:
             logger.warning(
@@ -189,6 +190,19 @@ class AgentOrchestrator:
 
         if agent is None:
             raise ValueError(f"No agent available for intent {classification.category}")
+
+        # Record hand-off and notify only if the effective agent differs
+        if context.current_agent != recommended_agent:
+            context.record_handoff(
+                from_agent=context.current_agent,
+                to_agent=recommended_agent,
+                reason=f"Intent classification: {classification.category}",
+                context_summary=context.get_context_summary(),
+            )
+
+            # Yield notification about the hand-off
+            notification = f"[Connecting to {recommended_agent.replace('_', ' ').title()} specialist...]\n\n"
+            yield notification
 
         # Dispatch to agent and stream response
         logger.info(

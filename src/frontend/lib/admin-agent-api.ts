@@ -4,9 +4,9 @@
  * All endpoints require the Portal.Admin role.
  */
 
-import { apiFetch } from './api-client';
+import { apiClient } from './api-client';
 
-const ADMIN_AGENTS_BASE = '/admin/agents';
+const ADMIN_AGENTS_BASE = '/api/admin/agents';
 
 /**
  * Agent information.
@@ -62,21 +62,21 @@ export interface AgentTestResponse {
  * List all registered agents.
  */
 export async function fetchAgents(): Promise<AgentInfo[]> {
-  return apiFetch<AgentInfo[]>(ADMIN_AGENTS_BASE);
+  return apiClient.get<AgentInfo[]>(ADMIN_AGENTS_BASE);
 }
 
 /**
  * Get detailed information for a specific agent.
  */
 export async function fetchAgentDetail(agentId: string): Promise<AgentDetail> {
-  return apiFetch<AgentDetail>(`${ADMIN_AGENTS_BASE}/${encodeURIComponent(agentId)}`);
+  return apiClient.get<AgentDetail>(`${ADMIN_AGENTS_BASE}/${encodeURIComponent(agentId)}`);
 }
 
 /**
  * Get usage statistics for a specific agent.
  */
 export async function fetchAgentStats(agentId: string): Promise<AgentStats> {
-  return apiFetch<AgentStats>(`${ADMIN_AGENTS_BASE}/${encodeURIComponent(agentId)}/stats`);
+  return apiClient.get<AgentStats>(`${ADMIN_AGENTS_BASE}/${encodeURIComponent(agentId)}/stats`);
 }
 
 /**
@@ -86,8 +86,8 @@ export async function testAgent(
   agentId: string,
   request: AgentTestRequest
 ): Promise<AgentTestResponse> {
-  return apiFetch<AgentTestResponse>(`${ADMIN_AGENTS_BASE}/${encodeURIComponent(agentId)}/test`, {
-    method: 'POST',
-    body: JSON.stringify(request),
-  });
+  return apiClient.post<AgentTestResponse>(
+    `${ADMIN_AGENTS_BASE}/${encodeURIComponent(agentId)}/test`,
+    request
+  );
 }

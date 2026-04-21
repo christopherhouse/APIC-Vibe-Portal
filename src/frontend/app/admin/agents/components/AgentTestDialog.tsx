@@ -24,10 +24,20 @@ interface AgentTestDialogProps {
   onSuccess: (message: string) => void;
 }
 
-export default function AgentTestDialog({ open, agentId, onClose, onSuccess }: AgentTestDialogProps) {
+export default function AgentTestDialog({
+  open,
+  agentId,
+  onClose,
+  onSuccess,
+}: AgentTestDialogProps) {
   const [query, setQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; response: string; responseTimeMs: number; error?: string } | null>(null);
+  const [result, setResult] = useState<{
+    success: boolean;
+    response: string;
+    responseTimeMs: number;
+    error?: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
@@ -107,9 +117,7 @@ export default function AgentTestDialog({ open, agentId, onClose, onSuccess }: A
                 </Alert>
               ) : (
                 <Alert severity="error" sx={{ mt: 1 }}>
-                  <Typography variant="body2">
-                    {result.error || 'Test failed'}
-                  </Typography>
+                  <Typography variant="body2">{result.error || 'Test failed'}</Typography>
                 </Alert>
               )}
             </Box>

@@ -70,7 +70,7 @@ class ConversationContext:
         Unique identifier for this conversation session.
     max_turns:
         Maximum number of conversation turns to keep in active context.
-        Older turns are summarized to save memory and tokens.
+        Older turns are dropped once this limit is reached.
     """
 
     def __init__(self, session_id: str, max_turns: int = 10) -> None:
