@@ -135,10 +135,10 @@ Charts:
 
 ### Status History
 
-| Date       | Status      | Author  | Notes                                                       |
-| ---------- | ----------- | ------- | ----------------------------------------------------------- |
-| —          | 🔲 Not Started | —    | Task created                                                |
-| 2026-04-21 | ✅ Complete | copilot | Full analytics dashboard implemented with unit and e2e tests |
+| Date       | Status         | Author  | Notes                                                        |
+| ---------- | -------------- | ------- | ------------------------------------------------------------ |
+| —          | 🔲 Not Started | —       | Task created                                                 |
+| 2026-04-21 | ✅ Complete    | copilot | Full analytics dashboard implemented with unit and e2e tests |
 
 ### Technical Decisions
 

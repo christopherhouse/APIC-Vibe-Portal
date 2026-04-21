@@ -80,12 +80,12 @@ export interface UserActivity {
 
 /** Fetch analytics summary KPIs. */
 export async function fetchAnalyticsSummary(range: TimeRange = '30d'): Promise<AnalyticsSummary> {
-  return apiClient.get<AnalyticsSummary>(`/api/analytics/summary?range=${range}`);
+  return apiClient.get<AnalyticsSummary>(`/api/analytics/summary?time_range=${range}`);
 }
 
 /** Fetch usage trends over time. */
 export async function fetchUsageTrends(range: TimeRange = '30d'): Promise<UsageTrends> {
-  return apiClient.get<UsageTrends>(`/api/analytics/usage-trends?range=${range}`);
+  return apiClient.get<UsageTrends>(`/api/analytics/usage-trends?time_range=${range}`);
 }
 
 /** Fetch most popular APIs. */
@@ -93,15 +93,17 @@ export async function fetchPopularApis(
   range: TimeRange = '30d',
   limit = 10
 ): Promise<PopularApi[]> {
-  return apiClient.get<PopularApi[]>(`/api/analytics/popular-apis?range=${range}&limit=${limit}`);
+  return apiClient.get<PopularApi[]>(
+    `/api/analytics/popular-apis?time_range=${range}&limit=${limit}`
+  );
 }
 
 /** Fetch search analytics trends. */
 export async function fetchSearchTrends(range: TimeRange = '30d'): Promise<SearchTrends> {
-  return apiClient.get<SearchTrends>(`/api/analytics/search-trends?range=${range}`);
+  return apiClient.get<SearchTrends>(`/api/analytics/search-trends?time_range=${range}`);
 }
 
 /** Fetch user activity data. */
 export async function fetchUserActivity(range: TimeRange = '30d'): Promise<UserActivity> {
-  return apiClient.get<UserActivity>(`/api/analytics/user-activity?range=${range}`);
+  return apiClient.get<UserActivity>(`/api/analytics/user-activity?time_range=${range}`);
 }

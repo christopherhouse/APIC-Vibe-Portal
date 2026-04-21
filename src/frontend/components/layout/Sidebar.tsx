@@ -52,12 +52,8 @@ const secondaryNavItems: NavItem[] = [
   { label: 'Help', icon: <HelpIcon />, href: '/help', prefetch: false },
 ];
 
-const adminNavItems: NavItem[] = [
-  {
-    label: 'Analytics',
-    icon: <BarChartIcon />,
-    href: '/analytics',
-  },
+/** Links visible only to Portal.Admin users. */
+const strictAdminNavItems: NavItem[] = [
   {
     label: 'Access Policies',
     icon: <SecurityIcon />,
@@ -69,6 +65,13 @@ const adminNavItems: NavItem[] = [
     href: '/admin/agents',
   },
 ];
+
+/** Analytics link — visible to Portal.Admin and Portal.Maintainer. */
+const analyticsNavItem: NavItem = {
+  label: 'Analytics',
+  icon: <BarChartIcon />,
+  href: '/analytics',
+};
 
 function NavItemButton({
   item,
@@ -109,9 +112,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { isOpen } = useSidebarContext();
   const { user } = useAuth();
-  const isAdmin = Boolean(
-    user?.roles.includes(ADMIN_ROLE) || user?.roles.includes(MAINTAINER_ROLE)
-  );
+  const isAdmin = Boolean(user?.roles.includes(ADMIN_ROLE));
+  const canViewAnalytics = isAdmin || Boolean(user?.roles.includes(MAINTAINER_ROLE));
 
   return (
     <Drawer
@@ -163,7 +165,7 @@ export default function Sidebar() {
         ))}
       </List>
 
-      {isAdmin && (
+      {(isAdmin || canViewAnalytics) && (
         <>
           <Divider />
           {isOpen && (
@@ -174,14 +176,22 @@ export default function Sidebar() {
             </Box>
           )}
           <List component="nav" aria-label="admin navigation">
-            {adminNavItems.map((item) => (
+            {canViewAnalytics && (
               <NavItemButton
-                key={item.label}
-                item={item}
-                selected={pathname.startsWith(item.href)}
+                item={analyticsNavItem}
+                selected={pathname.startsWith(analyticsNavItem.href)}
                 collapsed={!isOpen}
               />
-            ))}
+            )}
+            {isAdmin &&
+              strictAdminNavItems.map((item) => (
+                <NavItemButton
+                  key={item.label}
+                  item={item}
+                  selected={pathname.startsWith(item.href)}
+                  collapsed={!isOpen}
+                />
+              ))}
           </List>
         </>
       )}

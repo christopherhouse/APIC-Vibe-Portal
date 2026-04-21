@@ -1,6 +1,45 @@
 import { test, expect, type Page } from '@playwright/test';
 
 // ---------------------------------------------------------------------------
+// Auth types & helpers (mirrors admin-agents.spec.ts pattern)
+// ---------------------------------------------------------------------------
+
+interface AuthUser {
+  name: string;
+  email: string;
+  id: string;
+  roles: string[];
+}
+
+const ADMIN_USER: AuthUser = {
+  name: 'Alice Admin',
+  email: 'alice@contoso.com',
+  id: 'user-admin-1',
+  roles: ['Portal.Admin'],
+};
+
+const MAINTAINER_USER: AuthUser = {
+  name: 'Mia Maintainer',
+  email: 'mia@contoso.com',
+  id: 'user-maintainer-1',
+  roles: ['Portal.Maintainer'],
+};
+
+const REGULAR_USER: AuthUser = {
+  name: 'Bob Developer',
+  email: 'bob@contoso.com',
+  id: 'user-dev-1',
+  roles: ['Portal.User'],
+};
+
+/** Inject a mock AuthUser via window.__PLAYWRIGHT_USER__ before the page loads. */
+async function setMockUser(page: Page, user: AuthUser | null) {
+  await page.addInitScript((u) => {
+    (window as Window & { __PLAYWRIGHT_USER__?: typeof u }).__PLAYWRIGHT_USER__ = u ?? undefined;
+  }, user);
+}
+
+// ---------------------------------------------------------------------------
 // Mock data
 // ---------------------------------------------------------------------------
 
@@ -69,7 +108,7 @@ const mockUserActivity = {
 };
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Route helpers
 // ---------------------------------------------------------------------------
 
 async function mockAnalyticsApis(page: Page) {
@@ -114,27 +153,13 @@ async function mockAnalyticsApis(page: Page) {
   });
 }
 
-async function mockAuthAsRegularUser(page: Page) {
-  await page.route('**/auth/me*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        id: 'user-2',
-        name: 'Regular User',
-        email: 'user@example.com',
-        roles: [],
-      }),
-    });
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Overview Dashboard tests
 // ---------------------------------------------------------------------------
 
 test.describe('Analytics Dashboard', () => {
   test.beforeEach(async ({ page }) => {
+    await setMockUser(page, ADMIN_USER);
     await mockAnalyticsApis(page);
     await page.goto('/analytics');
   });
@@ -175,6 +200,7 @@ test.describe('Analytics Dashboard', () => {
 
 test.describe('Time Range Selection', () => {
   test('should change time range to 7 days', async ({ page }) => {
+    await setMockUser(page, ADMIN_USER);
     await mockAnalyticsApis(page);
     await page.goto('/analytics');
 
@@ -186,6 +212,7 @@ test.describe('Time Range Selection', () => {
   });
 
   test('should change time range to 90 days', async ({ page }) => {
+    await setMockUser(page, ADMIN_USER);
     await mockAnalyticsApis(page);
     await page.goto('/analytics');
 
@@ -194,6 +221,7 @@ test.describe('Time Range Selection', () => {
   });
 
   test('should change time range to 1 year', async ({ page }) => {
+    await setMockUser(page, ADMIN_USER);
     await mockAnalyticsApis(page);
     await page.goto('/analytics');
 
@@ -208,6 +236,7 @@ test.describe('Time Range Selection', () => {
 
 test.describe('Search Analytics', () => {
   test.beforeEach(async ({ page }) => {
+    await setMockUser(page, ADMIN_USER);
     await mockAnalyticsApis(page);
     await page.goto('/analytics/search');
   });
@@ -236,6 +265,7 @@ test.describe('Search Analytics', () => {
 
 test.describe('API Popularity', () => {
   test.beforeEach(async ({ page }) => {
+    await setMockUser(page, ADMIN_USER);
     await mockAnalyticsApis(page);
     await page.goto('/analytics/apis');
   });
@@ -262,6 +292,7 @@ test.describe('API Popularity', () => {
 
 test.describe('User Engagement', () => {
   test.beforeEach(async ({ page }) => {
+    await setMockUser(page, ADMIN_USER);
     await mockAnalyticsApis(page);
     await page.goto('/analytics/users');
   });
@@ -285,19 +316,32 @@ test.describe('User Engagement', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Access Control', () => {
-  test('should show access denied for unauthorized users', async ({ page }) => {
-    await mockAuthAsRegularUser(page);
-    // Mock analytics APIs to return 403
-    await page.route('**/api/analytics/**', async (route) => {
-      await route.fulfill({ status: 403, body: 'Forbidden' });
-    });
+  test('should show access denied for regular (non-admin) users', async ({ page }) => {
+    await setMockUser(page, REGULAR_USER);
     await page.goto('/analytics');
 
     await expect(page.getByTestId('access-denied-icon')).toBeVisible();
     await expect(page.getByText(/access denied/i)).toBeVisible();
   });
 
+  test('should show access denied for unauthenticated users', async ({ page }) => {
+    await setMockUser(page, null);
+    await page.goto('/analytics');
+
+    await expect(page.getByTestId('access-denied-icon')).toBeVisible();
+    await expect(page.getByText(/access denied/i)).toBeVisible();
+  });
+
+  test('should allow access for Portal.Maintainer users', async ({ page }) => {
+    await setMockUser(page, MAINTAINER_USER);
+    await mockAnalyticsApis(page);
+    await page.goto('/analytics');
+
+    await expect(page.getByTestId('analytics-dashboard')).toBeVisible();
+  });
+
   test('should show export button on overview page', async ({ page }) => {
+    await setMockUser(page, ADMIN_USER);
     await mockAnalyticsApis(page);
     await page.goto('/analytics');
 

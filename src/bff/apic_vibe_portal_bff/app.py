@@ -23,6 +23,7 @@ from apic_vibe_portal_bff.middleware.request_logger import RequestLoggerMiddlewa
 from apic_vibe_portal_bff.routers import api_catalog, chat, health, search
 from apic_vibe_portal_bff.routers.admin_access_policies import router as admin_access_policies_router
 from apic_vibe_portal_bff.routers.admin_agents import router as admin_agents_router
+from apic_vibe_portal_bff.routers.analytics import router as analytics_router
 from apic_vibe_portal_bff.routers.api_catalog import CatalogApiError, catalog_api_error_handler
 from apic_vibe_portal_bff.routers.api_compare import router as compare_router
 from apic_vibe_portal_bff.routers.chat import ChatApiError, chat_api_error_handler
@@ -99,6 +100,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_agents_router)
     app.include_router(compare_router)
     app.include_router(governance_router)
+    app.include_router(analytics_router)
 
     # --- Exception handlers ------------------------------------------------
     app.add_exception_handler(CatalogApiError, catalog_api_error_handler)  # type: ignore[arg-type]
