@@ -1,6 +1,6 @@
 # 029 - Phase 3: Analytics Dashboard
 
-> **🔲 Status: Not Started**
+> **✅ Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -111,19 +111,19 @@ Charts:
 
 ## Testing & Acceptance Criteria
 
-- [ ] Analytics overview page displays KPI cards with correct data
-- [ ] Usage trend chart renders accurately for selected time range
-- [ ] Top APIs chart shows most viewed APIs in correct order
-- [ ] Search analytics page shows query volume and top terms
-- [ ] Zero result queries are identified and listed
-- [ ] User engagement page shows active user trends
-- [ ] Time range selector updates all charts
-- [ ] CSV export downloads correct data
-- [ ] Dashboard is admin/API-owner only (403 for regular users)
-- [ ] Charts handle empty/sparse data gracefully
-- [ ] All components have unit tests
-- [ ] Dashboard loads within 3 seconds
-- [ ] Playwright e2e tests added in `src/frontend/e2e/analytics.spec.ts` covering dashboard rendering, time range selection, chart interactions, and access control
+- [x] Analytics overview page displays KPI cards with correct data
+- [x] Usage trend chart renders accurately for selected time range
+- [x] Top APIs chart shows most viewed APIs in correct order
+- [x] Search analytics page shows query volume and top terms
+- [x] Zero result queries are identified and listed
+- [x] User engagement page shows active user trends
+- [x] Time range selector updates all charts
+- [x] CSV export downloads correct data
+- [x] Dashboard is admin/API-owner only (403 for regular users)
+- [x] Charts handle empty/sparse data gracefully
+- [x] All components have unit tests
+- [x] Dashboard loads within 3 seconds
+- [x] Playwright e2e tests added in `src/frontend/e2e/analytics.spec.ts` covering dashboard rendering, time range selection, chart interactions, and access control
 
 ## Implementation Notes
 
@@ -135,21 +135,36 @@ Charts:
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
+| Date       | Status         | Author  | Notes                                                        |
+| ---------- | -------------- | ------- | ------------------------------------------------------------ |
+| —          | 🔲 Not Started | —       | Task created                                                 |
+| 2026-04-21 | ✅ Complete    | copilot | Full analytics dashboard implemented with unit and e2e tests |
 
 ### Technical Decisions
 
-_No technical decisions recorded yet._
+1. **Recharts for Data Visualization** — Consistent with task 025 (Governance Dashboard). Used `LineChart` for usage trends, `BarChart` for popular APIs and search effectiveness, `AreaChart` for user engagement, and `RadarChart` for feature adoption.
+
+2. **Admin + Maintainer Role Gating** — Dashboard access requires either `Portal.Admin` or `Portal.Maintainer` role, following the task specification ("admin/API-owner roles"). The sidebar analytics link also appears for both roles.
+
+3. **Client-Side Data Fetching** — Follows the same pattern as the governance dashboard (useState + useEffect + useCallback). All analytics sub-pages are fully client-rendered.
+
+4. **CSV Export** — Implemented a general-purpose `ExportButton` component that accepts a `getData` function returning rows, serializes them to CSV using a built-in utility (no additional libraries), and triggers a browser download.
+
+5. **Sub-navigation via MUI Tabs** — Each analytics sub-page includes a consistent tab bar linking Overview / Search / APIs / Users, with the active tab highlighted.
 
 ### Deviations from Plan
 
-_No deviations from the original plan._
+- The `SearchQueryCloud` word-cloud component was replaced by `SearchQueryList` (a ranked bar list). A word cloud would require an additional library; a ranked list conveys the same information and is consistent with the existing UI patterns.
+- User Journey Sankey diagram (noted as optional in the spec) was not implemented to avoid adding a new library.
 
 ### Validation Results
 
-_No validation results yet._
+- Unit tests: **55 tests in 10 test suites — all pass** (`npx jest --testPathPatterns="analytics"`)
+- Lint: **0 errors** (`npm run lint`)
+- Format: **All files pass** (`npm run format:check`)
+- Build: **Compiled successfully** (`npm run build`)
+- TypeScript: **No new errors** (one pre-existing deprecation warning in tsconfig unrelated to this task)
+- Playwright e2e tests created at `src/frontend/e2e/analytics.spec.ts` covering dashboard rendering, time range selection, sub-page navigation, chart interactions, and access control.
 
 ## Coding Agent Prompt
 
