@@ -1,25 +1,28 @@
-"""Analytics dashboard API routes.
+"""Analytics API routes.
 
-Provides read-only aggregation endpoints for the analytics dashboard UI.
-All endpoints require the ``Portal.Admin`` or ``Portal.Maintainer`` role.
+Provides:
+- POST /api/analytics/events  — ingest analytics events from the frontend
+- GET  /api/analytics/summary          — KPI summary (admin/maintainer)
+- GET  /api/analytics/usage-trends     — Daily usage trend data points
+- GET  /api/analytics/popular-apis     — Most viewed / downloaded APIs
+- GET  /api/analytics/search-trends    — Search query volume and effectiveness
+- GET  /api/analytics/user-activity    — Active users and feature adoption
 
-Endpoints
----------
-GET /api/analytics/summary          - KPI summary for the selected time range
-GET /api/analytics/usage-trends     - Daily usage trend data points
-GET /api/analytics/popular-apis     - Most viewed / downloaded APIs
-GET /api/analytics/search-trends    - Search query volume and effectiveness
-GET /api/analytics/user-activity    - Active users and feature adoption
+The ``POST /events`` endpoint is accessible by any authenticated user so the
+frontend can submit events without requiring elevated roles.  The read
+endpoints are restricted to ``Portal.Admin`` and ``Portal.Maintainer``.
 """
 
 from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request, status
+from pydantic import BaseModel, Field
 
 from apic_vibe_portal_bff.middleware.auth import AuthenticatedUser
-from apic_vibe_portal_bff.middleware.rbac import require_any_role
+from apic_vibe_portal_bff.middleware.rbac import get_current_user, require_any_role
+from apic_vibe_portal_bff.services.analytics_service import AnalyticsService
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -30,6 +33,7 @@ _ANALYTICS_ROLES = ["Portal.Admin", "Portal.Maintainer"]
 _require_analytics_role = require_any_role(_ANALYTICS_ROLES)
 
 AnalyticsUserDep = Annotated[AuthenticatedUser, Depends(_require_analytics_role)]
+AuthUserDep = Annotated[AuthenticatedUser, Depends(get_current_user)]
 
 TimeRange = Literal["7d", "30d", "90d", "1y"]
 
@@ -46,8 +50,68 @@ def _range_days(time_range: str) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Request / response models for POST /events
+# ---------------------------------------------------------------------------
+
+
+class AnalyticsEventPayload(BaseModel):
+    """Raw analytics event payload (open schema — any JSON object is accepted)."""
+
+    model_config = {"extra": "allow"}
+
+    type: str = Field(..., description="Event type discriminator.")
+
+
+class AnalyticsEventEnvelope(BaseModel):
+    """A single analytics event with client-side context metadata."""
+
+    event: AnalyticsEventPayload
+    clientTimestamp: str = Field(..., description="ISO-8601 timestamp from the client.")
+    pagePath: str = Field(default="", description="Page route where the event was triggered.")
+    sessionId: str | None = Field(default=None, description="Anonymised session identifier.")
+
+
+class AnalyticsEventBatchRequest(BaseModel):
+    """Batch of analytics events submitted from the frontend."""
+
+    events: list[AnalyticsEventEnvelope] = Field(..., min_length=1, max_length=100)
+
+
+class AnalyticsEventBatchResponse(BaseModel):
+    """Response after processing an analytics event batch."""
+
+    accepted: int
+    """Number of events successfully accepted and recorded."""
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/events",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=AnalyticsEventBatchResponse,
+)
+async def post_analytics_events(
+    request: Request,
+    body: AnalyticsEventBatchRequest,
+    user: AuthUserDep,
+) -> AnalyticsEventBatchResponse:
+    """Accept a batch of analytics events from the frontend.
+
+    Events are enriched with server-side context (timestamp, hashed user ID)
+    and recorded via the Application Insights telemetry pipeline.
+
+    - Requires any authenticated user (no elevated role needed).
+    - Accepts between 1 and 100 events per request.
+    - Returns ``202 Accepted`` with the count of accepted events.
+    """
+    service = AnalyticsService()
+    raw_events = [envelope.model_dump() for envelope in body.events]
+    accepted = service.record_events(raw_events, user=user)
+    return AnalyticsEventBatchResponse(accepted=accepted)
 
 
 @router.get("/summary")

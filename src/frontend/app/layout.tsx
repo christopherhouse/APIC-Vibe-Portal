@@ -13,6 +13,7 @@ import { ChatProvider } from '@/lib/chat-context';
 import { SidebarProvider } from '@/lib/sidebar-context';
 import ChatSidePanel from '@/app/chat/components/ChatSidePanel';
 import TelemetryProvider from '@/components/TelemetryProvider';
+import AnalyticsProvider from '@/lib/analytics/analytics-provider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -31,29 +32,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <TelemetryProvider />
             </Suspense>
             <AuthProvider>
-              <ChatProvider>
-                <SidebarProvider>
-                  <Box sx={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
-                    <Header />
-                    <Box sx={{ display: 'flex', flex: 1 }}>
-                      <Sidebar />
-                      <Box
-                        component="main"
-                        sx={{
-                          flexGrow: 1,
-                          p: 3,
-                          mt: 'var(--header-height)',
-                          minHeight: `calc(100vh - var(--header-height) - var(--footer-height))`,
-                        }}
-                      >
-                        {children}
+              <AnalyticsProvider>
+                <ChatProvider>
+                  <SidebarProvider>
+                    <Box sx={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
+                      <Header />
+                      <Box sx={{ display: 'flex', flex: 1 }}>
+                        <Sidebar />
+                        <Box
+                          component="main"
+                          sx={{
+                            flexGrow: 1,
+                            p: 3,
+                            mt: 'var(--header-height)',
+                            minHeight: `calc(100vh - var(--header-height) - var(--footer-height))`,
+                          }}
+                        >
+                          {children}
+                        </Box>
                       </Box>
+                      <Footer />
+                      <ChatSidePanel />
                     </Box>
-                    <Footer />
-                    <ChatSidePanel />
-                  </Box>
-                </SidebarProvider>
-              </ChatProvider>
+                  </SidebarProvider>
+                </ChatProvider>
+              </AnalyticsProvider>
             </AuthProvider>
           </ThemeProvider>
         </AppRouterCacheProvider>
