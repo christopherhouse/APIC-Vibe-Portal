@@ -34,6 +34,20 @@ describe('SearchBar', () => {
     expect(mockPush).toHaveBeenCalledWith('/search?q=petstore');
   });
 
+  it('navigates to search when Enter is pressed without dropdown showing', () => {
+    render(<SearchBar />);
+    const input = screen.getByRole('combobox', { name: /search/i });
+
+    // Type a value to set inputValue
+    fireEvent.change(input, { target: { value: 'test query' } });
+
+    // Press Enter without dropdown showing
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    // Verify navigation occurred
+    expect(mockPush).toHaveBeenCalledWith('/search?q=test%20query');
+  });
+
   it('shows clear button when input has value', async () => {
     const user = userEvent.setup();
     render(<SearchBar />);
