@@ -7,7 +7,7 @@ markdown files with lazy loading and caching for performance.
 from __future__ import annotations
 
 import logging
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 _PROMPTS_DIR = Path(__file__).parent
 
 
-@lru_cache(maxsize=None)
+@cache
 def load_prompt(prompt_name: str) -> str:
     """Load a prompt from a markdown file with caching.
 
