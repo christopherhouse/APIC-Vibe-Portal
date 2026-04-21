@@ -139,7 +139,7 @@ export default function AgentsPage() {
       {/* Agents grid */}
       <Grid container spacing={3}>
         {agents.map((agent) => (
-          <Grid item xs={12} md={6} lg={4} key={agent.agentId}>
+          <Grid size={{ xs: 12, md: 6, lg: 4 }} key={agent.agentId}>
             <AgentCard agent={agent} onViewDetails={handleViewDetails} onTest={handleTestAgent} />
           </Grid>
         ))}

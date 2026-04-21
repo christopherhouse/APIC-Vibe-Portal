@@ -99,7 +99,7 @@ export default function AgentDetailsDialog({ open, agentId, onClose }: AgentDeta
                 <Typography variant="subtitle1" gutterBottom>
                   Capabilities
                 </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
                   {detail.capabilities.map((cap) => (
                     <Chip key={cap} label={cap} size="small" variant="outlined" />
                   ))}
