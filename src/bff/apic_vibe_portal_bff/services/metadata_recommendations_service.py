@@ -70,7 +70,11 @@ class MetadataRecommendationsService:
             api = self._api_center.get_api(api_id)
             api = self._enrich_api(api)
         except Exception:
-            logger.warning("Failed to fetch API data for recommendations: %s", api_id)
+            logger.warning(
+                "Failed to fetch API data for recommendations: %s",
+                api_id,
+                exc_info=True,
+            )
             api = {}
 
         recommendations = self._generate_recommendations(score_data, api)
@@ -412,7 +416,7 @@ class MetadataRecommendationsService:
                     "title": "Add custom properties/tags",
                     "description": (
                         "Custom properties and tags improve API discoverability "
-                        "by enabling filtering and categorisation in the portal."
+                        "by enabling filtering and categorization in the portal."
                     ),
                     "example": (
                         'department: "payments", data-classification: "internal", team: "platform-engineering"'
