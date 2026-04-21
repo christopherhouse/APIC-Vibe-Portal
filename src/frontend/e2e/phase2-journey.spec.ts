@@ -154,6 +154,25 @@ const MOCK_AI_ANALYSIS = {
     'Payments API is optimized for transactional workloads while Users API handles identity management.',
 };
 
+const MOCK_COMPLETENESS_OVERVIEW = {
+  averageScore: 72.5,
+  averageGrade: 'B',
+  totalApis: 10,
+  distribution: { A: 3, B: 4, C: 2, D: 1 },
+  dimensionAverages: [
+    { key: 'description', name: 'Description', weight: 0.3, averageScore: 80 },
+    { key: 'versioning', name: 'Versioning', weight: 0.2, averageScore: 90 },
+  ],
+};
+
+const MOCK_LEADERBOARD = {
+  top: [
+    { apiId: 'payments-api', apiName: 'Payments API', score: 95, grade: 'A' },
+    { apiId: 'users-api', apiName: 'Users API', score: 88, grade: 'B' },
+  ],
+  bottom: [{ apiId: 'legacy-api', apiName: 'Legacy API', score: 42, grade: 'D' }],
+};
+
 // ---------------------------------------------------------------------------
 // Mock helpers
 // ---------------------------------------------------------------------------
@@ -232,6 +251,22 @@ async function setupGovernanceMocks(page: Page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(MOCK_API_COMPLIANCE),
+    });
+  });
+
+  await page.route('**/api/metadata/overview*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(MOCK_COMPLETENESS_OVERVIEW),
+    });
+  });
+
+  await page.route('**/api/metadata/leaderboard*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(MOCK_LEADERBOARD),
     });
   });
 }
@@ -508,6 +543,22 @@ test.describe('Phase 2 Polish — Loading and Error States', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(MOCK_RULE_COMPLIANCE),
+      });
+    });
+
+    await page.route('**/api/metadata/overview*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_COMPLETENESS_OVERVIEW),
+      });
+    });
+
+    await page.route('**/api/metadata/leaderboard*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_LEADERBOARD),
       });
     });
 

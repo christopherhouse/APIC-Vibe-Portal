@@ -84,6 +84,25 @@ const mockApiCompliance = {
   lastChecked: '2026-04-20T18:00:00Z',
 };
 
+const mockCompletenessOverview = {
+  averageScore: 72.5,
+  averageGrade: 'B',
+  totalApis: 10,
+  distribution: { A: 3, B: 4, C: 2, D: 1 },
+  dimensionAverages: [
+    { key: 'description', name: 'Description', weight: 0.3, averageScore: 80 },
+    { key: 'versioning', name: 'Versioning', weight: 0.2, averageScore: 90 },
+  ],
+};
+
+const mockLeaderboard = {
+  top: [
+    { apiId: 'payments-api', apiName: 'Payments API', score: 95, grade: 'A' },
+    { apiId: 'users-api', apiName: 'Users API', score: 88, grade: 'B' },
+  ],
+  bottom: [{ apiId: 'legacy-api', apiName: 'Legacy API', score: 42, grade: 'D' }],
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -126,6 +145,22 @@ async function mockGovernanceApis(page: Page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(mockApiCompliance),
+    });
+  });
+
+  await page.route('**/api/metadata/overview*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(mockCompletenessOverview),
+    });
+  });
+
+  await page.route('**/api/metadata/leaderboard*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(mockLeaderboard),
     });
   });
 }
