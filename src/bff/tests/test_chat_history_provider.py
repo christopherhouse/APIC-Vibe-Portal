@@ -1,8 +1,7 @@
 """Unit tests for custom ChatHistoryProvider."""
 
 import uuid
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from agent_framework import Message
@@ -177,7 +176,7 @@ async def test_get_messages_no_session_id(provider, mock_container):
 async def test_save_messages(provider, mock_container):
     """Test save_messages saves messages."""
     session_id = str(uuid.uuid4())
-    messages = [Message(role="user", content="Hello")]
+    messages = [Message(role="user", contents=["Hello"])]
     mock_container.read_item.side_effect = CosmosResourceNotFoundError()
 
     await provider.save_messages(session_id=session_id, messages=messages)
@@ -188,7 +187,7 @@ async def test_save_messages(provider, mock_container):
 @pytest.mark.asyncio
 async def test_save_messages_no_session_id(provider, mock_container):
     """Test save_messages with no session_id does nothing."""
-    messages = [Message(role="user", content="Hello")]
+    messages = [Message(role="user", contents=["Hello"])]
 
     await provider.save_messages(session_id=None, messages=messages)
 

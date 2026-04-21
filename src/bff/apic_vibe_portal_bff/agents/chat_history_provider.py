@@ -9,8 +9,8 @@ in the `chat-sessions` Cosmos DB container with the session ID as the partition 
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 import logging
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -82,8 +82,22 @@ class ChatHistoryProvider(HistoryProvider):
         # Load existing messages from Cosmos DB
         message_dicts = await self._load_messages(session_id)
 
-        # Convert to Message objects
-        return [Message.from_dict(msg) for msg in message_dicts]
+        # Convert to Message objects.
+        # Cosmos stores messages in OpenAI format (``content`` key) while
+        # MAF ``Message.from_dict`` expects the ``contents`` key, so we
+        # transform each dict before deserialisation.
+        results: list[Message] = []
+        for msg in message_dicts:
+            maf_dict: dict[str, Any] = {"role": msg.get("role", "user")}
+            raw_content = msg.get("content") or msg.get("contents")
+            if raw_content is not None:
+                # Normalise to a list of content items that from_dict expects
+                if isinstance(raw_content, list):
+                    maf_dict["contents"] = raw_content
+                else:
+                    maf_dict["contents"] = [str(raw_content)]
+            results.append(Message.from_dict(maf_dict))
+        return results
 
     async def save_messages(
         self,
@@ -118,8 +132,27 @@ class ChatHistoryProvider(HistoryProvider):
         if not messages:
             return
 
-        # Convert Message objects to dicts
-        message_dicts = [msg.to_dict() for msg in messages]
+        # Convert Message objects to dicts in the OpenAI-style format used
+        # by the Cosmos DB storage layer (``content`` key, not ``contents``).
+        message_dicts: list[dict[str, Any]] = []
+        for msg in messages:
+            maf = msg.to_dict()
+            # Extract plain text content from MAF contents list
+            contents = maf.get("contents", [])
+            if isinstance(contents, list) and len(contents) == 1:
+                item = contents[0]
+                if isinstance(item, dict) and item.get("type") == "text":
+                    plain = item.get("text", "")
+                else:
+                    plain = contents
+            else:
+                plain = contents if contents else ""
+            message_dicts.append(
+                {
+                    "role": maf.get("role", "user"),
+                    "content": plain,
+                }
+            )
 
         await self._save_messages(session_id, message_dicts)
 

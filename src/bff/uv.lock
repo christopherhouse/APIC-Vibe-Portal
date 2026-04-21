@@ -3,6 +3,19 @@ revision = 3
 requires-python = ">=3.14"
 
 [[package]]
+name = "agent-framework-azure-cosmos"
+version = "1.0.0b260409"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "agent-framework-core" },
+    { name = "azure-cosmos" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b8/3a/f3a87c8a8bc5bde32a225bb4e982d9cca80b3890bb461b242ae96408d4bf/agent_framework_azure_cosmos-1.0.0b260409.tar.gz", hash = "sha256:0584baacfd66b9c72fb25cfd4d14a8fd846b37290d0cec9df8b487ce91c2a8e6", size = 10577, upload-time = "2026-04-10T03:30:45.961Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/04/e2/92f195daf709ec5af39302c1c50cbe580e25df3f4b1e6229927a2d4d58ba/agent_framework_azure_cosmos-1.0.0b260409-py3-none-any.whl", hash = "sha256:10882ed4f7aefb69351c5ac33168333f060e27e54da080f7a3bb90a267932e3c", size = 11584, upload-time = "2026-04-10T03:26:32.362Z" },
+]
+
+[[package]]
 name = "agent-framework-core"
 version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -158,6 +171,7 @@ name = "apic-vibe-portal-bff"
 version = "0.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "agent-framework-azure-cosmos" },
     { name = "agent-framework-core" },
     { name = "agent-framework-openai" },
     { name = "aiohttp" },
@@ -190,6 +204,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "agent-framework-azure-cosmos", specifier = ">=1.0.0b260409" },
     { name = "agent-framework-core", specifier = ">=1.0.1" },
     { name = "agent-framework-openai", specifier = ">=1.0.1" },
     { name = "aiohttp", specifier = ">=3.13.3" },
