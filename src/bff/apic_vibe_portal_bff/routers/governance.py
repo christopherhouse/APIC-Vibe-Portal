@@ -12,12 +12,16 @@ Provides endpoints for the governance dashboard UI:
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 
+from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClientError
 from apic_vibe_portal_bff.middleware.security_trimming import make_accessible_ids_dep
 from apic_vibe_portal_bff.services.governance_dashboard_service import GovernanceDashboardService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/governance", tags=["governance"])
 
@@ -34,16 +38,28 @@ def _get_service() -> GovernanceDashboardService:
     if _service_instance is None:
         from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient
         from apic_vibe_portal_bff.config.settings import get_settings
-        from apic_vibe_portal_bff.data.cosmos_client import get_container
-        from apic_vibe_portal_bff.data.repositories.governance_repository import GovernanceRepository
 
         settings = get_settings()
         api_center_client = ApiCenterClient(
             base_url=settings.api_center_endpoint,
             workspace_name=settings.api_center_workspace_name,
         )
-        governance_container = get_container("governance-snapshots")
-        governance_repo = GovernanceRepository(governance_container)
+
+        governance_repo = None
+        if settings.cosmos_db_endpoint.strip():
+            try:
+                from apic_vibe_portal_bff.data.cosmos_client import get_container
+                from apic_vibe_portal_bff.data.repositories.governance_repository import GovernanceRepository
+
+                governance_repo = GovernanceRepository(get_container(settings.cosmos_db_governance_container))
+            except Exception:
+                logger.warning(
+                    "GovernanceDashboardService: failed to connect to Cosmos DB — governance snapshots disabled"
+                )
+        else:
+            logger.warning(
+                "GovernanceDashboardService: COSMOS_DB_ENDPOINT not configured — governance snapshots disabled"
+            )
 
         _service_instance = GovernanceDashboardService(
             api_center_client=api_center_client,
@@ -76,7 +92,11 @@ async def get_governance_summary(
     - criticalIssues: Count of APIs with critical failures
     - improvement: Score change over last 30 days
     """
-    return service.get_summary(accessible_api_ids=accessible_api_ids)
+    try:
+        return service.get_summary(accessible_api_ids=accessible_api_ids)
+    except ApiCenterClientError as exc:
+        logger.error("get_governance_summary failed", extra={"error": str(exc)})
+        raise HTTPException(status_code=502, detail="Failed to retrieve governance data from API Center") from exc
 
 
 @router.get("/scores")
@@ -94,7 +114,11 @@ async def get_governance_scores(
     - criticalFailures: Count of critical rule failures
     - lastChecked: ISO-8601 timestamp
     """
-    return service.get_scores(accessible_api_ids=accessible_api_ids)
+    try:
+        return service.get_scores(accessible_api_ids=accessible_api_ids)
+    except ApiCenterClientError as exc:
+        logger.error("get_governance_scores failed", extra={"error": str(exc)})
+        raise HTTPException(status_code=502, detail="Failed to retrieve governance scores from API Center") from exc
 
 
 @router.get("/rules")
@@ -137,6 +161,9 @@ async def get_api_compliance(
         raise HTTPException(status_code=403, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+    except ApiCenterClientError as exc:
+        logger.error("get_api_compliance failed", extra={"api_id": api_id, "error": str(exc)})
+        raise HTTPException(status_code=502, detail="Failed to retrieve compliance data from API Center") from exc
 
 
 @router.get("/trends")
@@ -157,7 +184,11 @@ async def get_governance_trends(
     - dataPoints: List of {date, averageScore} dicts
     - summary: {startScore, endScore, change} dict
     """
-    return service.get_trends(accessible_api_ids=accessible_api_ids, days=days)
+    try:
+        return service.get_trends(accessible_api_ids=accessible_api_ids, days=days)
+    except ApiCenterClientError as exc:
+        logger.error("get_governance_trends failed", extra={"error": str(exc)})
+        raise HTTPException(status_code=502, detail="Failed to retrieve governance trends from API Center") from exc
 
 
 @router.get("/distribution")
@@ -173,7 +204,11 @@ async def get_score_distribution(
     - needsImprovement: Count of APIs with 50 <= score < 75
     - poor: Count of APIs with score < 50
     """
-    return service.get_score_distribution(accessible_api_ids=accessible_api_ids)
+    try:
+        return service.get_score_distribution(accessible_api_ids=accessible_api_ids)
+    except ApiCenterClientError as exc:
+        logger.error("get_score_distribution failed", extra={"error": str(exc)})
+        raise HTTPException(status_code=502, detail="Failed to retrieve score distribution from API Center") from exc
 
 
 @router.get("/rule-compliance")
@@ -191,4 +226,8 @@ async def get_rule_compliance(
     - failCount: Number of APIs failing this rule
     - complianceRate: Percentage of APIs passing (0-100)
     """
-    return service.get_rule_compliance(accessible_api_ids=accessible_api_ids)
+    try:
+        return service.get_rule_compliance(accessible_api_ids=accessible_api_ids)
+    except ApiCenterClientError as exc:
+        logger.error("get_rule_compliance failed", extra={"error": str(exc)})
+        raise HTTPException(status_code=502, detail="Failed to retrieve rule compliance data from API Center") from exc

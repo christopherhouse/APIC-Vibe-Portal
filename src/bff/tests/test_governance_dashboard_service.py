@@ -30,10 +30,16 @@ def _make_mock_api(
     }
 
 
-def _make_service(apis: list[dict] | None = None) -> tuple[GovernanceDashboardService, MagicMock, MagicMock]:
-    """Return a service wired to mock clients."""
+def _make_service(
+    apis: list[dict] | None = None, *, governance_repo: object | None = "sentinel"
+) -> tuple[GovernanceDashboardService, MagicMock, MagicMock]:
+    """Return a service wired to mock clients.
+
+    Pass ``governance_repo=None`` to simulate Cosmos DB being unavailable.
+    When omitted the default is a :class:`MagicMock` repository.
+    """
     mock_api_center = MagicMock()
-    mock_governance_repo = MagicMock()
+    mock_governance_repo = MagicMock() if governance_repo == "sentinel" else governance_repo
 
     # Mock ApiCenterClient methods using the real SDK contract.
     if apis is None:
@@ -49,6 +55,28 @@ def _make_service(apis: list[dict] | None = None) -> tuple[GovernanceDashboardSe
         governance_repository=mock_governance_repo,
     )
     return service, mock_api_center, mock_governance_repo
+
+
+# ---------------------------------------------------------------------------
+# Service initialisation — optional governance_repository
+# ---------------------------------------------------------------------------
+
+
+class TestServiceInitialisation:
+    def test_accepts_none_governance_repository(self) -> None:
+        """Service must initialise without a Cosmos DB repository (Cosmos DB not configured)."""
+        service, _, _ = _make_service(governance_repo=None)
+
+        # Service is usable — summary returns zero stats when there are no APIs
+        result = service.get_summary()
+        assert result["totalCount"] == 0
+
+    def test_accepts_mock_governance_repository(self) -> None:
+        """Service must initialise with a mocked repository (normal production path)."""
+        service, _, _ = _make_service()
+
+        result = service.get_summary()
+        assert "totalCount" in result
 
 
 # ---------------------------------------------------------------------------
