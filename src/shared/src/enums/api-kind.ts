@@ -8,4 +8,5 @@ export enum ApiKind {
   SOAP = 'soap',
   WebSocket = 'websocket',
   Webhook = 'webhook',
+  MCP = 'mcp',
 }

@@ -124,6 +124,51 @@ export function generateMockApis(
 }
 
 /**
+ * Generate a single mock MCP API definition for testing the "Install in VS Code" feature.
+ */
+export function generateMockMcpApi(
+  overrides: Partial<MockApiDefinition> = {}
+): MockApiDefinition {
+  return {
+    id: 'mcp-api-1',
+    name: 'mcp-api-1',
+    title: 'Test MCP Server',
+    description: 'A mock MCP server for testing the VS Code install flow.',
+    kind: 'mcp',
+    lifecycleStage: 'production',
+    termsOfService: 'https://example.com/tos',
+    license: 'MIT',
+    contacts: [{ name: 'MCP Team', email: 'mcp@example.com' }],
+    externalDocs: [],
+    customProperties: {},
+    versions: [
+      {
+        id: 'v1',
+        name: 'v1',
+        title: 'Version 1.0',
+        lifecycleStage: 'production',
+        createdAt: new Date(2026, 2, 1).toISOString(),
+        updatedAt: new Date(2026, 2, 1).toISOString(),
+      },
+    ],
+    deployments: [
+      {
+        id: 'dep-mcp-prod',
+        title: 'Production Deployment',
+        description: 'Production MCP server deployment',
+        environment: { id: 'env-prod', name: 'production', title: 'Production', kind: 'production' },
+        server: { runtimeUri: ['https://mcp.example.com/sse'] },
+        createdAt: new Date(2026, 2, 1).toISOString(),
+        updatedAt: new Date(2026, 2, 1).toISOString(),
+      },
+    ],
+    createdAt: new Date(2026, 2, 1).toISOString(),
+    updatedAt: new Date(2026, 2, 1).toISOString(),
+    ...overrides,
+  };
+}
+
+/**
  * Generate a mock OpenAPI spec for testing.
  */
 export function generateMockSpec(apiName: string, version: string): string {

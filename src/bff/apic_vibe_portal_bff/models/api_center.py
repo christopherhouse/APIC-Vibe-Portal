@@ -25,6 +25,7 @@ class ApiKind(StrEnum):
     SOAP = "soap"
     WEBSOCKET = "websocket"
     WEBHOOK = "webhook"
+    MCP = "mcp"
 
 
 class ApiLifecycle(StrEnum):

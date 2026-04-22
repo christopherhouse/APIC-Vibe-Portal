@@ -10,6 +10,7 @@ import Stack from '@mui/material/Stack';
 
 import { useApiDetail } from '@/hooks/use-api-detail';
 import { useAuth } from '@/lib/auth/use-auth';
+import { ApiKind } from '@apic-vibe-portal/shared';
 import ApiHeader from './components/ApiHeader';
 import ApiTabs, { type ApiTabValue } from './components/ApiTabs';
 import ApiMetadata from './components/ApiMetadata';
@@ -18,6 +19,7 @@ import ApiSpecViewer from './components/ApiSpecViewer';
 import ApiDeployments from './components/ApiDeployments';
 import MetadataQualityTab from './components/MetadataQualityTab';
 import SpecDownloadButton from './components/SpecDownloadButton';
+import InstallInVsCodeButton from './components/InstallInVsCodeButton';
 import CompareAddButton from '@/app/compare/components/CompareAddButton';
 
 export default function ApiDetailPage() {
@@ -58,15 +60,21 @@ export default function ApiDetailPage() {
     );
   }
 
+  const isMcp = api?.kind === ApiKind.MCP;
+  const mcpServerUrl = isMcp ? (deployments[0]?.server.runtimeUri[0] ?? null) : null;
+
   return (
     <Container maxWidth="lg" sx={{ py: 2 }}>
       {/* Header with breadcrumb, title, badges */}
       <Box sx={{ mb: 3 }}>
         <ApiHeader api={api} isLoading={isLoading} />
         {api && (
-          <Box sx={{ mt: 1 }}>
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
             <CompareAddButton apiId={api.name} variant="button" />
-          </Box>
+            {isMcp && (
+              <InstallInVsCodeButton serverUrl={mcpServerUrl} serverName={api.name} />
+            )}
+          </Stack>
         )}
       </Box>
 
@@ -113,3 +121,4 @@ export default function ApiDetailPage() {
     </Container>
   );
 }
+

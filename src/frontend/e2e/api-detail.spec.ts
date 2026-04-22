@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import type { MockApiDefinition } from './mock-server';
-import { generateMockApis, generateMockSpec } from './mock-server';
+import { generateMockApis, generateMockMcpApi, generateMockSpec } from './mock-server';
 
 /**
  * Mock all BFF API endpoints for the detail page via Playwright route interception.
@@ -298,3 +298,49 @@ test.describe('API Detail Page', () => {
     await expect(page.getByRole('heading', { name: 'Test API 1' })).toBeVisible();
   });
 });
+
+test.describe('MCP API — Install in VS Code button', () => {
+  test('shows Install in VS Code button for an MCP API with a server URL', async ({ page }) => {
+    const mcpApi = generateMockMcpApi();
+    await mockDetailApis(page, [mcpApi]);
+    await page.goto('/catalog/mcp-api-1');
+
+    await expect(page.getByRole('heading', { name: 'Test MCP Server' })).toBeVisible();
+    const installBtn = page.getByTestId('install-vscode-button');
+    await expect(installBtn).toBeVisible();
+    await expect(installBtn).toBeEnabled();
+    await expect(installBtn).toHaveText(/Install in VS Code/);
+  });
+
+  test('Install in VS Code button shows the VS Code logo', async ({ page }) => {
+    const mcpApi = generateMockMcpApi();
+    await mockDetailApis(page, [mcpApi]);
+    await page.goto('/catalog/mcp-api-1');
+
+    const logo = page.getByRole('img', { name: 'Visual Studio Code' });
+    await expect(logo).toBeVisible();
+    await expect(logo).toHaveAttribute('src', '/vscode-logo.svg');
+  });
+
+  test('Install in VS Code button is disabled when the MCP API has no deployments', async ({
+    page,
+  }) => {
+    const mcpApi = generateMockMcpApi({ deployments: [] });
+    await mockDetailApis(page, [mcpApi]);
+    await page.goto('/catalog/mcp-api-1');
+
+    const installBtn = page.getByTestId('install-vscode-button');
+    await expect(installBtn).toBeVisible();
+    await expect(installBtn).toBeDisabled();
+  });
+
+  test('Install in VS Code button is NOT shown for a non-MCP API', async ({ page }) => {
+    const apis = generateMockApis(1); // kind: 'rest'
+    await mockDetailApis(page, apis);
+    await page.goto('/catalog/api-1');
+
+    await expect(page.getByRole('heading', { name: 'Test API 1' })).toBeVisible();
+    await expect(page.getByTestId('install-vscode-button')).not.toBeVisible();
+  });
+});
+
