@@ -52,7 +52,7 @@ def _get_service() -> GovernanceDashboardService:
                 from apic_vibe_portal_bff.data.repositories.governance_repository import GovernanceRepository
 
                 governance_repo = GovernanceRepository(get_container(settings.cosmos_db_governance_container))
-            except Exception:
+            except Exception:  # noqa: BLE001 — graceful degradation: snapshots are optional
                 logger.warning(
                     "GovernanceDashboardService: failed to connect to Cosmos DB — governance snapshots disabled"
                 )

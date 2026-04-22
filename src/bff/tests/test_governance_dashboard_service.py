@@ -30,16 +30,19 @@ def _make_mock_api(
     }
 
 
+_UNSET = object()  # Sentinel for "use default" in _make_service
+
+
 def _make_service(
-    apis: list[dict] | None = None, *, governance_repo: object | None = "sentinel"
-) -> tuple[GovernanceDashboardService, MagicMock, MagicMock]:
+    apis: list[dict] | None = None, *, governance_repo: object = _UNSET
+) -> tuple[GovernanceDashboardService, MagicMock, object]:
     """Return a service wired to mock clients.
 
     Pass ``governance_repo=None`` to simulate Cosmos DB being unavailable.
     When omitted the default is a :class:`MagicMock` repository.
     """
     mock_api_center = MagicMock()
-    mock_governance_repo = MagicMock() if governance_repo == "sentinel" else governance_repo
+    resolved_repo: object = MagicMock() if governance_repo is _UNSET else governance_repo
 
     # Mock ApiCenterClient methods using the real SDK contract.
     if apis is None:
@@ -52,9 +55,9 @@ def _make_service(
 
     service = GovernanceDashboardService(
         api_center_client=mock_api_center,
-        governance_repository=mock_governance_repo,
+        governance_repository=resolved_repo,  # type: ignore[arg-type]
     )
-    return service, mock_api_center, mock_governance_repo
+    return service, mock_api_center, resolved_repo
 
 
 # ---------------------------------------------------------------------------
