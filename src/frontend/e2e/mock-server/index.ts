@@ -126,9 +126,7 @@ export function generateMockApis(
 /**
  * Generate a single mock MCP API definition for testing the "Install in VS Code" feature.
  */
-export function generateMockMcpApi(
-  overrides: Partial<MockApiDefinition> = {}
-): MockApiDefinition {
+export function generateMockMcpApi(overrides: Partial<MockApiDefinition> = {}): MockApiDefinition {
   return {
     id: 'mcp-api-1',
     name: 'mcp-api-1',
@@ -156,7 +154,12 @@ export function generateMockMcpApi(
         id: 'dep-mcp-prod',
         title: 'Production Deployment',
         description: 'Production MCP server deployment',
-        environment: { id: 'env-prod', name: 'production', title: 'Production', kind: 'production' },
+        environment: {
+          id: 'env-prod',
+          name: 'production',
+          title: 'Production',
+          kind: 'production',
+        },
         server: { runtimeUri: ['https://mcp.example.com/sse'] },
         createdAt: new Date(2026, 2, 1).toISOString(),
         updatedAt: new Date(2026, 2, 1).toISOString(),

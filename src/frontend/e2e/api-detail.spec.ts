@@ -343,4 +343,3 @@ test.describe('MCP API — Install in VS Code button', () => {
     await expect(page.getByTestId('install-vscode-button')).not.toBeVisible();
   });
 });
-

@@ -156,6 +156,41 @@ async function setupApiOwnerMocks(page: Page) {
     });
   });
 
+  // Governance rule compliance
+  await page.route('**/api/governance/rule-compliance*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    });
+  });
+
+  // Metadata completeness overview
+  await page.route('**/api/metadata/overview*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          averageScore: 72,
+          averageGrade: 'C',
+          totalApis: 6,
+          distribution: { A: 1, B: 2, C: 2, D: 1 },
+          dimensionAverages: [],
+        },
+      }),
+    });
+  });
+
+  // Metadata completeness leaderboard
+  await page.route('**/api/metadata/leaderboard*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { top: [], bottom: [] } }),
+    });
+  });
+
   // Compliance detail for a specific API
   await page.route(/\/api\/governance\/apis\/[^/]+\/compliance/, async (route) => {
     await route.fulfill({
