@@ -35,6 +35,7 @@ const kindLabelMap: Record<string, string> = {
   [ApiKind.SOAP]: 'SOAP',
   [ApiKind.WebSocket]: 'WebSocket',
   [ApiKind.Webhook]: 'Webhook',
+  [ApiKind.MCP]: 'MCP',
 };
 
 export interface ApiCardProps {
