@@ -81,6 +81,7 @@ The orchestrator template should deploy the following modules in dependency orde
 - API Center: managed identity has `Azure API Center Data Reader`
 - Foundry Agent Service: managed identity has appropriate roles for agent management and invocation; configure RBAC prerequisites for task 022
 - Cosmos DB: managed identity has `Cosmos DB Built-in Data Contributor` role; serverless capacity mode (no provisioned throughput)
+- Governance Snapshot Container Job: dedicated managed identity (`-id-governance-`) with `AcrPull` on ACR and `Cosmos DB Built-in Data Contributor` on Cosmos DB
 - All resources use private endpoints where supported (parameterized, optional for dev)
 
 ### 5. Outputs
@@ -121,6 +122,7 @@ The main template should output:
 | ---------- | -------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | —          | 🔲 Not Started | —                   | Task created                                                                                                        |
 | 2026-04-14 | ✅ Complete    | Claude (Sonnet 4.5) | All Bicep templates created and validated successfully. Main orchestrator + 10 modules + 3 environment param files. |
+| 2026-04-22 | ✅ Complete    | GitHub Copilot      | Added `governanceIdentity` managed identity; granted AcrPull (ACR) and Cosmos DB Built-in Data Contributor (Cosmos DB) for governance snapshot container job. |
 
 ### Technical Decisions
 
@@ -139,6 +141,8 @@ The main template should output:
 7. **Private Endpoints**: Implemented as optional (parameterized) for Key Vault, ACR, AI Search, OpenAI, and Cosmos DB. Disabled by default in dev/staging, enabled in prod.
 
 8. **Parameterization Strategy**: Environment-specific `.bicepparam` files under `/infra/env/` control SKUs, regions, private endpoints, and container images. Allows cheaper SKUs for dev, premium for prod.
+
+9. **Governance Snapshot Job Identity**: Added a dedicated `governanceIdentity` user-assigned managed identity (`-id-governance-`) for the governance snapshot container job. Granted `AcrPull` on ACR (to pull its container image) and `Cosmos DB Built-in Data Contributor` on Cosmos DB (to read/write governance snapshots and perform retention pruning). This follows the same per-workload identity pattern as the indexer job.
 
 ### Deviations from Plan
 
