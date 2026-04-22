@@ -5,8 +5,9 @@ server-side context (timestamp, hashed user ID), sanitises potential PII, and
 emits them as structured log entries that are forwarded to Application Insights
 via the existing OpenTelemetry pipeline.
 
-A future iteration can additionally persist events to Cosmos DB for queryable
-analytics dashboards (task 029+).
+Events are also persisted to the ``analytics-events`` Cosmos DB container via
+:class:`~apic_vibe_portal_bff.data.repositories.analytics_repository.AnalyticsRepository`
+when one is injected at construction time.
 """
 
 from __future__ import annotations
@@ -14,10 +15,15 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
+import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from apic_vibe_portal_bff.data.models.analytics import AnalyticsEventDocument
 from apic_vibe_portal_bff.middleware.auth import AuthenticatedUser
+
+if TYPE_CHECKING:
+    from apic_vibe_portal_bff.data.repositories.analytics_repository import AnalyticsRepository
 
 logger = logging.getLogger(__name__)
 
@@ -93,10 +99,20 @@ class AnalyticsService:
     """Service for collecting and recording analytics events.
 
     Analytics events arrive from the frontend as batches.  Each event is
-    enriched with server-side context and emitted as a structured log entry.
-    The log entries are captured by the OTel / Application Insights pipeline
-    configured in :mod:`apic_vibe_portal_bff.telemetry.otel_setup`.
+    enriched with server-side context, emitted as a structured log entry
+    captured by the OTel / Application Insights pipeline, and persisted to
+    the ``analytics-events`` Cosmos DB container when a repository is provided.
+
+    Parameters
+    ----------
+    repository:
+        Optional :class:`~apic_vibe_portal_bff.data.repositories.analytics_repository.AnalyticsRepository`
+        used to persist events to Cosmos DB.  When ``None`` events are only
+        written to the structured log.
     """
+
+    def __init__(self, repository: AnalyticsRepository | None = None) -> None:
+        self._repository = repository
 
     def record_events(
         self,
@@ -155,6 +171,26 @@ class AnalyticsService:
                     extra["session_id"] = session_id
 
                 logger.info("analytics.event", extra=extra)
+
+                # Persist to Cosmos DB when a repository is wired in.
+                if self._repository is not None:
+                    api_id = str(event_payload.get("apiId", ""))
+                    # Build metadata: sanitized payload minus fields promoted to
+                    # top-level document fields (type, apiId), plus context fields.
+                    cosmos_metadata: dict[str, Any] = {k: v for k, v in sanitized.items() if k != "apiId"}
+                    if page_path:
+                        cosmos_metadata["pagePath"] = page_path
+                    if session_id is not None:
+                        cosmos_metadata["sessionId"] = session_id
+                    doc = AnalyticsEventDocument.new(
+                        event_id=str(uuid.uuid4()),
+                        event_type=event_type,
+                        user_id=user_id_hash or "",
+                        api_id=api_id,
+                        metadata=cosmos_metadata,
+                    )
+                    self._repository.create(doc.to_cosmos_dict())
+
                 recorded += 1
 
             except Exception:  # noqa: BLE001
