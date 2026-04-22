@@ -18,7 +18,6 @@ from fastapi import FastAPI
 
 from apic_vibe_portal_bff.config.settings import get_settings
 from apic_vibe_portal_bff.middleware.auth import AuthMiddleware
-from apic_vibe_portal_bff.middleware.compression import GZipMiddleware
 from apic_vibe_portal_bff.middleware.error_handler import ErrorHandlerMiddleware
 from apic_vibe_portal_bff.middleware.request_logger import RequestLoggerMiddleware
 from apic_vibe_portal_bff.routers import api_catalog, chat, health, search
@@ -88,8 +87,11 @@ def create_app() -> FastAPI:
 
     # --- Middleware (outermost → innermost) --------------------------------
     # Order matters: the first middleware added is outermost (processes first).
+    # NOTE: GZip compression is intentionally omitted — Azure Container Apps
+    # ingress handles response compression.  Adding GZipMiddleware here causes
+    # double-compression (BFF gzips, then ACA ingress gzips again), resulting
+    # in ERR_CONTENT_DECODING_FAILED in the browser.
     app.add_middleware(ErrorHandlerMiddleware, debug=(settings.environment == "development"))
-    app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(OTelEnrichmentMiddleware)
     app.add_middleware(RequestLoggerMiddleware)
     app.add_middleware(AuthMiddleware)
