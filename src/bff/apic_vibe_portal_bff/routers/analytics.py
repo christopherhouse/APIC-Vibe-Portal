@@ -49,6 +49,31 @@ def _range_days(time_range: str) -> int:
     return _RANGE_DAYS.get(time_range, 30)
 
 
+# Service singleton — created lazily on first request.
+_service_instance: AnalyticsService | None = None
+
+
+def _get_service() -> AnalyticsService:
+    """Lazy-initialize and return the analytics service singleton.
+
+    The :class:`~apic_vibe_portal_bff.data.repositories.analytics_repository.AnalyticsRepository`
+    is wired in here so that events are persisted to Cosmos DB in addition to
+    being emitted as structured log entries.
+    """
+    global _service_instance  # noqa: PLW0603
+    if _service_instance is None:
+        from apic_vibe_portal_bff.data.cosmos_client import get_container
+        from apic_vibe_portal_bff.data.repositories.analytics_repository import AnalyticsRepository
+
+        analytics_container = get_container("analytics-events")
+        analytics_repo = AnalyticsRepository(analytics_container)
+        _service_instance = AnalyticsService(repository=analytics_repo)
+    return _service_instance
+
+
+AnalyticsServiceDep = Annotated[AnalyticsService, Depends(_get_service)]
+
+
 # ---------------------------------------------------------------------------
 # Request / response models for POST /events
 # ---------------------------------------------------------------------------
@@ -119,17 +144,18 @@ class AnalyticsEventBatchResponse(BaseModel):
 async def post_analytics_events(
     body: AnalyticsEventBatchRequest,
     user: AuthUserDep,
+    service: AnalyticsServiceDep,
 ) -> AnalyticsEventBatchResponse:
     """Accept a batch of analytics events from the frontend.
 
-    Events are enriched with server-side context (timestamp, hashed user ID)
-    and recorded via the Application Insights telemetry pipeline.
+    Events are enriched with server-side context (timestamp, hashed user ID),
+    recorded via the Application Insights telemetry pipeline, and persisted to
+    the ``analytics-events`` Cosmos DB container.
 
     - Requires any authenticated user (no elevated role needed).
     - Accepts between 1 and 100 events per request.
     - Returns ``202 Accepted`` with the count of accepted events.
     """
-    service = AnalyticsService()
     raw_events = [envelope.model_dump() for envelope in body.events]
     accepted = service.record_events(raw_events, user=user)
     return AnalyticsEventBatchResponse(accepted=accepted)

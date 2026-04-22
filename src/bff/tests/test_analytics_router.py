@@ -9,10 +9,16 @@ from fastapi.testclient import TestClient
 from apic_vibe_portal_bff.middleware.auth import AuthenticatedUser
 from apic_vibe_portal_bff.middleware.rbac import get_current_user
 from apic_vibe_portal_bff.routers import analytics
+from apic_vibe_portal_bff.services.analytics_service import AnalyticsService
 
 
 def _make_user(roles: list[str]) -> AuthenticatedUser:
     return AuthenticatedUser(oid="u1", name="Test", email="test@example.com", roles=roles)
+
+
+def _no_repo_service() -> AnalyticsService:
+    """Return an AnalyticsService without a Cosmos repository for unit tests."""
+    return AnalyticsService()
 
 
 @pytest.fixture
@@ -20,6 +26,8 @@ def app() -> FastAPI:
     """Create a test FastAPI app with the analytics router."""
     test_app = FastAPI()
     test_app.include_router(analytics.router)
+    # Override the service factory so tests never attempt a Cosmos connection.
+    test_app.dependency_overrides[analytics._get_service] = _no_repo_service
     return test_app
 
 

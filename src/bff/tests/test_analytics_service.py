@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from apic_vibe_portal_bff.middleware.auth import AuthenticatedUser
 from apic_vibe_portal_bff.services.analytics_service import (
@@ -175,3 +175,85 @@ class TestAnalyticsServiceRecordEvents:
         envelope_no_event = {"clientTimestamp": "2026-04-21T12:00:00Z", "pagePath": "/"}
         result = service.record_events([envelope_no_event])
         assert result == 1
+
+
+# ---------------------------------------------------------------------------
+# AnalyticsService Cosmos DB persistence
+# ---------------------------------------------------------------------------
+
+
+def _make_mock_repo() -> MagicMock:
+    """Return a mock AnalyticsRepository."""
+    return MagicMock()
+
+
+class TestAnalyticsServiceCosmosPersistence:
+    def test_does_not_call_repository_when_none(self) -> None:
+        service = AnalyticsService()  # no repository
+        result = service.record_events([_make_envelope("page_view")])
+        assert result == 1  # should not raise
+
+    def test_persists_event_to_repository(self) -> None:
+        repo = _make_mock_repo()
+        service = AnalyticsService(repository=repo)
+        service.record_events([_make_envelope("page_view")])
+        assert repo.create.call_count == 1
+
+    def test_persists_all_events_in_batch(self) -> None:
+        repo = _make_mock_repo()
+        service = AnalyticsService(repository=repo)
+        service.record_events([_make_envelope("page_view"), _make_envelope("api_view")])
+        assert repo.create.call_count == 2
+
+    def test_persisted_document_has_correct_event_type(self) -> None:
+        repo = _make_mock_repo()
+        service = AnalyticsService(repository=repo)
+        service.record_events([_make_envelope("api_view")])
+        doc = repo.create.call_args[0][0]
+        assert doc["eventType"] == "api_view"
+
+    def test_persisted_document_has_api_id_field(self) -> None:
+        repo = _make_mock_repo()
+        service = AnalyticsService(repository=repo)
+        service.record_events([_make_envelope("api_view", apiId="payments-api")])
+        doc = repo.create.call_args[0][0]
+        assert doc["apiId"] == "payments-api"
+
+    def test_persisted_document_has_hashed_user_id(self) -> None:
+        repo = _make_mock_repo()
+        service = AnalyticsService(repository=repo)
+        user = _make_user("oid-xyz")
+        service.record_events([_make_envelope("page_view")], user=user)
+        doc = repo.create.call_args[0][0]
+        assert doc["userId"] != ""
+        assert "oid-xyz" not in doc["userId"]  # raw OID must never be stored
+
+    def test_persisted_document_has_empty_user_id_when_no_user(self) -> None:
+        repo = _make_mock_repo()
+        service = AnalyticsService(repository=repo)
+        service.record_events([_make_envelope("page_view")], user=None)
+        doc = repo.create.call_args[0][0]
+        assert doc["userId"] == ""
+
+    def test_persisted_document_has_unique_ids(self) -> None:
+        repo = _make_mock_repo()
+        service = AnalyticsService(repository=repo)
+        service.record_events([_make_envelope("page_view"), _make_envelope("page_view")])
+        ids = [call[0][0]["id"] for call in repo.create.call_args_list]
+        assert ids[0] != ids[1]
+
+    def test_persisted_document_has_timestamp(self) -> None:
+        repo = _make_mock_repo()
+        service = AnalyticsService(repository=repo)
+        service.record_events([_make_envelope("page_view")])
+        doc = repo.create.call_args[0][0]
+        assert "timestamp" in doc
+        assert doc["timestamp"].endswith("Z")
+
+    def test_repository_failure_does_not_prevent_logging(self) -> None:
+        repo = _make_mock_repo()
+        repo.create.side_effect = RuntimeError("Cosmos unavailable")
+        service = AnalyticsService(repository=repo)
+        # The exception should be caught and the event counted as failed.
+        result = service.record_events([_make_envelope("page_view")])
+        assert result == 0  # event was not recorded due to repo error
