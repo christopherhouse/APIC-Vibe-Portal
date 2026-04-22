@@ -8,6 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClientError
 from apic_vibe_portal_bff.routers import governance
 
 
@@ -57,6 +58,13 @@ class TestGetGovernanceSummary:
         assert data["compliantCount"] == 8
         assert data["totalCount"] == 10
 
+    def test_returns_502_when_api_center_unavailable(self, client: TestClient, mock_service: MagicMock) -> None:
+        mock_service.get_summary.side_effect = ApiCenterClientError("upstream error")
+
+        response = client.get("/api/governance/summary")
+
+        assert response.status_code == 502
+
 
 # ---------------------------------------------------------------------------
 # GET /api/governance/scores
@@ -82,6 +90,13 @@ class TestGetGovernanceScores:
         data = response.json()
         assert len(data) == 1
         assert data[0]["apiId"] == "api-1"
+
+    def test_returns_502_when_api_center_unavailable(self, client: TestClient, mock_service: MagicMock) -> None:
+        mock_service.get_scores.side_effect = ApiCenterClientError("upstream error")
+
+        response = client.get("/api/governance/scores")
+
+        assert response.status_code == 502
 
 
 # ---------------------------------------------------------------------------
@@ -146,6 +161,13 @@ class TestGetApiCompliance:
 
         assert response.status_code == 404
 
+    def test_returns_502_when_api_center_unavailable(self, client: TestClient, mock_service: MagicMock) -> None:
+        mock_service.get_api_compliance.side_effect = ApiCenterClientError("upstream error")
+
+        response = client.get("/api/governance/apis/api-1/compliance")
+
+        assert response.status_code == 502
+
 
 # ---------------------------------------------------------------------------
 # GET /api/governance/trends
@@ -176,6 +198,13 @@ class TestGetGovernanceTrends:
         assert response.status_code == 200
         mock_service.get_trends.assert_called_once()
 
+    def test_returns_502_when_api_center_unavailable(self, client: TestClient, mock_service: MagicMock) -> None:
+        mock_service.get_trends.side_effect = ApiCenterClientError("upstream error")
+
+        response = client.get("/api/governance/trends")
+
+        assert response.status_code == 502
+
 
 # ---------------------------------------------------------------------------
 # GET /api/governance/distribution
@@ -197,6 +226,13 @@ class TestGetScoreDistribution:
         data = response.json()
         assert data["excellent"] == 2
         assert data["good"] == 3
+
+    def test_returns_502_when_api_center_unavailable(self, client: TestClient, mock_service: MagicMock) -> None:
+        mock_service.get_score_distribution.side_effect = ApiCenterClientError("upstream error")
+
+        response = client.get("/api/governance/distribution")
+
+        assert response.status_code == 502
 
 
 # ---------------------------------------------------------------------------
@@ -224,3 +260,10 @@ class TestGetRuleCompliance:
         assert len(data) == 1
         assert data[0]["ruleId"] == "metadata.description"
         assert data[0]["complianceRate"] == 80.0
+
+    def test_returns_502_when_api_center_unavailable(self, client: TestClient, mock_service: MagicMock) -> None:
+        mock_service.get_rule_compliance.side_effect = ApiCenterClientError("upstream error")
+
+        response = client.get("/api/governance/rule-compliance")
+
+        assert response.status_code == 502

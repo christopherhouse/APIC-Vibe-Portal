@@ -39,7 +39,7 @@ class GovernanceDashboardService:
     def __init__(
         self,
         api_center_client: ApiCenterClient,
-        governance_repository: GovernanceRepository,
+        governance_repository: GovernanceRepository | None = None,
         governance_agent: GovernanceAgent | None = None,
     ) -> None:
         self._api_center = api_center_client
