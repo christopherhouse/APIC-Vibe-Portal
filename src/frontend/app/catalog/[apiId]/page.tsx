@@ -71,9 +71,7 @@ export default function ApiDetailPage() {
         {api && (
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
             <CompareAddButton apiId={api.name} variant="button" />
-            {isMcp && (
-              <InstallInVsCodeButton serverUrl={mcpServerUrl} serverName={api.name} />
-            )}
+            {isMcp && <InstallInVsCodeButton serverUrl={mcpServerUrl} serverName={api.name} />}
           </Stack>
         )}
       </Box>
@@ -121,4 +119,3 @@ export default function ApiDetailPage() {
     </Container>
   );
 }
-

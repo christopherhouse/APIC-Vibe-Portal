@@ -226,6 +226,38 @@ async function setupCoreMocks(page: Page) {
     })
   );
 
+  await page.route('**/api/governance/rule-compliance*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    })
+  );
+
+  await page.route('**/api/metadata/overview*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          averageScore: 78,
+          averageGrade: 'B',
+          totalApis: 10,
+          distribution: { A: 3, B: 4, C: 2, D: 1 },
+          dimensionAverages: [],
+        },
+      }),
+    })
+  );
+
+  await page.route('**/api/metadata/leaderboard*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { top: [], bottom: [] } }),
+    })
+  );
+
   await page.route('**/api/compare*', async (route) => {
     await route.fulfill({
       status: 200,
