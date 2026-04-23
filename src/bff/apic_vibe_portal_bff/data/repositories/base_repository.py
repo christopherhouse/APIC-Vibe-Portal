@@ -132,6 +132,8 @@ class BaseRepository:
 
     def create(self, document: dict) -> dict:
         """Insert a new document.  Returns the created document (with Cosmos metadata)."""
+        # Validate that the partition key field is present before sending to Cosmos.
+        # The SDK extracts the partition key value from the document body itself.
         self._get_required_partition_key(document)
         logger.debug("Creating document %s in %s", document.get("id"), self._container.id)
         return self._container.create_item(
@@ -201,7 +203,8 @@ class BaseRepository:
 
     def update(self, document: dict) -> dict:
         """Replace an existing document (full replace)."""
-        pk_value = self._get_required_partition_key(document)
+        # Validate partition key presence; the SDK reads the value from the document body.
+        self._get_required_partition_key(document)
         logger.debug("Updating document %s in %s", document.get("id"), self._container.id)
         return self._container.replace_item(
             item=document["id"],
