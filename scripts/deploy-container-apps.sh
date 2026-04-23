@@ -23,7 +23,11 @@
 #     --indexer-identity-client-id <indexer-uami-client-id> \
 #     --bff-env-vars "KEY1=val1 KEY2=val2 ..." \
 #     --frontend-env-vars "KEY1=val1 KEY2=val2 ..." \
-#     --indexer-env-vars "KEY1=val1 KEY2=val2 ..."
+#     --indexer-env-vars "KEY1=val1 KEY2=val2 ..." \
+#     --governance-image-tag <governance-tag> \
+#     --governance-identity-resource-id <governance-uami-resource-id> \
+#     --governance-identity-client-id <governance-uami-client-id> \
+#     --governance-env-vars "KEY1=val1 KEY2=val2 ..."
 #
 # Each Container App uses its own User-Assigned Managed Identity (UAMI) for
 # ACR image pull and Azure service access.  The --*-identity-resource-id flags
@@ -43,6 +47,10 @@ INDEXER_ENV_VARS=""
 INDEXER_IMAGE_TAG=""
 INDEXER_IDENTITY_RESOURCE_ID=""
 INDEXER_IDENTITY_CLIENT_ID=""
+GOVERNANCE_ENV_VARS=""
+GOVERNANCE_IMAGE_TAG=""
+GOVERNANCE_IDENTITY_RESOURCE_ID=""
+GOVERNANCE_IDENTITY_CLIENT_ID=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -115,6 +123,22 @@ while [[ $# -gt 0 ]]; do
       INDEXER_ENV_VARS="$2"
       shift 2
       ;;
+    --governance-image-tag)
+      GOVERNANCE_IMAGE_TAG="$2"
+      shift 2
+      ;;
+    --governance-identity-resource-id)
+      GOVERNANCE_IDENTITY_RESOURCE_ID="$2"
+      shift 2
+      ;;
+    --governance-identity-client-id)
+      GOVERNANCE_IDENTITY_CLIENT_ID="$2"
+      shift 2
+      ;;
+    --governance-env-vars)
+      GOVERNANCE_ENV_VARS="$2"
+      shift 2
+      ;;
     *)
       echo "Unknown argument: $1"
       exit 1
@@ -175,6 +199,22 @@ if [[ -n "$INDEXER_IMAGE_TAG" ]]; then
   fi
 fi
 
+# Validate governance identity arguments when governance deployment is requested
+if [[ -n "$GOVERNANCE_IMAGE_TAG" ]]; then
+  if [[ -z "$GOVERNANCE_IDENTITY_RESOURCE_ID" || "$GOVERNANCE_IDENTITY_RESOURCE_ID" == "null" ]]; then
+    echo "Error: GOVERNANCE_IDENTITY_RESOURCE_ID is missing or 'null'. Re-run the deploy-infra workflow first."
+    exit 1
+  fi
+  if [[ ! "$GOVERNANCE_IDENTITY_RESOURCE_ID" =~ ^/subscriptions/ ]]; then
+    echo "Error: GOVERNANCE_IDENTITY_RESOURCE_ID does not look like a valid ARM resource ID: '$GOVERNANCE_IDENTITY_RESOURCE_ID'"
+    exit 1
+  fi
+  if [[ -z "$GOVERNANCE_IDENTITY_CLIENT_ID" || "$GOVERNANCE_IDENTITY_CLIENT_ID" == "null" ]]; then
+    echo "Error: GOVERNANCE_IDENTITY_CLIENT_ID is missing or 'null'. Re-run the deploy-infra workflow first."
+    exit 1
+  fi
+fi
+
 # Build the array of BFF env vars (always includes core infra vars)
 BFF_CORE_ENV_VARS=(
   "AZURE_CLIENT_ID=${BFF_IDENTITY_CLIENT_ID}"
@@ -207,6 +247,11 @@ if [[ -n "$INDEXER_IMAGE_TAG" ]]; then
   echo "Indexer Image: ${ACR_SERVER}/indexer:${INDEXER_IMAGE_TAG}"
   echo "Indexer Identity: $INDEXER_IDENTITY_RESOURCE_ID"
   echo "Indexer Env Vars: ${INDEXER_ENV_VARS:-<none>}"
+fi
+if [[ -n "$GOVERNANCE_IMAGE_TAG" ]]; then
+  echo "Governance Worker Image: ${ACR_SERVER}/governance-worker:${GOVERNANCE_IMAGE_TAG}"
+  echo "Governance Worker Identity: $GOVERNANCE_IDENTITY_RESOURCE_ID"
+  echo "Governance Worker Env Vars: ${GOVERNANCE_ENV_VARS:-<none>}"
 fi
 echo "============================================================================"
 
@@ -364,6 +409,63 @@ if [[ -n "$INDEXER_IMAGE_TAG" ]]; then
   echo "Indexer Job: $INDEXER_JOB_NAME (cron: */5 * * * *)"
 fi
 
+# ============================================================================
+# Deploy Governance Snapshot Worker Container Apps Job (daily cron)
+# ============================================================================
+if [[ -n "$GOVERNANCE_IMAGE_TAG" ]]; then
+  echo ""
+  echo "Deploying Governance Snapshot Worker Container Apps Job..."
+
+  # Derive the job name from the BFF app name pattern (replace -bff- with -governance-)
+  GOVERNANCE_JOB_NAME="${BFF_APP_NAME/bff/governance}"
+
+  # Build governance worker env vars
+  GOVERNANCE_CORE_ENV_VARS=(
+    "AZURE_CLIENT_ID=${GOVERNANCE_IDENTITY_CLIENT_ID}"
+  )
+
+  if [[ -n "$GOVERNANCE_ENV_VARS" ]]; then
+    read -ra EXTRA_GOVERNANCE_ENV_VARS <<< "$GOVERNANCE_ENV_VARS"
+    GOVERNANCE_CORE_ENV_VARS+=("${EXTRA_GOVERNANCE_ENV_VARS[@]}")
+  fi
+
+  echo "Governance Worker Job Name: $GOVERNANCE_JOB_NAME"
+  echo "Governance Worker Image: ${ACR_SERVER}/governance-worker:${GOVERNANCE_IMAGE_TAG}"
+  echo "Governance Worker Env Vars (${#GOVERNANCE_CORE_ENV_VARS[@]} vars): ${GOVERNANCE_CORE_ENV_VARS[*]}"
+
+  if az containerapp job show --name "$GOVERNANCE_JOB_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+    echo "Updating existing Governance Worker Container Apps Job..."
+    az containerapp job update \
+      --name "$GOVERNANCE_JOB_NAME" \
+      --resource-group "$RESOURCE_GROUP" \
+      --image "${ACR_SERVER}/governance-worker:${GOVERNANCE_IMAGE_TAG}" \
+      --cpu 0.5 \
+      --memory 1Gi \
+      --set-env-vars "${GOVERNANCE_CORE_ENV_VARS[@]}"
+  else
+    echo "Creating new Governance Worker Container Apps Job..."
+    az containerapp job create \
+      --name "$GOVERNANCE_JOB_NAME" \
+      --resource-group "$RESOURCE_GROUP" \
+      --environment "$ENVIRONMENT_ID" \
+      --image "${ACR_SERVER}/governance-worker:${GOVERNANCE_IMAGE_TAG}" \
+      --cpu 0.5 \
+      --memory 1Gi \
+      --trigger-type Schedule \
+      --cron-expression "0 2 * * *" \
+      --replica-timeout 1800 \
+      --replica-retry-limit 1 \
+      --parallelism 1 \
+      --replica-completion-count 1 \
+      --registry-server "$ACR_SERVER" \
+      --mi-user-assigned "$GOVERNANCE_IDENTITY_RESOURCE_ID" \
+      --registry-identity "$GOVERNANCE_IDENTITY_RESOURCE_ID" \
+      --env-vars "${GOVERNANCE_CORE_ENV_VARS[@]}"
+  fi
+
+  echo "Governance Worker Job: $GOVERNANCE_JOB_NAME (cron: 0 2 * * *)"
+fi
+
 echo ""
 echo "============================================================================"
 echo "Deployment Complete"
@@ -372,5 +474,8 @@ echo "Frontend: https://${FRONTEND_URL}"
 echo "BFF: https://${BFF_URL}"
 if [[ -n "$INDEXER_IMAGE_TAG" ]]; then
   echo "Indexer Job: ${INDEXER_JOB_NAME}"
+fi
+if [[ -n "$GOVERNANCE_IMAGE_TAG" ]]; then
+  echo "Governance Worker Job: ${GOVERNANCE_JOB_NAME}"
 fi
 echo "============================================================================"
