@@ -18,6 +18,7 @@ import ApiVersionList from './components/ApiVersionList';
 import ApiSpecViewer from './components/ApiSpecViewer';
 import ApiDeployments from './components/ApiDeployments';
 import MetadataQualityTab from './components/MetadataQualityTab';
+import McpInspectorTab from './components/McpInspectorTab';
 import SpecDownloadButton from './components/SpecDownloadButton';
 import InstallInVsCodeButton from './components/InstallInVsCodeButton';
 import CompareAddButton from '@/app/compare/components/CompareAddButton';
@@ -77,7 +78,12 @@ export default function ApiDetailPage() {
       </Box>
 
       {/* Tabs */}
-      <ApiTabs value={activeTab} onChange={setActiveTab} />
+      <ApiTabs
+        value={activeTab}
+        onChange={setActiveTab}
+        showInspector={isMcp}
+        inspectorEnabled={!!mcpServerUrl}
+      />
 
       {/* Tab Content */}
       <Box>
@@ -115,6 +121,10 @@ export default function ApiDetailPage() {
         )}
 
         {activeTab === 'metadata-quality' && apiId && <MetadataQualityTab apiId={apiId} />}
+
+        {activeTab === 'inspector' && isMcp && mcpServerUrl && (
+          <McpInspectorTab apiId={apiId} serverUrl={mcpServerUrl} />
+        )}
       </Box>
     </Container>
   );

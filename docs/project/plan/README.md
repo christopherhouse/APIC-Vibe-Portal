@@ -101,6 +101,12 @@ Complete usage analytics, metadata scoring, performance optimization, and launch
 | [031](031-performance-accessibility.md) | Performance Optimization & Accessibility                    | ✅     | All previous            |
 | [032](032-final-integration-launch.md)  | Final Integration Testing, Documentation & Launch Readiness | ✅     | All previous            |
 
+### Feature Additions
+
+| #                                       | Task                      | Status | Key Dependencies |
+| --------------------------------------- | ------------------------- | ------ | ---------------- |
+| [033](033-mcp-inspector-integration.md) | MCP Inspector Integration | 🔄     | 010, 012, 020    |
+
 ---
 
 ## Dependency Graph

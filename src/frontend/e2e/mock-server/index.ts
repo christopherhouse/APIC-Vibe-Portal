@@ -345,6 +345,87 @@ export function startMockServer(
         return;
       }
 
+      // GET /api/mcp/:apiId/capabilities
+      const mcpCapabilitiesMatch = pathname.match(/^\/api\/mcp\/([^/]+)\/capabilities$/);
+      if (mcpCapabilitiesMatch && req.method === 'GET') {
+        const api = apis.find((a) => a.id === mcpCapabilitiesMatch[1]);
+        if (!api || api.kind !== 'mcp') {
+          res.writeHead(422);
+          res.end(JSON.stringify({ error: { code: 'NOT_MCP', message: 'Not an MCP API' } }));
+          return;
+        }
+        const serverUrl = api.deployments[0]?.server.runtimeUri[0] ?? '';
+        res.writeHead(200);
+        res.end(
+          JSON.stringify({
+            data: {
+              serverUrl,
+              tools: [
+                {
+                  name: 'echo',
+                  description: 'Echo back the input',
+                  inputSchema: {
+                    type: 'object',
+                    properties: { message: { type: 'string', description: 'Message to echo' } },
+                    required: ['message'],
+                  },
+                },
+                {
+                  name: 'ping',
+                  description: 'Check server health',
+                  inputSchema: { type: 'object', properties: {}, required: [] },
+                },
+              ],
+              prompts: [{ name: 'greet', description: 'Generate a greeting', arguments: [] }],
+              resources: [
+                {
+                  uri: 'resource://status',
+                  name: 'Server Status',
+                  description: 'Current server status',
+                  mimeType: 'application/json',
+                },
+              ],
+            },
+          })
+        );
+        return;
+      }
+
+      // POST /api/mcp/:apiId/invoke
+      const mcpInvokeMatch = pathname.match(/^\/api\/mcp\/([^/]+)\/invoke$/);
+      if (mcpInvokeMatch && req.method === 'POST') {
+        let body = '';
+        req.on('data', (chunk: Buffer) => {
+          body += chunk.toString();
+        });
+        req.on('end', () => {
+          let parsed: { tool_name?: string; arguments?: Record<string, unknown> } = {};
+          try {
+            parsed = JSON.parse(body);
+          } catch {
+            // use defaults
+          }
+          const toolName = parsed.tool_name ?? 'unknown';
+          const args = parsed.arguments ?? {};
+          res.writeHead(200);
+          res.end(
+            JSON.stringify({
+              data: {
+                content: [
+                  {
+                    type: 'text',
+                    text: `Tool "${toolName}" called with: ${JSON.stringify(args)}`,
+                  },
+                ],
+                isError: false,
+                durationMs: 12,
+              },
+            })
+          );
+        });
+        return;
+      }
+
       // GET /api/environments
       if (pathname === '/api/environments' && req.method === 'GET') {
         res.writeHead(200);
