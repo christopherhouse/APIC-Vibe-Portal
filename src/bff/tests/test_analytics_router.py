@@ -384,10 +384,10 @@ class TestGetServiceFactory:
         mock_settings.cosmos_db_analytics_container = "analytics-events"
         monkeypatch.setattr("apic_vibe_portal_bff.routers.analytics.get_settings", lambda: mock_settings)
 
-        def _raise(*args, **kwargs):  # noqa: ANN002, ANN003
+        def _mock_cosmos_failure(*args, **kwargs):  # noqa: ANN002, ANN003
             raise RuntimeError("Cosmos unavailable")
 
-        monkeypatch.setattr("apic_vibe_portal_bff.data.cosmos_client.get_cosmos_client", _raise)
+        monkeypatch.setattr("apic_vibe_portal_bff.data.cosmos_client.get_cosmos_client", _mock_cosmos_failure)
 
         service = analytics._get_service()
 

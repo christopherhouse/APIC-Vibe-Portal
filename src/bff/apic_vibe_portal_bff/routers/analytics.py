@@ -80,7 +80,7 @@ def _get_service() -> AnalyticsService:
 
                 analytics_container = get_container(settings.cosmos_db_analytics_container)
                 analytics_repo = AnalyticsRepository(analytics_container)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 logger.exception("Failed to initialise analytics repository — events will be logged only")
         else:
             logger.info("COSMOS_DB_ENDPOINT not configured — analytics events will be logged only")
