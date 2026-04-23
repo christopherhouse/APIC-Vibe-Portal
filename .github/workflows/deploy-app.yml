@@ -43,44 +43,35 @@ jobs:
         id: acr
         run: |
           RG="${{ vars.AZURE_RESOURCE_GROUP }}"
+          INFRA_DEPLOYMENT="deploy-infra-dev-current"
 
           # Wait for any in-progress infra deployment before reading outputs.
-          # This prevents a race condition when infra and app deployments are
-          # triggered simultaneously by the same push (e.g. a commit that
-          # touches both infra/** and src/**). Without this wait, the workflow
-          # would find the *previous* successful deployment (which may predate
-          # the governance identity) while the new infra run is still running.
+          # This prevents a race condition when infra and app workflows are
+          # triggered simultaneously by the same push.
           MAX_WAIT_SECS=1800
           WAITED=0
-          RUNNING_INFRA=$(az deployment group list \
-            --resource-group "$RG" \
-            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Running'].name | [0]" \
-            -o tsv)
-          while [ -n "$RUNNING_INFRA" ] && [ "$WAITED" -lt "$MAX_WAIT_SECS" ]; do
-            echo "Infrastructure deployment '$RUNNING_INFRA' is in progress. Waiting 30s (${WAITED}s elapsed)..."
+          INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
+            --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
+          while [ "$INFRA_STATE" = "Running" ] && [ "$WAITED" -lt "$MAX_WAIT_SECS" ]; do
+            echo "Infrastructure deployment '$INFRA_DEPLOYMENT' is in progress. Waiting 30s (${WAITED}s elapsed)..."
             sleep 30
             WAITED=$((WAITED + 30))
-            RUNNING_INFRA=$(az deployment group list \
-              --resource-group "$RG" \
-              --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Running'].name | [0]" \
-              -o tsv)
+            INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
+              --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
           done
-          if [ -n "$RUNNING_INFRA" ]; then
-            echo "::warning::Timed out waiting for infrastructure deployment '$RUNNING_INFRA'. Proceeding with the latest successful deployment."
-          fi
-
-          DEPLOYMENT_NAME=$(az deployment group list \
-            --resource-group "$RG" \
-            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
-            -o tsv)
-          if [ -z "$DEPLOYMENT_NAME" ]; then
-            echo "::error::No successful infrastructure deployment found in resource group ${{ vars.AZURE_RESOURCE_GROUP }}"
+          if [ "$INFRA_STATE" = "NotFound" ]; then
+            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' not found. Run deploy-infra.yml first."
             exit 1
           fi
-          echo "Using infrastructure deployment: $DEPLOYMENT_NAME"
+          if [ "$INFRA_STATE" != "Succeeded" ]; then
+            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' is in state '$INFRA_STATE'. Expected Succeeded."
+            exit 1
+          fi
+
+          echo "Using infrastructure deployment: $INFRA_DEPLOYMENT"
           ACR_NAME=$(az deployment group show \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name "$DEPLOYMENT_NAME" \
+            --resource-group "$RG" \
+            --name "$INFRA_DEPLOYMENT" \
             --query properties.outputs.acrName.value -o tsv)
           echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
           echo "login-server=${ACR_NAME}.azurecr.io" >> $GITHUB_OUTPUT
@@ -160,18 +151,34 @@ jobs:
       - name: Get deployment outputs
         id: infra
         run: |
-          DEPLOYMENT_NAME=$(az deployment group list \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
-            -o tsv)
-          if [ -z "$DEPLOYMENT_NAME" ]; then
-            echo "::error::No successful infrastructure deployment found in resource group ${{ vars.AZURE_RESOURCE_GROUP }}"
+          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
+          INFRA_DEPLOYMENT="deploy-infra-dev-current"
+
+          # Wait for any in-progress infra deployment to settle before reading outputs.
+          MAX_WAIT_SECS=1800
+          WAITED=0
+          INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
+            --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
+          while [ "$INFRA_STATE" = "Running" ] && [ "$WAITED" -lt "$MAX_WAIT_SECS" ]; do
+            echo "Infrastructure deployment '$INFRA_DEPLOYMENT' is in progress. Waiting 30s (${WAITED}s elapsed)..."
+            sleep 30
+            WAITED=$((WAITED + 30))
+            INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
+              --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
+          done
+          if [ "$INFRA_STATE" = "NotFound" ]; then
+            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' not found. Run deploy-infra.yml first."
             exit 1
           fi
-          echo "Using infrastructure deployment: $DEPLOYMENT_NAME"
+          if [ "$INFRA_STATE" != "Succeeded" ]; then
+            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' is in state '$INFRA_STATE'. Expected Succeeded."
+            exit 1
+          fi
+
+          echo "Using infrastructure deployment: $INFRA_DEPLOYMENT"
           DEPLOYMENT=$(az deployment group show \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name "$DEPLOYMENT_NAME" \
+            --resource-group "$RG" \
+            --name "$INFRA_DEPLOYMENT" \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
@@ -185,75 +192,13 @@ jobs:
           echo "cosmos-db-endpoint=$(echo $DEPLOYMENT | jq -r '.cosmosDbEndpoint.value')" >> $GITHUB_OUTPUT
           echo "cosmos-db-database-name=$(echo $DEPLOYMENT | jq -r '.cosmosDbDatabaseName.value')" >> $GITHUB_OUTPUT
           echo "appinsights-connection-string=$(echo $DEPLOYMENT | jq -r '.appInsightsConnectionString.value')" >> $GITHUB_OUTPUT
-
-          # Extract identity outputs from deployment
-          FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
-          BFF_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')
-          BFF_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')
-          INDEXER_ID=$(echo $DEPLOYMENT | jq -r '.indexerIdentityResourceId.value')
-          INDEXER_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.indexerIdentityClientId.value')
-          GOVERNANCE_ID=$(echo $DEPLOYMENT | jq -r '.governanceIdentityResourceId.value')
-          GOVERNANCE_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.governanceIdentityClientId.value')
-
-          # Fallback: resolve identities directly from Azure if deployment outputs are missing
-          # This handles the case where infra was deployed before identity outputs were added
-          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
-          if [ "$FRONTEND_ID" = "null" ] || [ -z "$FRONTEND_ID" ]; then
-            echo "::warning::Frontend identity not found in deployment outputs, resolving from resource group..."
-            FRONTEND_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-frontend-')].id | [0]" -o tsv)
-          fi
-          if [ "$BFF_ID" = "null" ] || [ -z "$BFF_ID" ]; then
-            echo "::warning::BFF identity not found in deployment outputs, resolving from resource group..."
-            BFF_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-bff-')].id | [0]" -o tsv)
-          fi
-          if [ "$BFF_CLIENT_ID" = "null" ] || [ -z "$BFF_CLIENT_ID" ]; then
-            echo "::warning::BFF identity client ID not found in deployment outputs, resolving from resource group..."
-            BFF_CLIENT_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-bff-')].clientId | [0]" -o tsv)
-          fi
-          if [ "$INDEXER_ID" = "null" ] || [ -z "$INDEXER_ID" ]; then
-            echo "::warning::Indexer identity not found in deployment outputs, resolving from resource group..."
-            INDEXER_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-indexer-')].id | [0]" -o tsv)
-          fi
-          if [ "$INDEXER_CLIENT_ID" = "null" ] || [ -z "$INDEXER_CLIENT_ID" ]; then
-            echo "::warning::Indexer identity client ID not found in deployment outputs, resolving from resource group..."
-            INDEXER_CLIENT_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-indexer-')].clientId | [0]" -o tsv)
-          fi
-          if [ "$GOVERNANCE_ID" = "null" ] || [ -z "$GOVERNANCE_ID" ]; then
-            echo "::warning::Governance identity not found in deployment outputs, resolving from resource group..."
-            GOVERNANCE_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-governance-')].id | [0]" -o tsv)
-          fi
-          if [ "$GOVERNANCE_CLIENT_ID" = "null" ] || [ -z "$GOVERNANCE_CLIENT_ID" ]; then
-            echo "::warning::Governance identity client ID not found in deployment outputs, resolving from resource group..."
-            GOVERNANCE_CLIENT_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-governance-')].clientId | [0]" -o tsv)
-          fi
-
-          IDENTITY_ERRORS=""
-          if [ -z "$FRONTEND_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} frontend-identity-resource-id"; fi
-          if [ -z "$BFF_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-resource-id"; fi
-          if [ -z "$BFF_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-client-id"; fi
-          if [ -z "$INDEXER_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} indexer-identity-resource-id"; fi
-          if [ -z "$INDEXER_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} indexer-identity-client-id"; fi
-          if [ -z "$GOVERNANCE_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} governance-identity-resource-id"; fi
-          if [ -z "$GOVERNANCE_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} governance-identity-client-id"; fi
-          if [ -n "$IDENTITY_ERRORS" ]; then
-            echo "::error::Could not resolve managed identities:${IDENTITY_ERRORS}. Ensure infrastructure is deployed with per-container UAMIs."
-            exit 1
-          fi
-
-          echo "frontend-identity-resource-id=$FRONTEND_ID" >> $GITHUB_OUTPUT
-          echo "bff-identity-resource-id=$BFF_ID" >> $GITHUB_OUTPUT
-          echo "bff-identity-client-id=$BFF_CLIENT_ID" >> $GITHUB_OUTPUT
-          echo "indexer-identity-resource-id=$INDEXER_ID" >> $GITHUB_OUTPUT
-          echo "indexer-identity-client-id=$INDEXER_CLIENT_ID" >> $GITHUB_OUTPUT
-          echo "governance-identity-resource-id=$GOVERNANCE_ID" >> $GITHUB_OUTPUT
-          echo "governance-identity-client-id=$GOVERNANCE_CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "frontend-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-client-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "indexer-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.indexerIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "indexer-identity-client-id=$(echo $DEPLOYMENT | jq -r '.indexerIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "governance-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.governanceIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "governance-identity-client-id=$(echo $DEPLOYMENT | jq -r '.governanceIdentityClientId.value')" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
         run: |
@@ -302,18 +247,34 @@ jobs:
       - name: Get deployment outputs
         id: infra
         run: |
-          DEPLOYMENT_NAME=$(az deployment group list \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
-            -o tsv)
-          if [ -z "$DEPLOYMENT_NAME" ]; then
-            echo "::error::No successful infrastructure deployment found in resource group ${{ vars.AZURE_RESOURCE_GROUP }}"
+          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
+          INFRA_DEPLOYMENT="deploy-infra-staging-current"
+
+          # Wait for any in-progress infra deployment to settle before reading outputs.
+          MAX_WAIT_SECS=1800
+          WAITED=0
+          INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
+            --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
+          while [ "$INFRA_STATE" = "Running" ] && [ "$WAITED" -lt "$MAX_WAIT_SECS" ]; do
+            echo "Infrastructure deployment '$INFRA_DEPLOYMENT' is in progress. Waiting 30s (${WAITED}s elapsed)..."
+            sleep 30
+            WAITED=$((WAITED + 30))
+            INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
+              --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
+          done
+          if [ "$INFRA_STATE" = "NotFound" ]; then
+            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' not found. Run deploy-infra.yml first."
             exit 1
           fi
-          echo "Using infrastructure deployment: $DEPLOYMENT_NAME"
+          if [ "$INFRA_STATE" != "Succeeded" ]; then
+            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' is in state '$INFRA_STATE'. Expected Succeeded."
+            exit 1
+          fi
+
+          echo "Using infrastructure deployment: $INFRA_DEPLOYMENT"
           DEPLOYMENT=$(az deployment group show \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name "$DEPLOYMENT_NAME" \
+            --resource-group "$RG" \
+            --name "$INFRA_DEPLOYMENT" \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
@@ -327,75 +288,13 @@ jobs:
           echo "cosmos-db-endpoint=$(echo $DEPLOYMENT | jq -r '.cosmosDbEndpoint.value')" >> $GITHUB_OUTPUT
           echo "cosmos-db-database-name=$(echo $DEPLOYMENT | jq -r '.cosmosDbDatabaseName.value')" >> $GITHUB_OUTPUT
           echo "appinsights-connection-string=$(echo $DEPLOYMENT | jq -r '.appInsightsConnectionString.value')" >> $GITHUB_OUTPUT
-
-          # Extract identity outputs from deployment
-          FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
-          BFF_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')
-          BFF_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')
-          INDEXER_ID=$(echo $DEPLOYMENT | jq -r '.indexerIdentityResourceId.value')
-          INDEXER_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.indexerIdentityClientId.value')
-          GOVERNANCE_ID=$(echo $DEPLOYMENT | jq -r '.governanceIdentityResourceId.value')
-          GOVERNANCE_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.governanceIdentityClientId.value')
-
-          # Fallback: resolve identities directly from Azure if deployment outputs are missing
-          # This handles the case where infra was deployed before identity outputs were added
-          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
-          if [ "$FRONTEND_ID" = "null" ] || [ -z "$FRONTEND_ID" ]; then
-            echo "::warning::Frontend identity not found in deployment outputs, resolving from resource group..."
-            FRONTEND_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-frontend-')].id | [0]" -o tsv)
-          fi
-          if [ "$BFF_ID" = "null" ] || [ -z "$BFF_ID" ]; then
-            echo "::warning::BFF identity not found in deployment outputs, resolving from resource group..."
-            BFF_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-bff-')].id | [0]" -o tsv)
-          fi
-          if [ "$BFF_CLIENT_ID" = "null" ] || [ -z "$BFF_CLIENT_ID" ]; then
-            echo "::warning::BFF identity client ID not found in deployment outputs, resolving from resource group..."
-            BFF_CLIENT_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-bff-')].clientId | [0]" -o tsv)
-          fi
-          if [ "$INDEXER_ID" = "null" ] || [ -z "$INDEXER_ID" ]; then
-            echo "::warning::Indexer identity not found in deployment outputs, resolving from resource group..."
-            INDEXER_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-indexer-')].id | [0]" -o tsv)
-          fi
-          if [ "$INDEXER_CLIENT_ID" = "null" ] || [ -z "$INDEXER_CLIENT_ID" ]; then
-            echo "::warning::Indexer identity client ID not found in deployment outputs, resolving from resource group..."
-            INDEXER_CLIENT_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-indexer-')].clientId | [0]" -o tsv)
-          fi
-          if [ "$GOVERNANCE_ID" = "null" ] || [ -z "$GOVERNANCE_ID" ]; then
-            echo "::warning::Governance identity not found in deployment outputs, resolving from resource group..."
-            GOVERNANCE_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-governance-')].id | [0]" -o tsv)
-          fi
-          if [ "$GOVERNANCE_CLIENT_ID" = "null" ] || [ -z "$GOVERNANCE_CLIENT_ID" ]; then
-            echo "::warning::Governance identity client ID not found in deployment outputs, resolving from resource group..."
-            GOVERNANCE_CLIENT_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-governance-')].clientId | [0]" -o tsv)
-          fi
-
-          IDENTITY_ERRORS=""
-          if [ -z "$FRONTEND_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} frontend-identity-resource-id"; fi
-          if [ -z "$BFF_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-resource-id"; fi
-          if [ -z "$BFF_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-client-id"; fi
-          if [ -z "$INDEXER_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} indexer-identity-resource-id"; fi
-          if [ -z "$INDEXER_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} indexer-identity-client-id"; fi
-          if [ -z "$GOVERNANCE_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} governance-identity-resource-id"; fi
-          if [ -z "$GOVERNANCE_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} governance-identity-client-id"; fi
-          if [ -n "$IDENTITY_ERRORS" ]; then
-            echo "::error::Could not resolve managed identities:${IDENTITY_ERRORS}. Ensure infrastructure is deployed with per-container UAMIs."
-            exit 1
-          fi
-
-          echo "frontend-identity-resource-id=$FRONTEND_ID" >> $GITHUB_OUTPUT
-          echo "bff-identity-resource-id=$BFF_ID" >> $GITHUB_OUTPUT
-          echo "bff-identity-client-id=$BFF_CLIENT_ID" >> $GITHUB_OUTPUT
-          echo "indexer-identity-resource-id=$INDEXER_ID" >> $GITHUB_OUTPUT
-          echo "indexer-identity-client-id=$INDEXER_CLIENT_ID" >> $GITHUB_OUTPUT
-          echo "governance-identity-resource-id=$GOVERNANCE_ID" >> $GITHUB_OUTPUT
-          echo "governance-identity-client-id=$GOVERNANCE_CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "frontend-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-client-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "indexer-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.indexerIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "indexer-identity-client-id=$(echo $DEPLOYMENT | jq -r '.indexerIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "governance-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.governanceIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "governance-identity-client-id=$(echo $DEPLOYMENT | jq -r '.governanceIdentityClientId.value')" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
         run: |
@@ -444,18 +343,34 @@ jobs:
       - name: Get deployment outputs
         id: infra
         run: |
-          DEPLOYMENT_NAME=$(az deployment group list \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
-            -o tsv)
-          if [ -z "$DEPLOYMENT_NAME" ]; then
-            echo "::error::No successful infrastructure deployment found in resource group ${{ vars.AZURE_RESOURCE_GROUP }}"
+          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
+          INFRA_DEPLOYMENT="deploy-infra-prod-current"
+
+          # Wait for any in-progress infra deployment to settle before reading outputs.
+          MAX_WAIT_SECS=1800
+          WAITED=0
+          INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
+            --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
+          while [ "$INFRA_STATE" = "Running" ] && [ "$WAITED" -lt "$MAX_WAIT_SECS" ]; do
+            echo "Infrastructure deployment '$INFRA_DEPLOYMENT' is in progress. Waiting 30s (${WAITED}s elapsed)..."
+            sleep 30
+            WAITED=$((WAITED + 30))
+            INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
+              --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
+          done
+          if [ "$INFRA_STATE" = "NotFound" ]; then
+            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' not found. Run deploy-infra.yml first."
             exit 1
           fi
-          echo "Using infrastructure deployment: $DEPLOYMENT_NAME"
+          if [ "$INFRA_STATE" != "Succeeded" ]; then
+            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' is in state '$INFRA_STATE'. Expected Succeeded."
+            exit 1
+          fi
+
+          echo "Using infrastructure deployment: $INFRA_DEPLOYMENT"
           DEPLOYMENT=$(az deployment group show \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --name "$DEPLOYMENT_NAME" \
+            --resource-group "$RG" \
+            --name "$INFRA_DEPLOYMENT" \
             --query properties.outputs)
           echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
           echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
@@ -469,75 +384,13 @@ jobs:
           echo "cosmos-db-endpoint=$(echo $DEPLOYMENT | jq -r '.cosmosDbEndpoint.value')" >> $GITHUB_OUTPUT
           echo "cosmos-db-database-name=$(echo $DEPLOYMENT | jq -r '.cosmosDbDatabaseName.value')" >> $GITHUB_OUTPUT
           echo "appinsights-connection-string=$(echo $DEPLOYMENT | jq -r '.appInsightsConnectionString.value')" >> $GITHUB_OUTPUT
-
-          # Extract identity outputs from deployment
-          FRONTEND_ID=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')
-          BFF_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')
-          BFF_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')
-          INDEXER_ID=$(echo $DEPLOYMENT | jq -r '.indexerIdentityResourceId.value')
-          INDEXER_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.indexerIdentityClientId.value')
-          GOVERNANCE_ID=$(echo $DEPLOYMENT | jq -r '.governanceIdentityResourceId.value')
-          GOVERNANCE_CLIENT_ID=$(echo $DEPLOYMENT | jq -r '.governanceIdentityClientId.value')
-
-          # Fallback: resolve identities directly from Azure if deployment outputs are missing
-          # This handles the case where infra was deployed before identity outputs were added
-          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
-          if [ "$FRONTEND_ID" = "null" ] || [ -z "$FRONTEND_ID" ]; then
-            echo "::warning::Frontend identity not found in deployment outputs, resolving from resource group..."
-            FRONTEND_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-frontend-')].id | [0]" -o tsv)
-          fi
-          if [ "$BFF_ID" = "null" ] || [ -z "$BFF_ID" ]; then
-            echo "::warning::BFF identity not found in deployment outputs, resolving from resource group..."
-            BFF_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-bff-')].id | [0]" -o tsv)
-          fi
-          if [ "$BFF_CLIENT_ID" = "null" ] || [ -z "$BFF_CLIENT_ID" ]; then
-            echo "::warning::BFF identity client ID not found in deployment outputs, resolving from resource group..."
-            BFF_CLIENT_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-bff-')].clientId | [0]" -o tsv)
-          fi
-          if [ "$INDEXER_ID" = "null" ] || [ -z "$INDEXER_ID" ]; then
-            echo "::warning::Indexer identity not found in deployment outputs, resolving from resource group..."
-            INDEXER_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-indexer-')].id | [0]" -o tsv)
-          fi
-          if [ "$INDEXER_CLIENT_ID" = "null" ] || [ -z "$INDEXER_CLIENT_ID" ]; then
-            echo "::warning::Indexer identity client ID not found in deployment outputs, resolving from resource group..."
-            INDEXER_CLIENT_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-indexer-')].clientId | [0]" -o tsv)
-          fi
-          if [ "$GOVERNANCE_ID" = "null" ] || [ -z "$GOVERNANCE_ID" ]; then
-            echo "::warning::Governance identity not found in deployment outputs, resolving from resource group..."
-            GOVERNANCE_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-governance-')].id | [0]" -o tsv)
-          fi
-          if [ "$GOVERNANCE_CLIENT_ID" = "null" ] || [ -z "$GOVERNANCE_CLIENT_ID" ]; then
-            echo "::warning::Governance identity client ID not found in deployment outputs, resolving from resource group..."
-            GOVERNANCE_CLIENT_ID=$(az identity list --resource-group "$RG" \
-              --query "[?contains(name, '-id-governance-')].clientId | [0]" -o tsv)
-          fi
-
-          IDENTITY_ERRORS=""
-          if [ -z "$FRONTEND_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} frontend-identity-resource-id"; fi
-          if [ -z "$BFF_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-resource-id"; fi
-          if [ -z "$BFF_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} bff-identity-client-id"; fi
-          if [ -z "$INDEXER_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} indexer-identity-resource-id"; fi
-          if [ -z "$INDEXER_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} indexer-identity-client-id"; fi
-          if [ -z "$GOVERNANCE_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} governance-identity-resource-id"; fi
-          if [ -z "$GOVERNANCE_CLIENT_ID" ]; then IDENTITY_ERRORS="${IDENTITY_ERRORS} governance-identity-client-id"; fi
-          if [ -n "$IDENTITY_ERRORS" ]; then
-            echo "::error::Could not resolve managed identities:${IDENTITY_ERRORS}. Ensure infrastructure is deployed with per-container UAMIs."
-            exit 1
-          fi
-
-          echo "frontend-identity-resource-id=$FRONTEND_ID" >> $GITHUB_OUTPUT
-          echo "bff-identity-resource-id=$BFF_ID" >> $GITHUB_OUTPUT
-          echo "bff-identity-client-id=$BFF_CLIENT_ID" >> $GITHUB_OUTPUT
-          echo "indexer-identity-resource-id=$INDEXER_ID" >> $GITHUB_OUTPUT
-          echo "indexer-identity-client-id=$INDEXER_CLIENT_ID" >> $GITHUB_OUTPUT
-          echo "governance-identity-resource-id=$GOVERNANCE_ID" >> $GITHUB_OUTPUT
-          echo "governance-identity-client-id=$GOVERNANCE_CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "frontend-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-client-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "indexer-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.indexerIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "indexer-identity-client-id=$(echo $DEPLOYMENT | jq -r '.indexerIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "governance-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.governanceIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "governance-identity-client-id=$(echo $DEPLOYMENT | jq -r '.governanceIdentityClientId.value')" >> $GITHUB_OUTPUT
 
       - name: Deploy Container Apps
         run: |
