@@ -5,6 +5,7 @@
     "composite": true,
     "outDir": "./.next",
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "plugins": [
       {
         "name": "next"
