@@ -42,8 +42,35 @@ jobs:
       - name: Get ACR name
         id: acr
         run: |
+          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
+
+          # Wait for any in-progress infra deployment before reading outputs.
+          # This prevents a race condition when infra and app deployments are
+          # triggered simultaneously by the same push (e.g. a commit that
+          # touches both infra/** and src/**). Without this wait, the workflow
+          # would find the *previous* successful deployment (which may predate
+          # the governance identity) while the new infra run is still running.
+          MAX_WAIT_SECS=1800
+          WAITED=0
+          RUNNING_INFRA=$(az deployment group list \
+            --resource-group "$RG" \
+            --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Running'].name | [0]" \
+            -o tsv)
+          while [ -n "$RUNNING_INFRA" ] && [ "$WAITED" -lt "$MAX_WAIT_SECS" ]; do
+            echo "Infrastructure deployment '$RUNNING_INFRA' is in progress. Waiting 30s (${WAITED}s elapsed)..."
+            sleep 30
+            WAITED=$((WAITED + 30))
+            RUNNING_INFRA=$(az deployment group list \
+              --resource-group "$RG" \
+              --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Running'].name | [0]" \
+              -o tsv)
+          done
+          if [ -n "$RUNNING_INFRA" ]; then
+            echo "::warning::Timed out waiting for infrastructure deployment '$RUNNING_INFRA'. Proceeding with the latest successful deployment."
+          fi
+
           DEPLOYMENT_NAME=$(az deployment group list \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --resource-group "$RG" \
             --query "[?starts_with(name, 'deploy-infra-') && properties.provisioningState=='Succeeded'] | sort_by(@, &properties.timestamp) | [-1].name" \
             -o tsv)
           if [ -z "$DEPLOYMENT_NAME" ]; then
