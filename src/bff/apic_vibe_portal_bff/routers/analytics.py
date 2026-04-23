@@ -15,11 +15,13 @@ endpoints are restricted to ``Portal.Admin`` and ``Portal.Maintainer``.
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field, field_validator
 
+from apic_vibe_portal_bff.config.settings import get_settings
 from apic_vibe_portal_bff.middleware.auth import AuthenticatedUser
 from apic_vibe_portal_bff.middleware.rbac import get_current_user, require_any_role
 from apic_vibe_portal_bff.services.analytics_service import AnalyticsService
@@ -52,6 +54,8 @@ def _range_days(time_range: str) -> int:
 # Service singleton — created lazily on first request.
 _service_instance: AnalyticsService | None = None
 
+logger = logging.getLogger(__name__)
+
 
 def _get_service() -> AnalyticsService:
     """Lazy-initialize and return the analytics service singleton.
@@ -59,14 +63,27 @@ def _get_service() -> AnalyticsService:
     The :class:`~apic_vibe_portal_bff.data.repositories.analytics_repository.AnalyticsRepository`
     is wired in here so that events are persisted to Cosmos DB in addition to
     being emitted as structured log entries.
+
+    If ``COSMOS_DB_ENDPOINT`` is not configured or the repository cannot be
+    initialized, the service falls back to structured-log-only delivery so
+    that analytics event ingestion degrades gracefully rather than returning
+    HTTP 500 on every request.
     """
     global _service_instance  # noqa: PLW0603
     if _service_instance is None:
-        from apic_vibe_portal_bff.data.cosmos_client import get_container
-        from apic_vibe_portal_bff.data.repositories.analytics_repository import AnalyticsRepository
+        settings = get_settings()
+        analytics_repo = None
+        if settings.cosmos_db_endpoint.strip():
+            try:
+                from apic_vibe_portal_bff.data.cosmos_client import get_container
+                from apic_vibe_portal_bff.data.repositories.analytics_repository import AnalyticsRepository
 
-        analytics_container = get_container("analytics-events")
-        analytics_repo = AnalyticsRepository(analytics_container)
+                analytics_container = get_container(settings.cosmos_db_analytics_container)
+                analytics_repo = AnalyticsRepository(analytics_container)
+            except Exception:  # noqa: BLE001
+                logger.exception("Failed to initialise analytics repository — events will be logged only")
+        else:
+            logger.info("COSMOS_DB_ENDPOINT not configured — analytics events will be logged only")
         _service_instance = AnalyticsService(repository=analytics_repo)
     return _service_instance
 

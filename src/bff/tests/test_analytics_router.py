@@ -325,3 +325,87 @@ class TestGetUserActivity:
     def test_maintainer_can_access(self, maintainer_client: TestClient) -> None:
         response = maintainer_client.get("/api/analytics/user-activity")
         assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# _get_service — graceful fallback when Cosmos DB is not configured
+# ---------------------------------------------------------------------------
+
+
+class TestGetServiceFactory:
+    """Tests for the _get_service() lazy-initialisation factory.
+
+    Each test resets the module-level singleton before running so that
+    they are independent of one another and of other test classes.
+    """
+
+    def setup_method(self) -> None:
+        """Reset the singleton before each test."""
+        analytics._service_instance = None  # type: ignore[attr-defined]
+
+    def teardown_method(self) -> None:
+        """Reset the singleton after each test to avoid cross-test pollution."""
+        analytics._service_instance = None  # type: ignore[attr-defined]
+
+    def test_returns_logging_only_service_when_cosmos_not_configured(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When COSMOS_DB_ENDPOINT is empty, _get_service() must not raise and must
+        return a service without a repository so events are still logged."""
+        from unittest.mock import MagicMock
+
+        mock_settings = MagicMock()
+        mock_settings.cosmos_db_endpoint = ""
+        monkeypatch.setattr("apic_vibe_portal_bff.routers.analytics.get_settings", lambda: mock_settings)
+
+        service = analytics._get_service()
+
+        assert isinstance(service, AnalyticsService)
+        assert service._repository is None  # type: ignore[attr-defined]
+
+    def test_singleton_is_cached_after_first_call(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """_get_service() must return the same instance on repeated calls."""
+        from unittest.mock import MagicMock
+
+        mock_settings = MagicMock()
+        mock_settings.cosmos_db_endpoint = ""
+        monkeypatch.setattr("apic_vibe_portal_bff.routers.analytics.get_settings", lambda: mock_settings)
+
+        first = analytics._get_service()
+        second = analytics._get_service()
+
+        assert first is second
+
+    def test_falls_back_to_logging_only_when_cosmos_init_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """If Cosmos DB is configured but initialisation fails, _get_service() must
+        still return a logging-only service rather than propagating the exception."""
+        from unittest.mock import MagicMock
+
+        mock_settings = MagicMock()
+        mock_settings.cosmos_db_endpoint = "https://fake.documents.azure.com:443/"
+        mock_settings.cosmos_db_analytics_container = "analytics-events"
+        monkeypatch.setattr("apic_vibe_portal_bff.routers.analytics.get_settings", lambda: mock_settings)
+
+        def _mock_cosmos_failure(*args, **kwargs):  # noqa: ANN002, ANN003
+            raise RuntimeError("Cosmos unavailable")
+
+        monkeypatch.setattr("apic_vibe_portal_bff.data.cosmos_client.get_cosmos_client", _mock_cosmos_failure)
+
+        service = analytics._get_service()
+
+        assert isinstance(service, AnalyticsService)
+        assert service._repository is None  # type: ignore[attr-defined]
+
+    def test_uses_settings_container_name_when_cosmos_configured(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When Cosmos DB is configured, the container name from settings is used."""
+        from unittest.mock import MagicMock, patch
+
+        mock_settings = MagicMock()
+        mock_settings.cosmos_db_endpoint = "https://fake.documents.azure.com:443/"
+        mock_settings.cosmos_db_analytics_container = "my-custom-analytics-container"
+        monkeypatch.setattr("apic_vibe_portal_bff.routers.analytics.get_settings", lambda: mock_settings)
+
+        mock_container = MagicMock()
+        with patch("apic_vibe_portal_bff.data.cosmos_client.get_container", return_value=mock_container) as mock_get:
+            service = analytics._get_service()
+
+        mock_get.assert_called_once_with("my-custom-analytics-container")
+        assert service._repository is not None  # type: ignore[attr-defined]
