@@ -2,6 +2,11 @@
 
 Provides summary statistics, score distributions, rule compliance rates, trend
 data, and per-API compliance details for the governance dashboard UI.
+
+For aggregate endpoints (summary, scores, distribution, rule-compliance) the
+service first attempts to load pre-computed snapshots from Cosmos DB (written
+by the governance worker).  Only when no snapshots are available does it fall
+back to computing results on demand from the API Center.
 """
 
 from __future__ import annotations
@@ -16,7 +21,7 @@ from apic_vibe_portal_bff.agents.governance_agent.rules.compliance_checker impor
     ComplianceResult,
     GovernanceCategory,
 )
-from apic_vibe_portal_bff.agents.governance_agent.rules.governance_rules import DEFAULT_RULES
+from apic_vibe_portal_bff.agents.governance_agent.rules.governance_rules import DEFAULT_RULES, RuleSeverity
 from apic_vibe_portal_bff.clients.api_center_client import ApiCenterClient
 from apic_vibe_portal_bff.data.repositories.governance_repository import GovernanceRepository
 
@@ -57,12 +62,16 @@ class GovernanceDashboardService:
         Returns
         -------
         dict with keys:
-            - overall_score: Average governance score across all APIs
-            - compliant_count: Number of APIs with score >= 75
-            - total_count: Total number of APIs
-            - critical_issues: Count of APIs with critical failures
+            - overallScore: Average governance score across all APIs
+            - compliantCount: Number of APIs with score >= 75
+            - totalCount: Total number of APIs
+            - criticalIssues: Count of APIs with critical failures
             - improvement: Score change over last 30 days (placeholder: 0)
         """
+        snapshots = self._load_snapshots(accessible_api_ids)
+        if snapshots is not None:
+            return self._summary_from_snapshots(snapshots)
+
         all_apis = self._get_accessible_apis(accessible_api_ids)
         if not all_apis:
             return {
@@ -106,8 +115,12 @@ class GovernanceDashboardService:
             - score: Governance score (0-100)
             - category: Governance category (Excellent, Good, Needs Improvement, Poor)
             - criticalFailures: Count of critical rule failures
-            - lastChecked: ISO-8601 timestamp (current time)
+            - lastChecked: ISO-8601 timestamp
         """
+        snapshots = self._load_snapshots(accessible_api_ids)
+        if snapshots is not None:
+            return self._scores_from_snapshots(snapshots)
+
         all_apis = self._get_accessible_apis(accessible_api_ids)
         results = []
 
@@ -153,6 +166,9 @@ class GovernanceDashboardService:
 
     def get_api_compliance(self, api_id: str, accessible_api_ids: list[str] | None = None) -> dict[str, Any]:
         """Return compliance report for a single API.
+
+        Always performs a live check against API Center so that the detail
+        view reflects the current state of the API.
 
         Parameters
         ----------
@@ -264,6 +280,10 @@ class GovernanceDashboardService:
             - needsImprovement: Count of APIs with 50 <= score < 75
             - poor: Count of APIs with score < 50
         """
+        snapshots = self._load_snapshots(accessible_api_ids)
+        if snapshots is not None:
+            return self._distribution_from_snapshots(snapshots)
+
         all_apis = self._get_accessible_apis(accessible_api_ids)
         distribution = {
             "excellent": 0,
@@ -298,6 +318,10 @@ class GovernanceDashboardService:
             - failCount: Number of APIs failing this rule
             - complianceRate: Percentage of APIs passing (0-100)
         """
+        snapshots = self._load_snapshots(accessible_api_ids)
+        if snapshots is not None:
+            return self._rule_compliance_from_snapshots(snapshots)
+
         all_apis = self._get_accessible_apis(accessible_api_ids)
         if not all_apis:
             return []
@@ -338,7 +362,178 @@ class GovernanceDashboardService:
         return results
 
     # ------------------------------------------------------------------
-    # Internal helpers
+    # Snapshot-based aggregation helpers
+    # ------------------------------------------------------------------
+
+    def _load_snapshots(self, accessible_api_ids: list[str] | None) -> list[dict[str, Any]] | None:
+        """Load the latest governance snapshots from Cosmos DB.
+
+        Returns ``None`` when the repository is unavailable, the query fails,
+        or no snapshots exist — callers should then fall back to live computation.
+        """
+        if self._governance_repo is None:
+            return None
+        try:
+            snapshots = self._governance_repo.list_latest_snapshots()
+        except Exception:
+            logger.warning(
+                "GovernanceDashboardService: failed to load snapshots from Cosmos DB — falling back to live computation"
+            )
+            return None
+
+        if not snapshots:
+            return None
+
+        if accessible_api_ids is not None:
+            snapshots = [s for s in snapshots if s.get("apiId") in accessible_api_ids]
+
+        return snapshots
+
+    def _get_api_name_map(self) -> dict[str, str]:
+        """Return a mapping of ``apiId → apiName`` fetched from API Center.
+
+        This is a lightweight call (no per-API version/deployment enrichment)
+        used to resolve human-readable names when building responses from
+        snapshot data.  Falls back to an empty dict on error.
+        """
+        try:
+            apis = self._api_center.list_apis()
+            return {api.get("name", ""): api.get("title") or api.get("name", "") for api in apis if api.get("name")}
+        except Exception:
+            logger.warning("GovernanceDashboardService: failed to fetch API name map from API Center")
+            return {}
+
+    @staticmethod
+    def _category_from_score(score: float) -> GovernanceCategory:
+        """Map a numeric score to a :class:`GovernanceCategory`."""
+        if score >= 90:
+            return GovernanceCategory.EXCELLENT
+        if score >= 75:
+            return GovernanceCategory.GOOD
+        if score >= 50:
+            return GovernanceCategory.NEEDS_IMPROVEMENT
+        return GovernanceCategory.POOR
+
+    def _summary_from_snapshots(self, snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+        """Build the summary KPI dict from a list of snapshot documents."""
+        if not snapshots:
+            return {
+                "overallScore": 0.0,
+                "compliantCount": 0,
+                "totalCount": 0,
+                "criticalIssues": 0,
+                "improvement": 0.0,
+            }
+
+        scores = []
+        compliant_count = 0
+        critical_issues = 0
+
+        for snapshot in snapshots:
+            score = float(snapshot.get("complianceScore", 0.0))
+            scores.append(score)
+            if score >= 75:
+                compliant_count += 1
+            has_critical_failure = any(
+                not f.get("passed", True) and f.get("severity", "") == RuleSeverity.CRITICAL
+                for f in snapshot.get("findings", [])
+            )
+            if has_critical_failure:
+                critical_issues += 1
+
+        overall_score = sum(scores) / len(scores) if scores else 0.0
+        return {
+            "overallScore": round(overall_score, 1),
+            "compliantCount": compliant_count,
+            "totalCount": len(snapshots),
+            "criticalIssues": critical_issues,
+            "improvement": 0.0,  # TODO: Calculate from historical snapshots
+        }
+
+    def _scores_from_snapshots(self, snapshots: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Build the scores list from snapshot documents."""
+        name_map = self._get_api_name_map()
+        results = []
+        for snapshot in snapshots:
+            api_id = snapshot.get("apiId", "")
+            score = float(snapshot.get("complianceScore", 0.0))
+            category = self._category_from_score(score)
+            critical_failures = sum(
+                1
+                for f in snapshot.get("findings", [])
+                if not f.get("passed", True) and f.get("severity", "") == RuleSeverity.CRITICAL
+            )
+            results.append(
+                {
+                    "apiId": api_id,
+                    "apiName": name_map.get(api_id, api_id),
+                    "score": score,
+                    "category": category.value,
+                    "criticalFailures": critical_failures,
+                    "lastChecked": snapshot.get("timestamp", ""),
+                }
+            )
+
+        results.sort(key=lambda x: x["score"], reverse=True)
+        return results
+
+    def _distribution_from_snapshots(self, snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+        """Build score distribution counts from snapshot documents."""
+        distribution = {"excellent": 0, "good": 0, "needsImprovement": 0, "poor": 0}
+        for snapshot in snapshots:
+            score = float(snapshot.get("complianceScore", 0.0))
+            category = self._category_from_score(score)
+            if category == GovernanceCategory.EXCELLENT:
+                distribution["excellent"] += 1
+            elif category == GovernanceCategory.GOOD:
+                distribution["good"] += 1
+            elif category == GovernanceCategory.NEEDS_IMPROVEMENT:
+                distribution["needsImprovement"] += 1
+            else:
+                distribution["poor"] += 1
+        return distribution
+
+    def _rule_compliance_from_snapshots(self, snapshots: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Build per-rule compliance rates from snapshot documents."""
+        if not snapshots:
+            return []
+
+        # Build rule metadata lookup from DEFAULT_RULES
+        rule_meta: dict[str, dict[str, str]] = {
+            rule.rule_id: {"ruleName": rule.name, "severity": rule.severity.value} for rule in DEFAULT_RULES
+        }
+
+        rule_stats: dict[str, dict[str, Any]] = {}
+        for snapshot in snapshots:
+            for finding in snapshot.get("findings", []):
+                rule_id = finding.get("ruleId", "")
+                if not rule_id:
+                    continue
+                if rule_id not in rule_stats:
+                    meta = rule_meta.get(rule_id, {"ruleName": rule_id, "severity": "info"})
+                    rule_stats[rule_id] = {
+                        "ruleId": rule_id,
+                        "ruleName": meta["ruleName"],
+                        "severity": meta["severity"],
+                        "passCount": 0,
+                        "failCount": 0,
+                    }
+                if finding.get("passed", True):
+                    rule_stats[rule_id]["passCount"] += 1
+                else:
+                    rule_stats[rule_id]["failCount"] += 1
+
+        total_apis = len(snapshots)
+        results = []
+        for stats in rule_stats.values():
+            compliance_rate = (stats["passCount"] / total_apis * 100) if total_apis > 0 else 0.0
+            results.append({**stats, "complianceRate": round(compliance_rate, 1)})
+
+        results.sort(key=lambda x: x["complianceRate"])
+        return results
+
+    # ------------------------------------------------------------------
+    # Internal helpers (live computation path)
     # ------------------------------------------------------------------
 
     def _get_accessible_apis(self, accessible_api_ids: list[str] | None) -> list[dict[str, Any]]:

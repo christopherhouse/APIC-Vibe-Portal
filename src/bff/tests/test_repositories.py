@@ -266,6 +266,84 @@ class TestGovernanceRepository:
         query = container.query_items.call_args.kwargs.get("query") or container.query_items.call_args[1].get("query")
         assert "timestamp DESC" in query
 
+    def test_list_latest_snapshots_returns_one_per_api(self):
+        """list_latest_snapshots deduplicates so only the newest doc per apiId is returned."""
+        container = _make_container_mock("governance-snapshots")
+        # Two snapshots for api-1 (different timestamps) + one for api-2
+        raw_docs = [
+            {
+                "id": "api-1-2026-04-23-12",
+                "apiId": "api-1",
+                "complianceScore": 80.0,
+                "timestamp": "2026-04-23T12:00:00Z",
+                "isDeleted": False,
+            },
+            {
+                "id": "api-1-2026-04-23-09",
+                "apiId": "api-1",
+                "complianceScore": 75.0,
+                "timestamp": "2026-04-23T09:00:00Z",
+                "isDeleted": False,
+            },
+            {
+                "id": "api-2-2026-04-23-12",
+                "apiId": "api-2",
+                "complianceScore": 60.0,
+                "timestamp": "2026-04-23T12:00:00Z",
+                "isDeleted": False,
+            },
+        ]
+        container.query_items.return_value = iter(raw_docs)
+        repo = GovernanceRepository(container)
+
+        result = repo.list_latest_snapshots()
+
+        assert len(result) == 2
+        api_ids = {doc["apiId"] for doc in result}
+        assert api_ids == {"api-1", "api-2"}
+        # api-1 result should be the one with the higher (first-returned) timestamp
+        api1_doc = next(d for d in result if d["apiId"] == "api-1")
+        assert api1_doc["complianceScore"] == 80.0
+
+    def test_list_latest_snapshots_excludes_deleted(self):
+        """list_latest_snapshots skips soft-deleted documents."""
+        container = _make_container_mock("governance-snapshots")
+        raw_docs = [
+            {
+                "id": "api-1-2026-04-23-12",
+                "apiId": "api-1",
+                "complianceScore": 80.0,
+                "timestamp": "2026-04-23T12:00:00Z",
+                "isDeleted": True,
+            },
+            {
+                "id": "api-2-2026-04-23-12",
+                "apiId": "api-2",
+                "complianceScore": 60.0,
+                "timestamp": "2026-04-23T12:00:00Z",
+                "isDeleted": False,
+            },
+        ]
+        container.query_items.return_value = iter(raw_docs)
+        repo = GovernanceRepository(container)
+
+        repo.list_latest_snapshots()
+
+        # Deleted doc should be excluded by the query WHERE clause; since we're
+        # mocking the container we verify we passed the right query.
+        call_kwargs = container.query_items.call_args.kwargs
+        assert "isDeleted = false" in call_kwargs.get("query", "")
+        assert call_kwargs.get("enable_cross_partition_query") is True
+
+    def test_list_latest_snapshots_returns_empty_when_no_docs(self):
+        container = _make_container_mock("governance-snapshots")
+        container.query_items.return_value = iter([])
+        repo = GovernanceRepository(container)
+
+        result = repo.list_latest_snapshots()
+
+        assert result == []
+
 
 class TestAnalyticsRepository:
     """Tests for :class:`AnalyticsRepository`."""

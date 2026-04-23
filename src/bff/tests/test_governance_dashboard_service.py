@@ -39,10 +39,16 @@ def _make_service(
     """Return a service wired to mock clients.
 
     Pass ``governance_repo=None`` to simulate Cosmos DB being unavailable.
-    When omitted the default is a :class:`MagicMock` repository.
+    When omitted the default is a :class:`MagicMock` repository configured
+    to return an empty snapshot list, so the service falls through to the
+    live-computation path (which the existing tests exercise).
     """
     mock_api_center = MagicMock()
-    resolved_repo: object = MagicMock() if governance_repo is _UNSET else governance_repo
+    if governance_repo is _UNSET:
+        resolved_repo: object = MagicMock()
+        resolved_repo.list_latest_snapshots.return_value = []  # type: ignore[union-attr]
+    else:
+        resolved_repo = governance_repo
 
     # Mock ApiCenterClient methods using the real SDK contract.
     if apis is None:
@@ -406,3 +412,214 @@ class TestGetRuleCompliance:
         # Verify sorted ascending
         for i in range(len(result) - 1):
             assert result[i]["complianceRate"] <= result[i + 1]["complianceRate"]
+
+
+# ---------------------------------------------------------------------------
+# Snapshot-based fast path
+# ---------------------------------------------------------------------------
+
+
+def _make_snapshot(
+    api_id: str,
+    score: float = 80.0,
+    timestamp: str = "2026-04-23T12:00:00Z",
+    findings: list | None = None,
+) -> dict:
+    """Build a minimal governance snapshot document."""
+    return {
+        "id": f"{api_id}-2026-04-23-12",
+        "apiId": api_id,
+        "complianceScore": score,
+        "timestamp": timestamp,
+        "findings": findings or [],
+        "isDeleted": False,
+        "schemaVersion": 1,
+    }
+
+
+def _make_service_with_snapshots(
+    snapshots: list[dict],
+    apis: list[dict] | None = None,
+) -> tuple[GovernanceDashboardService, MagicMock, MagicMock]:
+    """Return a service backed by a mock repo that returns *snapshots*."""
+    mock_api_center = MagicMock()
+    mock_repo = MagicMock()
+    mock_repo.list_latest_snapshots.return_value = snapshots
+    if apis is not None:
+        mock_api_center.list_apis.return_value = apis
+    else:
+        mock_api_center.list_apis.return_value = []
+
+    service = GovernanceDashboardService(
+        api_center_client=mock_api_center,
+        governance_repository=mock_repo,
+    )
+    return service, mock_api_center, mock_repo
+
+
+class TestSnapshotFastPath:
+    """Verify that aggregate methods load from Cosmos DB snapshots when available."""
+
+    def test_get_summary_uses_snapshots(self) -> None:
+        snapshots = [
+            _make_snapshot("api-1", score=85.0),
+            _make_snapshot("api-2", score=60.0),
+        ]
+        service, mock_api_center, _ = _make_service_with_snapshots(snapshots)
+
+        result = service.get_summary()
+
+        # API Center live list should NOT be called for enrichment
+        mock_api_center.list_api_versions.assert_not_called()
+        mock_api_center.list_deployments.assert_not_called()
+        assert result["totalCount"] == 2
+        assert result["overallScore"] == 72.5
+        assert result["compliantCount"] == 1  # only api-1 (85) >= 75
+
+    def test_get_summary_counts_critical_issues(self) -> None:
+        critical_finding = {
+            "ruleId": "security.auth",
+            "ruleName": "Auth",
+            "severity": "critical",
+            "passed": False,
+            "message": "No auth",
+        }
+        snapshots = [_make_snapshot("api-1", score=40.0, findings=[critical_finding])]
+        service, _, _ = _make_service_with_snapshots(snapshots)
+
+        result = service.get_summary()
+
+        assert result["criticalIssues"] == 1
+
+    def test_get_scores_uses_snapshots(self) -> None:
+        snapshots = [
+            _make_snapshot("api-1", score=90.0, timestamp="2026-04-23T12:00:00Z"),
+            _make_snapshot("api-2", score=50.0, timestamp="2026-04-23T12:00:00Z"),
+        ]
+        apis = [
+            {"name": "api-1", "title": "Payments API"},
+            {"name": "api-2", "title": "Orders API"},
+        ]
+        service, mock_api_center, _ = _make_service_with_snapshots(snapshots, apis=apis)
+
+        result = service.get_scores()
+
+        mock_api_center.list_api_versions.assert_not_called()
+        mock_api_center.list_deployments.assert_not_called()
+        assert len(result) == 2
+        # Sorted by score descending
+        assert result[0]["apiId"] == "api-1"
+        assert result[0]["score"] == 90.0
+        assert result[0]["apiName"] == "Payments API"
+        assert result[0]["lastChecked"] == "2026-04-23T12:00:00Z"
+        assert result[1]["apiId"] == "api-2"
+
+    def test_get_scores_falls_back_to_api_id_when_name_unknown(self) -> None:
+        snapshots = [_make_snapshot("unknown-api", score=75.0)]
+        service, mock_api_center, _ = _make_service_with_snapshots(snapshots, apis=[])
+
+        result = service.get_scores()
+
+        assert result[0]["apiName"] == "unknown-api"
+
+    def test_get_distribution_uses_snapshots(self) -> None:
+        snapshots = [
+            _make_snapshot("api-1", score=95.0),  # excellent
+            _make_snapshot("api-2", score=80.0),  # good
+            _make_snapshot("api-3", score=60.0),  # needs improvement
+            _make_snapshot("api-4", score=30.0),  # poor
+        ]
+        service, mock_api_center, _ = _make_service_with_snapshots(snapshots)
+
+        result = service.get_score_distribution()
+
+        mock_api_center.list_api_versions.assert_not_called()
+        assert result["excellent"] == 1
+        assert result["good"] == 1
+        assert result["needsImprovement"] == 1
+        assert result["poor"] == 1
+
+    def test_get_rule_compliance_uses_snapshots(self) -> None:
+        findings_passing = [
+            {
+                "ruleId": "metadata.description",
+                "ruleName": "Description",
+                "severity": "warning",
+                "passed": True,
+                "message": "",
+            },
+        ]
+        findings_failing = [
+            {
+                "ruleId": "metadata.description",
+                "ruleName": "Description",
+                "severity": "warning",
+                "passed": False,
+                "message": "Missing",
+            },
+        ]
+        snapshots = [
+            _make_snapshot("api-1", score=80.0, findings=findings_passing),
+            _make_snapshot("api-2", score=50.0, findings=findings_failing),
+        ]
+        service, mock_api_center, _ = _make_service_with_snapshots(snapshots)
+
+        result = service.get_rule_compliance()
+
+        mock_api_center.list_api_versions.assert_not_called()
+        desc_rule = next((r for r in result if r["ruleId"] == "metadata.description"), None)
+        assert desc_rule is not None
+        assert desc_rule["passCount"] == 1
+        assert desc_rule["failCount"] == 1
+        assert desc_rule["complianceRate"] == 50.0
+
+    def test_falls_back_to_live_when_no_snapshots(self) -> None:
+        """When Cosmos returns an empty list, live computation should be used."""
+        apis = [_make_mock_api("api-1", description="OAuth")]
+        mock_api_center = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.list_latest_snapshots.return_value = []  # No snapshots
+        mock_api_center.list_apis.return_value = apis
+        mock_api_center.list_api_versions.return_value = []
+        mock_api_center.list_deployments.return_value = []
+
+        service = GovernanceDashboardService(
+            api_center_client=mock_api_center,
+            governance_repository=mock_repo,
+        )
+        result = service.get_summary()
+
+        # Live path hits list_api_versions/list_deployments for enrichment
+        mock_api_center.list_api_versions.assert_called()
+        assert result["totalCount"] == 1
+
+    def test_falls_back_to_live_when_repo_raises(self) -> None:
+        """When the repository raises an exception, fall back to live computation."""
+        apis = [_make_mock_api("api-1", description="OAuth")]
+        mock_api_center = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.list_latest_snapshots.side_effect = Exception("Cosmos unavailable")
+        mock_api_center.list_apis.return_value = apis
+        mock_api_center.list_api_versions.return_value = []
+        mock_api_center.list_deployments.return_value = []
+
+        service = GovernanceDashboardService(
+            api_center_client=mock_api_center,
+            governance_repository=mock_repo,
+        )
+        result = service.get_summary()
+
+        mock_api_center.list_api_versions.assert_called()
+        assert result["totalCount"] == 1
+
+    def test_snapshots_filtered_by_accessible_api_ids(self) -> None:
+        snapshots = [
+            _make_snapshot("api-1", score=80.0),
+            _make_snapshot("api-2", score=70.0),
+        ]
+        service, _, _ = _make_service_with_snapshots(snapshots)
+
+        result = service.get_summary(accessible_api_ids=["api-1"])
+
+        assert result["totalCount"] == 1
+        assert result["overallScore"] == 80.0
