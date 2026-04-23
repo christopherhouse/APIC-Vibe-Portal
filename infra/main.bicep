@@ -170,7 +170,7 @@ module indexerIdentity 'modules/managed-identity.bicep' = {
   }
 }
 
-// Governance Snapshot Container Apps Job identity (AcrPull + Cosmos DB read/write)
+// Governance Snapshot Container Apps Job identity (AcrPull + Cosmos DB read/write + API Center read)
 module governanceIdentity 'modules/managed-identity.bicep' = {
   name: 'governance-identity-${deployment().name}'
   params: {
@@ -245,6 +245,7 @@ module apiCenter 'modules/api-center.bicep' = {
     apiCenterName: resourceNames.apiCenter
     managedIdentityPrincipalId: bffIdentity.outputs.principalId
     indexerManagedIdentityPrincipalId: indexerIdentity.outputs.principalId
+    governanceManagedIdentityPrincipalId: governanceIdentity.outputs.principalId
     tags: tags
   }
 }
