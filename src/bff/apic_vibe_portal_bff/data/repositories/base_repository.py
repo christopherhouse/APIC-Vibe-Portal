@@ -132,11 +132,10 @@ class BaseRepository:
 
     def create(self, document: dict) -> dict:
         """Insert a new document.  Returns the created document (with Cosmos metadata)."""
-        partition_key = self._get_required_partition_key(document)
+        self._get_required_partition_key(document)
         logger.debug("Creating document %s in %s", document.get("id"), self._container.id)
         return self._container.create_item(
             body=document,
-            partition_key=partition_key,
             response_hook=_make_ru_hook(self._container.id, "create"),
         )
 
@@ -207,7 +206,6 @@ class BaseRepository:
         return self._container.replace_item(
             item=document["id"],
             body=document,
-            partition_key=pk_value,
             response_hook=_make_ru_hook(self._container.id, "replace"),
         )
 

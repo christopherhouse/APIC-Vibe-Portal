@@ -55,7 +55,7 @@ class TestBaseRepositoryCRUD:
         container.create_item.assert_called_once()
         call_kwargs = container.create_item.call_args.kwargs
         assert call_kwargs["body"] == {"id": "1", "userId": "u1"}
-        assert call_kwargs["partition_key"] == "u1"
+        assert "partition_key" not in call_kwargs
         assert callable(call_kwargs.get("response_hook"))
         assert result["id"] == "1"
 
@@ -114,7 +114,7 @@ class TestBaseRepositoryCRUD:
         call_kwargs = container.replace_item.call_args.kwargs
         assert call_kwargs["item"] == "1"
         assert call_kwargs["body"] == doc
-        assert call_kwargs["partition_key"] == "u1"
+        assert "partition_key" not in call_kwargs
         assert callable(call_kwargs.get("response_hook"))
         assert result["title"] == "updated"
 
