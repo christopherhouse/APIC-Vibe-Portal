@@ -452,7 +452,7 @@ if [[ -n "$GOVERNANCE_IMAGE_TAG" ]]; then
       --cpu 0.5 \
       --memory 1Gi \
       --trigger-type Schedule \
-      --cron-expression "0 2 * * *" \
+      --cron-expression "0 */3 * * *" \
       --replica-timeout 1800 \
       --replica-retry-limit 1 \
       --parallelism 1 \
@@ -463,7 +463,7 @@ if [[ -n "$GOVERNANCE_IMAGE_TAG" ]]; then
       --env-vars "${GOVERNANCE_CORE_ENV_VARS[@]}"
   fi
 
-  echo "Governance Worker Job: $GOVERNANCE_JOB_NAME (cron: 0 2 * * *)"
+  echo "Governance Worker Job: $GOVERNANCE_JOB_NAME (cron: 0 */3 * * *)"
 fi
 
 echo ""

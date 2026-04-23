@@ -4,16 +4,17 @@ The :class:`GovernanceScannerService` fetches all APIs from Azure API
 Center, evaluates them against the governance rules, and upserts the
 results as governance snapshot documents in Cosmos DB.
 
-One snapshot document is created per API per invocation.  Documents are
-keyed by ``{api_id}-{date}`` so that a daily run produces one snapshot
-per API per day; running more than once a day overwrites the earlier
-snapshot for that date.
+One snapshot document is created per API per 3-hour window.  Documents
+are keyed by ``{api_id}-{date}-{3h_slot}`` (e.g. ``my-api-2026-04-23-09``)
+so that re-running within the same 3-hour window is idempotent.  Each
+document carries a ``ttl`` of 172 800 seconds (48 hours) so Cosmos DB
+automatically purges snapshots that are more than 48 hours old.
 """
 
 from __future__ import annotations
 
 import re
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -154,17 +155,27 @@ class GovernanceScannerService:
     def _build_snapshot_document(self, api_id: str, result: ComplianceResult) -> dict[str, Any]:
         """Construct a Cosmos DB governance snapshot document.
 
-        The document ``id`` is ``{sanitized_api_id}-{today}`` so that one upsert per
-        day per API is idempotent (re-running overwrites the same document).
+        The document ``id`` is ``{sanitized_api_id}-{date}-{3h_slot:02d}`` (e.g.
+        ``my-api-2026-04-23-09``) so that re-running within the same 3-hour
+        window is idempotent while each 3-hour window produces a distinct
+        document.  The 3-hour slot is the UTC hour rounded down to the nearest
+        multiple of 3 (values: 00, 03, 06, 09, 12, 15, 18, 21).
+
+        Each document carries a ``ttl`` of 172 800 seconds (48 hours).  Cosmos
+        DB automatically deletes documents once their TTL expires, keeping the
+        container to a rolling 48-hour window of snapshots.
 
         Cosmos DB document IDs may not contain ``/``, ``\\``, ``?``, or ``#``.
         Any such characters in *api_id* are replaced with ``_`` before building
         the snapshot ID.
         """
-        today = date.today().isoformat()
+        _SNAPSHOT_TTL_SECONDS = 48 * 3600  # 48 hours
+        now = datetime.now(UTC)
+        today = now.date().isoformat()
+        three_hour_slot = (now.hour // 3) * 3
         safe_api_id = re.sub(r"[/\\?#]", "_", api_id)
-        snapshot_id = f"{safe_api_id}-{today}"
-        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        snapshot_id = f"{safe_api_id}-{today}-{three_hour_slot:02d}"
+        timestamp = now.isoformat().replace("+00:00", "Z")
 
         findings = [
             {
@@ -180,11 +191,12 @@ class GovernanceScannerService:
         return {
             "id": snapshot_id,
             "apiId": api_id,
-            "timestamp": now,
+            "timestamp": timestamp,
             "findings": findings,
             "complianceScore": result.score,
             "agentId": self._agent_id,
             "schemaVersion": 1,
             "isDeleted": False,
             "deletedAt": None,
+            "ttl": _SNAPSHOT_TTL_SECONDS,
         }

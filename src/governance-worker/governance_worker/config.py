@@ -68,11 +68,12 @@ class GovernanceWorkerSettings(BaseSettings):
         description="Agent identifier recorded on every snapshot document",
     )
     scan_cron_schedule: str = Field(
-        default="0 2 * * *",
+        default="0 */3 * * *",
         description=(
             "Cron expression for the Azure Container Apps Job schedule. "
             "This value is read by infrastructure tooling; the container "
-            "performs one full scan per invocation."
+            "performs one full scan per invocation. "
+            "Default: every 3 hours. Snapshots are retained for 48 hours via TTL."
         ),
     )
 

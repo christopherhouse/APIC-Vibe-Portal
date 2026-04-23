@@ -93,15 +93,19 @@ class TestScanAll:
         assert "schemaVersion" in doc
         assert doc["agentId"] == "test-worker"
         assert doc["isDeleted"] is False
+        assert doc["ttl"] == 48 * 3600  # 48-hour retention
 
-    def test_snapshot_id_includes_api_id_and_date(self):
+    def test_snapshot_id_includes_api_id_date_and_3h_slot(self):
         scanner, _, container = _make_scanner(apis=[_make_api("my-api")])
         scanner.scan_all()
         doc = container.upsert_item.call_args[0][0]
-        from datetime import date
+        from datetime import UTC, datetime
 
+        now = datetime.now(UTC)
+        expected_slot = (now.hour // 3) * 3
         assert doc["id"].startswith("my-api-")
-        assert date.today().isoformat() in doc["id"]
+        assert now.date().isoformat() in doc["id"]
+        assert doc["id"].endswith(f"-{expected_slot:02d}")
 
     def test_snapshot_id_sanitizes_invalid_cosmos_chars(self):
         """API IDs with /, \\, ?, # must be sanitized in the document ID."""
