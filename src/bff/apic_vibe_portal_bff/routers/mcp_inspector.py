@@ -47,6 +47,9 @@ logger = logging.getLogger(__name__)
 
 _ALLOWED_ROLES = ["Portal.User", "Portal.Admin", "Portal.Maintainer"]
 
+# Default HTTP status code returned when an upstream MCP call fails.
+_DEFAULT_MCP_ERROR_STATUS = 502
+
 router = APIRouter(tags=["mcp-inspector"])
 
 # ---------------------------------------------------------------------------
@@ -216,7 +219,7 @@ async def get_mcp_capabilities(
     except McpClientError as exc:
         logger.warning("get_mcp_capabilities: MCP error", extra={"api_id": api_id, "error": str(exc)})
         _raise_mcp_error(
-            exc.status_code or 502,
+            exc.status_code or _DEFAULT_MCP_ERROR_STATUS,
             "MCP_ERROR",
             f"Failed to fetch capabilities from MCP server: {exc}",
         )
@@ -300,7 +303,7 @@ async def invoke_mcp_tool(
             extra={"api_id": api_id, "tool": request.tool_name, "error": str(exc)},
         )
         _raise_mcp_error(
-            exc.status_code or 502,
+            exc.status_code or _DEFAULT_MCP_ERROR_STATUS,
             "MCP_ERROR",
             f"Failed to invoke tool '{request.tool_name}': {exc}",
         )

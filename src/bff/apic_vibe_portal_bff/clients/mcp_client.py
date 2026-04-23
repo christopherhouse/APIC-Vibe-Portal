@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 MCP_PROTOCOL_VERSION = "2024-11-05"
 _REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30)
+_SSE_DATA_PREFIX = "data:"
 
 
 class McpClientError(Exception):
@@ -128,9 +129,9 @@ class McpClient:
         """Parse the first complete JSON-RPC result from an SSE stream."""
         async for raw_line in response.content:
             line = raw_line.decode("utf-8", errors="replace").rstrip("\r\n")
-            if not line.startswith("data:"):
+            if not line.startswith(_SSE_DATA_PREFIX):
                 continue
-            data_str = line[len("data:") :].lstrip(" ")
+            data_str = line[len(_SSE_DATA_PREFIX) :].lstrip(" ")
             if data_str == "[DONE]":
                 break
             try:

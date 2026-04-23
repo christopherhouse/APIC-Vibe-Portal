@@ -13,8 +13,11 @@ import { apiClient } from '@/lib/api-client';
 
 /** A single property in an MCP tool's JSON input schema. */
 export interface McpToolProperty {
+  /** JSON Schema type of this property (e.g. 'string', 'number', 'boolean'). */
   type: string;
+  /** Human-readable description of this property's purpose. */
   description?: string;
+  /** Allowed discrete values; when present, render as a select/dropdown. */
   enum?: string[];
 }
 

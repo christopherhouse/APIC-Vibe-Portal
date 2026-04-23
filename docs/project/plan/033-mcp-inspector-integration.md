@@ -10,8 +10,8 @@ Integrates an MCP (Model Context Protocol) Inspector directly into the API detai
 
 ## Status History
 
-| Date       | Status      | Notes                                              |
-| ---------- | ----------- | -------------------------------------------------- |
+| Date       | Status         | Notes                                            |
+| ---------- | -------------- | ------------------------------------------------ |
 | 2026-04-23 | 🔄 In Progress | Initial implementation complete; awaiting review |
 
 ---
@@ -30,25 +30,25 @@ Integrates an MCP (Model Context Protocol) Inspector directly into the API detai
 
 ### BFF (Python / FastAPI)
 
-| File | Description |
-|------|-------------|
-| `apic_vibe_portal_bff/models/mcp.py` | Pydantic models: `McpTool`, `McpPrompt`, `McpResource`, `McpCapabilities`, `McpInvokeRequest`, `McpInvokeResult`, plus nested schema types |
-| `apic_vibe_portal_bff/clients/mcp_client.py` | Async `McpClient` using `aiohttp` for Streamable HTTP JSON-RPC. Handles plain-JSON and SSE-streamed responses. Exposes `initialize`, `list_tools`, `list_prompts`, `list_resources`, `call_tool`. |
+| File                                            | Description                                                                                                                                                                                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apic_vibe_portal_bff/models/mcp.py`            | Pydantic models: `McpTool`, `McpPrompt`, `McpResource`, `McpCapabilities`, `McpInvokeRequest`, `McpInvokeResult`, plus nested schema types                                                                                      |
+| `apic_vibe_portal_bff/clients/mcp_client.py`    | Async `McpClient` using `aiohttp` for Streamable HTTP JSON-RPC. Handles plain-JSON and SSE-streamed responses. Exposes `initialize`, `list_tools`, `list_prompts`, `list_resources`, `call_tool`.                               |
 | `apic_vibe_portal_bff/routers/mcp_inspector.py` | Two endpoints: `GET /api/mcp/{api_id}/capabilities` and `POST /api/mcp/{api_id}/invoke`. Both enforce RBAC and security trimming before resolving the server URL from the API catalog. Also validates the API is of kind `mcp`. |
-| `apic_vibe_portal_bff/app.py` | Registers `mcp_inspector_router` and `McpInspectorError` exception handler. |
-| `tests/test_mcp_inspector_routes.py` | 11 pytest tests covering happy paths, partial server support, non-MCP API rejection, no-deployment 422, upstream 502 propagation, and auth enforcement. |
+| `apic_vibe_portal_bff/app.py`                   | Registers `mcp_inspector_router` and `McpInspectorError` exception handler.                                                                                                                                                     |
+| `tests/test_mcp_inspector_routes.py`            | 11 pytest tests covering happy paths, partial server support, non-MCP API rejection, no-deployment 422, upstream 502 propagation, and auth enforcement.                                                                         |
 
 ### Frontend (Next.js / React / MUI)
 
-| File | Description |
-|------|-------------|
-| `lib/mcp-inspector-api.ts` | Typed `fetchMcpCapabilities` and `invokeMcpTool` wrappers over `apiClient`. Exports all response types. |
-| `app/catalog/[apiId]/components/ApiTabs.tsx` | Added `showInspector` and `inspectorEnabled` optional props. Inspector tab rendered conditionally, disabled with tooltip when no deployment URL is available. |
-| `app/catalog/[apiId]/components/McpInspectorTab.tsx` | Two-panel inspector UI: left rail with Tools/Prompts/Resources tabs + list; right pane with schema-driven form, Invoke button, and result panel. MUI v9 compatible (`slotProps.htmlInput`, `slotProps.secondary`). |
-| `app/catalog/[apiId]/page.tsx` | Passes `showInspector={isMcp}` and `inspectorEnabled={!!mcpServerUrl}` to `ApiTabs`. Renders `<McpInspectorTab>` when the inspector tab is active. |
-| `app/catalog/[apiId]/components/__tests__/McpInspectorTab.test.tsx` | 15 Jest + RTL unit tests covering loading, error, retry, connection UI, tool/prompt/resource list rendering, schema form, invoke result, invoke error, tab switching, and refresh. |
-| `e2e/mock-server/index.ts` | Added `GET /api/mcp/:apiId/capabilities` and `POST /api/mcp/:apiId/invoke` endpoints to the standalone mock server. |
-| `e2e/api-detail.spec.ts` | 7 new Playwright e2e tests: Inspector tab visibility (MCP + non-MCP), disabled state when no deployment, loading the panel, listing tools, invoking a tool, switching to prompts/resources. |
+| File                                                                | Description                                                                                                                                                                                                        |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lib/mcp-inspector-api.ts`                                          | Typed `fetchMcpCapabilities` and `invokeMcpTool` wrappers over `apiClient`. Exports all response types.                                                                                                            |
+| `app/catalog/[apiId]/components/ApiTabs.tsx`                        | Added `showInspector` and `inspectorEnabled` optional props. Inspector tab rendered conditionally, disabled with tooltip when no deployment URL is available.                                                      |
+| `app/catalog/[apiId]/components/McpInspectorTab.tsx`                | Two-panel inspector UI: left rail with Tools/Prompts/Resources tabs + list; right pane with schema-driven form, Invoke button, and result panel. MUI v9 compatible (`slotProps.htmlInput`, `slotProps.secondary`). |
+| `app/catalog/[apiId]/page.tsx`                                      | Passes `showInspector={isMcp}` and `inspectorEnabled={!!mcpServerUrl}` to `ApiTabs`. Renders `<McpInspectorTab>` when the inspector tab is active.                                                                 |
+| `app/catalog/[apiId]/components/__tests__/McpInspectorTab.test.tsx` | 15 Jest + RTL unit tests covering loading, error, retry, connection UI, tool/prompt/resource list rendering, schema form, invoke result, invoke error, tab switching, and refresh.                                 |
+| `e2e/mock-server/index.ts`                                          | Added `GET /api/mcp/:apiId/capabilities` and `POST /api/mcp/:apiId/invoke` endpoints to the standalone mock server.                                                                                                |
+| `e2e/api-detail.spec.ts`                                            | 7 new Playwright e2e tests: Inspector tab visibility (MCP + non-MCP), disabled state when no deployment, loading the panel, listing tools, invoking a tool, switching to prompts/resources.                        |
 
 ---
 
@@ -59,6 +59,7 @@ Integrates an MCP (Model Context Protocol) Inspector directly into the API detai
 Returns the aggregated capabilities of the MCP server registered for `api_id`.
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -95,11 +96,13 @@ Returns the aggregated capabilities of the MCP server registered for `api_id`.
 ### `POST /api/mcp/{api_id}/invoke`
 
 **Request:**
+
 ```json
 { "tool_name": "get_weather", "arguments": { "location": "London" } }
 ```
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -114,13 +117,13 @@ Returns the aggregated capabilities of the MCP server registered for `api_id`.
 
 ## Technical Decisions
 
-| Decision | Rationale |
-|----------|-----------|
-| `aiohttp` for upstream HTTP (no new dep) | Already in `pyproject.toml` production deps |
-| `initialize` before every list/invoke | Stateless BFF — no persistent MCP session; each request re-handshakes |
-| Partial capability support | `list_tools/list_prompts/list_resources` failures are swallowed individually so a server that only supports tools still returns them |
-| `slotProps.htmlInput` + `slotProps.secondary` | MUI v9 deprecated `inputProps` and `secondaryTypographyProps` |
-| Inspector tab disabled (not hidden) when no URL | Communicates affordance exists but requires a deployment, consistent with `InstallInVsCodeButton` pattern |
+| Decision                                        | Rationale                                                                                                                            |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `aiohttp` for upstream HTTP (no new dep)        | Already in `pyproject.toml` production deps                                                                                          |
+| `initialize` before every list/invoke           | Stateless BFF — no persistent MCP session; each request re-handshakes                                                                |
+| Partial capability support                      | `list_tools/list_prompts/list_resources` failures are swallowed individually so a server that only supports tools still returns them |
+| `slotProps.htmlInput` + `slotProps.secondary`   | MUI v9 deprecated `inputProps` and `secondaryTypographyProps`                                                                        |
+| Inspector tab disabled (not hidden) when no URL | Communicates affordance exists but requires a deployment, consistent with `InstallInVsCodeButton` pattern                            |
 
 ---
 
@@ -157,13 +160,13 @@ None. Implemented exactly as specified in the plan.
 
 ## Validation Results
 
-| Check | Result |
-|-------|--------|
-| `uv run ruff check .` | ✅ All checks passed |
-| `uv run ruff format --check .` | ✅ All files formatted |
-| `uv run pytest` | ✅ 1192 passed (11 new) |
-| `npm run lint` | ✅ No ESLint errors |
-| `npm run format:check` | ✅ All files use Prettier style |
-| `npx tsc --noEmit` | ✅ No type errors |
-| `npm run test` | ✅ 420 passed (15 new) |
-| `npm run build` | ✅ Build succeeded |
+| Check                          | Result                          |
+| ------------------------------ | ------------------------------- |
+| `uv run ruff check .`          | ✅ All checks passed            |
+| `uv run ruff format --check .` | ✅ All files formatted          |
+| `uv run pytest`                | ✅ 1192 passed (11 new)         |
+| `npm run lint`                 | ✅ No ESLint errors             |
+| `npm run format:check`         | ✅ All files use Prettier style |
+| `npx tsc --noEmit`             | ✅ No type errors               |
+| `npm run test`                 | ✅ 420 passed (15 new)          |
+| `npm run build`                | ✅ Build succeeded              |

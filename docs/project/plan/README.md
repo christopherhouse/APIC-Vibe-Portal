@@ -103,9 +103,9 @@ Complete usage analytics, metadata scoring, performance optimization, and launch
 
 ### Feature Additions
 
-| #                                                | Task                              | Status | Key Dependencies       |
-| ------------------------------------------------ | --------------------------------- | ------ | ---------------------- |
-| [033](033-mcp-inspector-integration.md)          | MCP Inspector Integration         | 🔄     | 010, 012, 020          |
+| #                                       | Task                      | Status | Key Dependencies |
+| --------------------------------------- | ------------------------- | ------ | ---------------- |
+| [033](033-mcp-inspector-integration.md) | MCP Inspector Integration | 🔄     | 010, 012, 020    |
 
 ---
 
