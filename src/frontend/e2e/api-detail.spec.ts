@@ -129,6 +129,83 @@ async function mockDetailApis(page: Page, apis: MockApiDefinition[]) {
       ),
     });
   });
+
+  // Mock MCP capabilities endpoint
+  await page.route(/\/api\/mcp\/[^/]+\/capabilities$/, async (route) => {
+    const url = new URL(route.request().url());
+    const parts = url.pathname.split('/');
+    const apiId = parts[parts.length - 2];
+    const api = apis.find((a) => a.id === apiId);
+
+    if (!api || api.kind !== 'mcp') {
+      await route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'NOT_MCP', message: 'Not an MCP API' } }),
+      });
+      return;
+    }
+
+    const serverUrl = api.deployments[0]?.server.runtimeUri[0] ?? '';
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          serverUrl,
+          tools: [
+            {
+              name: 'echo',
+              description: 'Echo back the input',
+              inputSchema: {
+                type: 'object',
+                properties: { message: { type: 'string', description: 'Message to echo' } },
+                required: ['message'],
+              },
+            },
+            {
+              name: 'ping',
+              description: 'Check server health',
+              inputSchema: { type: 'object', properties: {}, required: [] },
+            },
+          ],
+          prompts: [{ name: 'greet', description: 'Generate a greeting', arguments: [] }],
+          resources: [
+            {
+              uri: 'resource://status',
+              name: 'Server Status',
+              description: 'Current server status',
+              mimeType: 'application/json',
+            },
+          ],
+        },
+      }),
+    });
+  });
+
+  // Mock MCP invoke endpoint
+  await page.route(/\/api\/mcp\/[^/]+\/invoke$/, async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as {
+      tool_name?: string;
+      arguments?: Record<string, unknown>;
+    };
+    const toolName = body.tool_name ?? 'unknown';
+    const args = body.arguments ?? {};
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          content: [
+            { type: 'text', text: `Tool "${toolName}" called with: ${JSON.stringify(args)}` },
+          ],
+          isError: false,
+          durationMs: 12,
+        },
+      }),
+    });
+  });
 }
 
 test.describe('API Detail Page', () => {
@@ -341,5 +418,104 @@ test.describe('MCP API — Install in VS Code button', () => {
 
     await expect(page.getByRole('heading', { name: 'Test API 1' })).toBeVisible();
     await expect(page.getByTestId('install-vscode-button')).not.toBeVisible();
+  });
+});
+
+test.describe('MCP Inspector tab', () => {
+  test('Inspector tab appears for an MCP API with a deployment URL', async ({ page }) => {
+    const mcpApi = generateMockMcpApi();
+    await mockDetailApis(page, [mcpApi]);
+    await page.goto('/catalog/mcp-api-1');
+
+    await expect(page.getByRole('heading', { name: 'Test MCP Server' })).toBeVisible();
+    await expect(page.getByTestId('inspector-tab')).toBeVisible();
+    await expect(page.getByTestId('inspector-tab')).not.toBeDisabled();
+  });
+
+  test('Inspector tab is disabled when the MCP API has no deployments', async ({ page }) => {
+    const mcpApi = generateMockMcpApi({ deployments: [] });
+    await mockDetailApis(page, [mcpApi]);
+    await page.goto('/catalog/mcp-api-1');
+
+    await expect(page.getByTestId('inspector-tab')).toBeVisible();
+    await expect(page.getByTestId('inspector-tab')).toBeDisabled();
+  });
+
+  test('Inspector tab is NOT shown for a non-MCP (REST) API', async ({ page }) => {
+    const apis = generateMockApis(1); // kind: 'rest'
+    await mockDetailApis(page, apis);
+    await page.goto('/catalog/api-1');
+
+    await expect(page.getByRole('heading', { name: 'Test API 1' })).toBeVisible();
+    await expect(page.getByTestId('inspector-tab')).not.toBeVisible();
+  });
+
+  test('clicking Inspector tab loads tools and shows the inspector panel', async ({ page }) => {
+    const mcpApi = generateMockMcpApi();
+    await mockDetailApis(page, [mcpApi]);
+    await page.goto('/catalog/mcp-api-1');
+
+    await page.getByTestId('inspector-tab').click();
+
+    // Wait for the inspector panel to appear
+    await expect(page.getByTestId('mcp-inspector-tab')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('connection-status')).toBeVisible();
+    await expect(page.getByTestId('server-url')).toHaveText('https://mcp.example.com/sse');
+  });
+
+  test('Inspector panel lists available tools', async ({ page }) => {
+    const mcpApi = generateMockMcpApi();
+    await mockDetailApis(page, [mcpApi]);
+    await page.goto('/catalog/mcp-api-1');
+
+    await page.getByTestId('inspector-tab').click();
+    await expect(page.getByTestId('mcp-inspector-tab')).toBeVisible({ timeout: 10000 });
+
+    await expect(page.getByTestId('tool-item-echo')).toBeVisible();
+    await expect(page.getByTestId('tool-item-ping')).toBeVisible();
+  });
+
+  test('invoking a tool shows the result', async ({ page }) => {
+    const mcpApi = generateMockMcpApi();
+    await mockDetailApis(page, [mcpApi]);
+    await page.goto('/catalog/mcp-api-1');
+
+    await page.getByTestId('inspector-tab').click();
+    await expect(page.getByTestId('mcp-inspector-tab')).toBeVisible({ timeout: 10000 });
+
+    // Select the echo tool (auto-selected as first tool, but click to be explicit)
+    await page.getByTestId('tool-item-echo').click();
+
+    // Fill in the parameter and invoke
+    await page.getByTestId('tool-input-message').fill('hello world');
+    await page.getByTestId('invoke-button').click();
+
+    // Verify the result panel appears
+    await expect(page.getByTestId('invoke-result')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('invoke-result-text')).toContainText('echo');
+  });
+
+  test('switching to Prompts tab shows prompts list', async ({ page }) => {
+    const mcpApi = generateMockMcpApi();
+    await mockDetailApis(page, [mcpApi]);
+    await page.goto('/catalog/mcp-api-1');
+
+    await page.getByTestId('inspector-tab').click();
+    await expect(page.getByTestId('mcp-inspector-tab')).toBeVisible({ timeout: 10000 });
+
+    await page.getByTestId('prompts-tab').click();
+    await expect(page.getByTestId('prompt-item-greet')).toBeVisible();
+  });
+
+  test('switching to Resources tab shows resources list', async ({ page }) => {
+    const mcpApi = generateMockMcpApi();
+    await mockDetailApis(page, [mcpApi]);
+    await page.goto('/catalog/mcp-api-1');
+
+    await page.getByTestId('inspector-tab').click();
+    await expect(page.getByTestId('mcp-inspector-tab')).toBeVisible({ timeout: 10000 });
+
+    await page.getByTestId('resources-tab').click();
+    await expect(page.getByTestId('resource-item-Server Status')).toBeVisible();
   });
 });
