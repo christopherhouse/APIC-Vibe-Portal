@@ -2,12 +2,24 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
 
 from governance_worker.rules import ComplianceChecker, GovernanceRule, RuleSeverity
-from governance_worker.scanner import GovernanceScannerService
+from governance_worker.scanner import (
+    _DAILY_TTL,
+    _GRANULAR_TTL,
+    _MONTHLY_TTL,
+    _WEEKLY_TTL,
+    RETENTION_TIER_DAILY,
+    RETENTION_TIER_GRANULAR,
+    RETENTION_TIER_MONTHLY,
+    RETENTION_TIER_WEEKLY,
+    GovernanceScannerService,
+    compute_retention_tier,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -93,7 +105,8 @@ class TestScanAll:
         assert "schemaVersion" in doc
         assert doc["agentId"] == "test-worker"
         assert doc["isDeleted"] is False
-        assert doc["ttl"] == 48 * 3600  # 48-hour retention
+        assert "retentionTier" in doc
+        assert doc["ttl"] > 0
 
     def test_snapshot_id_includes_api_id_date_and_3h_slot(self):
         scanner, _, container = _make_scanner(apis=[_make_api("my-api")])
@@ -208,3 +221,134 @@ class TestFetchAllApis:
         scanner._fetch_all_apis()
         # Original dict should be unchanged (we copy before enriching)
         assert "versions" not in api
+
+
+# ---------------------------------------------------------------------------
+# compute_retention_tier — tiered retention policy
+# ---------------------------------------------------------------------------
+
+
+class TestComputeRetentionTier:
+    """Verify the four retention tiers are assigned correctly."""
+
+    def _dt(self, *, day: int, month: int = 4, year: int = 2026, hour: int = 0, weekday_mon: bool = False) -> datetime:
+        """Helper: build a UTC datetime at the given calendar position."""
+        # Find a date matching month/day and (optionally) a Monday.
+        from datetime import date, timedelta
+
+        d = date(year, month, day)
+        if weekday_mon:
+            # Advance to the next Monday if needed.
+            while d.weekday() != 0:
+                d += timedelta(days=1)
+        return datetime(d.year, d.month, d.day, hour, 0, 0, tzinfo=UTC)
+
+    # -- Granular tier (non-midnight slot) -----------------------------------
+
+    def test_granular_tier_at_03h(self):
+        tier, ttl = compute_retention_tier(self._dt(day=7, hour=3))
+        assert tier == RETENTION_TIER_GRANULAR
+        assert ttl == _GRANULAR_TTL
+
+    def test_granular_tier_at_06h(self):
+        tier, ttl = compute_retention_tier(self._dt(day=7, hour=6))
+        assert tier == RETENTION_TIER_GRANULAR
+        assert ttl == _GRANULAR_TTL
+
+    def test_granular_tier_at_21h(self):
+        tier, ttl = compute_retention_tier(self._dt(day=7, hour=21))
+        assert tier == RETENTION_TIER_GRANULAR
+        assert ttl == _GRANULAR_TTL
+
+    def test_granular_ttl_is_48_hours(self):
+        tier, ttl = compute_retention_tier(self._dt(day=7, hour=9))
+        assert ttl == 48 * 3600
+
+    # -- Daily tier (midnight, not Mon, not 1st) ------------------------------
+
+    def test_daily_tier_at_midnight_on_regular_day(self):
+        # April 7 2026 is a Tuesday — regular day.
+        tier, ttl = compute_retention_tier(self._dt(day=7, hour=0))
+        assert tier == RETENTION_TIER_DAILY
+        assert ttl == _DAILY_TTL
+
+    def test_daily_ttl_is_7_days(self):
+        tier, ttl = compute_retention_tier(self._dt(day=7, hour=0))
+        assert ttl == 7 * 24 * 3600
+
+    # -- Weekly tier (Monday midnight, not 1st) --------------------------------
+
+    def test_weekly_tier_on_monday_midnight(self):
+        # April 6 2026 is a Monday and not the 1st.
+        dt = datetime(2026, 4, 6, 0, 0, 0, tzinfo=UTC)
+        assert dt.weekday() == 0  # sanity-check
+        tier, ttl = compute_retention_tier(dt)
+        assert tier == RETENTION_TIER_WEEKLY
+        assert ttl == _WEEKLY_TTL
+
+    def test_weekly_ttl_is_4_weeks(self):
+        dt = datetime(2026, 4, 6, 0, 0, 0, tzinfo=UTC)
+        _, ttl = compute_retention_tier(dt)
+        assert ttl == 4 * 7 * 24 * 3600
+
+    def test_monday_non_midnight_is_granular(self):
+        dt = datetime(2026, 4, 6, 3, 0, 0, tzinfo=UTC)
+        tier, _ = compute_retention_tier(dt)
+        assert tier == RETENTION_TIER_GRANULAR
+
+    # -- Monthly tier (1st of month, midnight) ---------------------------------
+
+    def test_monthly_tier_on_1st_midnight(self):
+        dt = datetime(2026, 4, 1, 0, 0, 0, tzinfo=UTC)
+        tier, ttl = compute_retention_tier(dt)
+        assert tier == RETENTION_TIER_MONTHLY
+        assert ttl == _MONTHLY_TTL
+
+    def test_monthly_ttl_is_90_days(self):
+        dt = datetime(2026, 4, 1, 0, 0, 0, tzinfo=UTC)
+        _, ttl = compute_retention_tier(dt)
+        assert ttl == 90 * 24 * 3600
+
+    def test_monthly_takes_priority_over_weekly_when_1st_is_monday(self):
+        # Find a 1st-of-month that is also a Monday.
+        # June 1 2026 is a Monday.
+        dt = datetime(2026, 6, 1, 0, 0, 0, tzinfo=UTC)
+        assert dt.weekday() == 0  # sanity-check: is Monday
+        assert dt.day == 1  # sanity-check: is 1st
+        tier, ttl = compute_retention_tier(dt)
+        assert tier == RETENTION_TIER_MONTHLY
+        assert ttl == _MONTHLY_TTL
+
+    def test_1st_non_midnight_is_granular(self):
+        dt = datetime(2026, 4, 1, 6, 0, 0, tzinfo=UTC)
+        tier, _ = compute_retention_tier(dt)
+        assert tier == RETENTION_TIER_GRANULAR
+
+    # -- Snapshot document carries retentionTier field -------------------------
+
+    def test_snapshot_document_includes_retention_tier_field(self):
+        """The persisted document must include retentionTier."""
+        scanner, _, container = _make_scanner(apis=[_make_api("my-api")])
+        scanner.scan_all()
+        doc = container.upsert_item.call_args[0][0]
+        assert "retentionTier" in doc
+        assert doc["retentionTier"] in (
+            RETENTION_TIER_GRANULAR,
+            RETENTION_TIER_DAILY,
+            RETENTION_TIER_WEEKLY,
+            RETENTION_TIER_MONTHLY,
+        )
+
+    def test_snapshot_document_ttl_matches_tier(self):
+        """The document TTL must match the TTL for the reported retentionTier."""
+        tier_to_ttl = {
+            RETENTION_TIER_GRANULAR: _GRANULAR_TTL,
+            RETENTION_TIER_DAILY: _DAILY_TTL,
+            RETENTION_TIER_WEEKLY: _WEEKLY_TTL,
+            RETENTION_TIER_MONTHLY: _MONTHLY_TTL,
+        }
+        scanner, _, container = _make_scanner(apis=[_make_api("my-api")])
+        scanner.scan_all()
+        doc = container.upsert_item.call_args[0][0]
+        expected_ttl = tier_to_ttl[doc["retentionTier"]]
+        assert doc["ttl"] == expected_ttl

@@ -4,11 +4,33 @@ The :class:`GovernanceScannerService` fetches all APIs from Azure API
 Center, evaluates them against the governance rules, and upserts the
 results as governance snapshot documents in Cosmos DB.
 
-One snapshot document is created per API per 3-hour window.  Documents
-are keyed by ``{api_id}-{date}-{3h_slot}`` (e.g. ``my-api-2026-04-23-09``)
-so that re-running within the same 3-hour window is idempotent.  Each
-document carries a ``ttl`` of 172 800 seconds (48 hours) so Cosmos DB
-automatically purges snapshots that are more than 48 hours old.
+Snapshot IDs
+------------
+One document is created per API per 3-hour window, keyed by
+``{api_id}-{date}-{3h_slot}`` (e.g. ``my-api-2026-04-23-09``).
+Re-running within the same 3-hour window overwrites the document with the
+freshest catalog state (upsert), keeping exactly one snapshot per slot.
+
+Tiered Retention
+----------------
+Document TTLs follow a graduated retention policy so that Cosmos DB
+automatically purges documents at the right time:
+
++----------------+----------------------------------+----------------+
+| Tier           | When                             | TTL            |
++================+==================================+================+
+| ``granular``   | Any non-midnight 3-hour slot     | 48 hours       |
++----------------+----------------------------------+----------------+
+| ``daily``      | Midnight (00:00) — other days    | 7 days         |
++----------------+----------------------------------+----------------+
+| ``weekly``     | Monday midnight (00:00)          | 4 weeks        |
++----------------+----------------------------------+----------------+
+| ``monthly``    | 1st of month, midnight (00:00)   | ~90 days       |
++----------------+----------------------------------+----------------+
+
+Each snapshot document includes a ``retentionTier`` field so consumers
+can filter or display snapshots by tier (e.g. show only daily rollups for
+a 30-day trend chart).
 """
 
 from __future__ import annotations
@@ -25,6 +47,52 @@ from azure.cosmos.exceptions import CosmosHttpResponseError
 from governance_worker.rules import ComplianceChecker, ComplianceResult
 
 logger = structlog.get_logger()
+
+# ---------------------------------------------------------------------------
+# Retention tiers
+# ---------------------------------------------------------------------------
+
+#: Tier name constants — stored in each snapshot document as ``retentionTier``.
+RETENTION_TIER_GRANULAR = "granular"  # every 3-hour slot, kept 48 h
+RETENTION_TIER_DAILY = "daily"  # midnight slot, kept 7 days
+RETENTION_TIER_WEEKLY = "weekly"  # Monday midnight, kept 4 weeks
+RETENTION_TIER_MONTHLY = "monthly"  # 1st-of-month midnight, kept ~90 days
+
+# TTL values in seconds for each retention tier.
+_GRANULAR_TTL: int = 48 * 3600  # 48 hours
+_DAILY_TTL: int = 7 * 24 * 3600  # 7 days
+_WEEKLY_TTL: int = 4 * 7 * 24 * 3600  # 4 weeks (28 days)
+_MONTHLY_TTL: int = 90 * 24 * 3600  # ~3 months (90 days)
+
+
+def compute_retention_tier(now: datetime) -> tuple[str, int]:
+    """Return ``(tier_name, ttl_seconds)`` for a snapshot taken at *now*.
+
+    The hierarchy is: monthly → weekly → daily → granular.
+
+    Parameters
+    ----------
+    now:
+        The UTC timestamp of the snapshot (typically ``datetime.now(UTC)``).
+
+    Returns
+    -------
+    tuple[str, int]
+        A ``(tier_name, ttl_seconds)`` pair where *tier_name* is one of the
+        ``RETENTION_TIER_*`` constants and *ttl_seconds* is the Cosmos DB TTL
+        to apply to the document.
+    """
+    slot = (now.hour // 3) * 3
+    if slot != 0:
+        # Non-midnight 3-hour slot — granular snapshot only.
+        return (RETENTION_TIER_GRANULAR, _GRANULAR_TTL)
+
+    # Midnight (slot 00) — classify by calendar position, highest tier wins.
+    if now.day == 1:
+        return (RETENTION_TIER_MONTHLY, _MONTHLY_TTL)
+    if now.weekday() == 0:  # Monday
+        return (RETENTION_TIER_WEEKLY, _WEEKLY_TTL)
+    return (RETENTION_TIER_DAILY, _DAILY_TTL)
 
 
 class GovernanceScannerService:
@@ -161,21 +229,26 @@ class GovernanceScannerService:
         document.  The 3-hour slot is the UTC hour rounded down to the nearest
         multiple of 3 (values: 00, 03, 06, 09, 12, 15, 18, 21).
 
-        Each document carries a ``ttl`` of 172 800 seconds (48 hours).  Cosmos
-        DB automatically deletes documents once their TTL expires, keeping the
-        container to a rolling 48-hour window of snapshots.
+        Document TTLs follow the tiered retention policy defined by
+        :func:`compute_retention_tier`:
+
+        - **granular** (any non-midnight slot) — 48 hours
+        - **daily** (midnight, non-Mon, non-1st) — 7 days
+        - **weekly** (Monday midnight) — 4 weeks
+        - **monthly** (1st of month, midnight) — 90 days
 
         Cosmos DB document IDs may not contain ``/``, ``\\``, ``?``, or ``#``.
         Any such characters in *api_id* are replaced with ``_`` before building
         the snapshot ID.
         """
-        _SNAPSHOT_TTL_SECONDS = 48 * 3600  # 48 hours
         now = datetime.now(UTC)
         today = now.date().isoformat()
         three_hour_slot = (now.hour // 3) * 3
         safe_api_id = re.sub(r"[/\\?#]", "_", api_id)
         snapshot_id = f"{safe_api_id}-{today}-{three_hour_slot:02d}"
         timestamp = now.isoformat().replace("+00:00", "Z")
+
+        tier, ttl = compute_retention_tier(now)
 
         findings = [
             {
@@ -198,5 +271,6 @@ class GovernanceScannerService:
             "schemaVersion": 1,
             "isDeleted": False,
             "deletedAt": None,
-            "ttl": _SNAPSHOT_TTL_SECONDS,
+            "retentionTier": tier,
+            "ttl": ttl,
         }
