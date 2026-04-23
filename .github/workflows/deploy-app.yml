@@ -24,63 +24,34 @@ permissions:
   packages: write
 
 jobs:
-  prepare:
-    name: Resolve ACR
-    runs-on: ubuntu-latest
-    environment: dev
-    outputs:
-      acr-name: ${{ steps.acr.outputs.name }}
-      acr-login-server: ${{ steps.acr.outputs.login-server }}
-    steps:
-      - name: Azure Login (OIDC)
-        uses: azure/login@v3
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  # Deploy (or re-confirm) dev infrastructure and capture its Bicep outputs.
+  # Always runs: dev ACR is the shared image registry for all environments.
+  infra-dev:
+    name: Infrastructure (Dev)
+    uses: ./.github/workflows/deploy-infra.yml
+    with:
+      environment: dev
 
-      - name: Get ACR name
-        id: acr
-        run: |
-          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
-          INFRA_DEPLOYMENT="deploy-infra-dev-current"
+  # Staging and prod infra jobs only run when explicitly requested.
+  infra-staging:
+    name: Infrastructure (Staging)
+    uses: ./.github/workflows/deploy-infra.yml
+    if: github.event.inputs.environment == 'staging'
+    with:
+      environment: staging
 
-          # Wait for any in-progress infra deployment before reading outputs.
-          # This prevents a race condition when infra and app workflows are
-          # triggered simultaneously by the same push.
-          MAX_WAIT_SECS=1800
-          WAITED=0
-          INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
-            --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
-          while [ "$INFRA_STATE" = "Running" ] && [ "$WAITED" -lt "$MAX_WAIT_SECS" ]; do
-            echo "Infrastructure deployment '$INFRA_DEPLOYMENT' is in progress. Waiting 30s (${WAITED}s elapsed)..."
-            sleep 30
-            WAITED=$((WAITED + 30))
-            INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
-              --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
-          done
-          if [ "$INFRA_STATE" = "NotFound" ]; then
-            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' not found. Run deploy-infra.yml first."
-            exit 1
-          fi
-          if [ "$INFRA_STATE" != "Succeeded" ]; then
-            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' is in state '$INFRA_STATE'. Expected Succeeded."
-            exit 1
-          fi
-
-          echo "Using infrastructure deployment: $INFRA_DEPLOYMENT"
-          ACR_NAME=$(az deployment group show \
-            --resource-group "$RG" \
-            --name "$INFRA_DEPLOYMENT" \
-            --query properties.outputs.acrName.value -o tsv)
-          echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
-          echo "login-server=${ACR_NAME}.azurecr.io" >> $GITHUB_OUTPUT
+  infra-prod:
+    name: Infrastructure (Prod)
+    uses: ./.github/workflows/deploy-infra.yml
+    if: github.event.inputs.environment == 'prod'
+    with:
+      environment: prod
 
   build-containers:
     name: Build and Push ${{ matrix.component }} Image
     runs-on: ubuntu-latest
     environment: dev
-    needs: prepare
+    needs: infra-dev
     strategy:
       matrix:
         include:
@@ -107,13 +78,13 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Login to ACR
-        run: az acr login --name ${{ needs.prepare.outputs.acr-name }}
+        run: az acr login --name ${{ needs.infra-dev.outputs.acr-name }}
 
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ${{ needs.prepare.outputs.acr-login-server }}/${{ matrix.component }}
+          images: ${{ needs.infra-dev.outputs.acr-login-server }}/${{ matrix.component }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -133,7 +104,7 @@ jobs:
   deploy-dev:
     name: Deploy to Dev
     runs-on: ubuntu-latest
-    needs: [build-containers]
+    needs: [build-containers, infra-dev]
     if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'dev'
     environment:
       name: dev
@@ -148,88 +119,36 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Get deployment outputs
-        id: infra
-        run: |
-          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
-          INFRA_DEPLOYMENT="deploy-infra-dev-current"
-
-          # Wait for any in-progress infra deployment to settle before reading outputs.
-          MAX_WAIT_SECS=1800
-          WAITED=0
-          INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
-            --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
-          while [ "$INFRA_STATE" = "Running" ] && [ "$WAITED" -lt "$MAX_WAIT_SECS" ]; do
-            echo "Infrastructure deployment '$INFRA_DEPLOYMENT' is in progress. Waiting 30s (${WAITED}s elapsed)..."
-            sleep 30
-            WAITED=$((WAITED + 30))
-            INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
-              --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
-          done
-          if [ "$INFRA_STATE" = "NotFound" ]; then
-            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' not found. Run deploy-infra.yml first."
-            exit 1
-          fi
-          if [ "$INFRA_STATE" != "Succeeded" ]; then
-            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' is in state '$INFRA_STATE'. Expected Succeeded."
-            exit 1
-          fi
-
-          echo "Using infrastructure deployment: $INFRA_DEPLOYMENT"
-          DEPLOYMENT=$(az deployment group show \
-            --resource-group "$RG" \
-            --name "$INFRA_DEPLOYMENT" \
-            --query properties.outputs)
-          echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
-          echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
-          echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
-          echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
-          echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
-          echo "ai-search-endpoint=$(echo $DEPLOYMENT | jq -r '.aiSearchEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "openai-endpoint=$(echo $DEPLOYMENT | jq -r '.openAiEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "foundry-endpoint=$(echo $DEPLOYMENT | jq -r '.foundryEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "api-center-endpoint=$(echo $DEPLOYMENT | jq -r '.apiCenterEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "cosmos-db-endpoint=$(echo $DEPLOYMENT | jq -r '.cosmosDbEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "cosmos-db-database-name=$(echo $DEPLOYMENT | jq -r '.cosmosDbDatabaseName.value')" >> $GITHUB_OUTPUT
-          echo "appinsights-connection-string=$(echo $DEPLOYMENT | jq -r '.appInsightsConnectionString.value')" >> $GITHUB_OUTPUT
-          echo "frontend-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "bff-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "bff-identity-client-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')" >> $GITHUB_OUTPUT
-          echo "indexer-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.indexerIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "indexer-identity-client-id=$(echo $DEPLOYMENT | jq -r '.indexerIdentityClientId.value')" >> $GITHUB_OUTPUT
-          echo "governance-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.governanceIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "governance-identity-client-id=$(echo $DEPLOYMENT | jq -r '.governanceIdentityClientId.value')" >> $GITHUB_OUTPUT
-
       - name: Deploy Container Apps
         run: |
           chmod +x scripts/deploy-container-apps.sh
           ./scripts/deploy-container-apps.sh \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --environment-id ${{ steps.infra.outputs.container-apps-env }} \
-            --frontend-app ${{ steps.infra.outputs.frontend-app }} \
-            --bff-app ${{ steps.infra.outputs.bff-app }} \
-            --acr-server ${{ steps.infra.outputs.acr-server }} \
-            --frontend-identity-resource-id "${{ steps.infra.outputs.frontend-identity-resource-id }}" \
-            --bff-identity-resource-id "${{ steps.infra.outputs.bff-identity-resource-id }}" \
-            --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
-            --redis-host ${{ steps.infra.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
-            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
+            --environment-id ${{ needs.infra-dev.outputs.container-apps-env }} \
+            --frontend-app ${{ needs.infra-dev.outputs.frontend-app }} \
+            --bff-app ${{ needs.infra-dev.outputs.bff-app }} \
+            --acr-server ${{ needs.infra-dev.outputs.acr-login-server }} \
+            --frontend-identity-resource-id "${{ needs.infra-dev.outputs.frontend-identity-resource-id }}" \
+            --bff-identity-resource-id "${{ needs.infra-dev.outputs.bff-identity-resource-id }}" \
+            --bff-identity-client-id "${{ needs.infra-dev.outputs.bff-identity-client-id }}" \
+            --redis-host ${{ needs.infra-dev.outputs.redis-host }} \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-dev.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-dev.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-dev.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-dev.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-dev.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-dev.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }}" \
+            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }}" \
             --frontend-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --indexer-image-tag ${{ needs.build-containers.outputs.image-tag }} \
-            --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
-            --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
-            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }} OPENAI_API_VERSION=${{ vars.OPENAI_API_VERSION }}"
+            --indexer-identity-resource-id "${{ needs.infra-dev.outputs.indexer-identity-resource-id }}" \
+            --indexer-identity-client-id "${{ needs.infra-dev.outputs.indexer-identity-client-id }}" \
+            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ needs.infra-dev.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ needs.infra-dev.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ needs.infra-dev.outputs.api-center-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }} OPENAI_API_VERSION=${{ vars.OPENAI_API_VERSION }}" \
             --governance-image-tag ${{ needs.build-containers.outputs.image-tag }} \
-            --governance-identity-resource-id "${{ steps.infra.outputs.governance-identity-resource-id }}" \
-            --governance-identity-client-id "${{ steps.infra.outputs.governance-identity-client-id }}" \
-            --governance-env-vars "API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}"
+            --governance-identity-resource-id "${{ needs.infra-dev.outputs.governance-identity-resource-id }}" \
+            --governance-identity-client-id "${{ needs.infra-dev.outputs.governance-identity-client-id }}" \
+            --governance-env-vars "API_CENTER_ENDPOINT=${{ needs.infra-dev.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-dev.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-dev.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }}"
 
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [build-containers]
+    needs: [build-containers, infra-staging]
     if: github.event.inputs.environment == 'staging'
     environment:
       name: staging
@@ -244,88 +163,36 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Get deployment outputs
-        id: infra
-        run: |
-          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
-          INFRA_DEPLOYMENT="deploy-infra-staging-current"
-
-          # Wait for any in-progress infra deployment to settle before reading outputs.
-          MAX_WAIT_SECS=1800
-          WAITED=0
-          INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
-            --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
-          while [ "$INFRA_STATE" = "Running" ] && [ "$WAITED" -lt "$MAX_WAIT_SECS" ]; do
-            echo "Infrastructure deployment '$INFRA_DEPLOYMENT' is in progress. Waiting 30s (${WAITED}s elapsed)..."
-            sleep 30
-            WAITED=$((WAITED + 30))
-            INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
-              --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
-          done
-          if [ "$INFRA_STATE" = "NotFound" ]; then
-            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' not found. Run deploy-infra.yml first."
-            exit 1
-          fi
-          if [ "$INFRA_STATE" != "Succeeded" ]; then
-            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' is in state '$INFRA_STATE'. Expected Succeeded."
-            exit 1
-          fi
-
-          echo "Using infrastructure deployment: $INFRA_DEPLOYMENT"
-          DEPLOYMENT=$(az deployment group show \
-            --resource-group "$RG" \
-            --name "$INFRA_DEPLOYMENT" \
-            --query properties.outputs)
-          echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
-          echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
-          echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
-          echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
-          echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
-          echo "ai-search-endpoint=$(echo $DEPLOYMENT | jq -r '.aiSearchEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "openai-endpoint=$(echo $DEPLOYMENT | jq -r '.openAiEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "foundry-endpoint=$(echo $DEPLOYMENT | jq -r '.foundryEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "api-center-endpoint=$(echo $DEPLOYMENT | jq -r '.apiCenterEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "cosmos-db-endpoint=$(echo $DEPLOYMENT | jq -r '.cosmosDbEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "cosmos-db-database-name=$(echo $DEPLOYMENT | jq -r '.cosmosDbDatabaseName.value')" >> $GITHUB_OUTPUT
-          echo "appinsights-connection-string=$(echo $DEPLOYMENT | jq -r '.appInsightsConnectionString.value')" >> $GITHUB_OUTPUT
-          echo "frontend-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "bff-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "bff-identity-client-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')" >> $GITHUB_OUTPUT
-          echo "indexer-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.indexerIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "indexer-identity-client-id=$(echo $DEPLOYMENT | jq -r '.indexerIdentityClientId.value')" >> $GITHUB_OUTPUT
-          echo "governance-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.governanceIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "governance-identity-client-id=$(echo $DEPLOYMENT | jq -r '.governanceIdentityClientId.value')" >> $GITHUB_OUTPUT
-
       - name: Deploy Container Apps
         run: |
           chmod +x scripts/deploy-container-apps.sh
           ./scripts/deploy-container-apps.sh \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --environment-id ${{ steps.infra.outputs.container-apps-env }} \
-            --frontend-app ${{ steps.infra.outputs.frontend-app }} \
-            --bff-app ${{ steps.infra.outputs.bff-app }} \
-            --acr-server ${{ steps.infra.outputs.acr-server }} \
-            --frontend-identity-resource-id "${{ steps.infra.outputs.frontend-identity-resource-id }}" \
-            --bff-identity-resource-id "${{ steps.infra.outputs.bff-identity-resource-id }}" \
-            --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
-            --redis-host ${{ steps.infra.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
-            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
+            --environment-id ${{ needs.infra-staging.outputs.container-apps-env }} \
+            --frontend-app ${{ needs.infra-staging.outputs.frontend-app }} \
+            --bff-app ${{ needs.infra-staging.outputs.bff-app }} \
+            --acr-server ${{ needs.infra-dev.outputs.acr-login-server }} \
+            --frontend-identity-resource-id "${{ needs.infra-staging.outputs.frontend-identity-resource-id }}" \
+            --bff-identity-resource-id "${{ needs.infra-staging.outputs.bff-identity-resource-id }}" \
+            --bff-identity-client-id "${{ needs.infra-staging.outputs.bff-identity-client-id }}" \
+            --redis-host ${{ needs.infra-staging.outputs.redis-host }} \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-staging.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-staging.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-staging.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-staging.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-staging.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-staging.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }}" \
+            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }}" \
             --frontend-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --indexer-image-tag ${{ needs.build-containers.outputs.image-tag }} \
-            --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
-            --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
-            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }} OPENAI_API_VERSION=${{ vars.OPENAI_API_VERSION }}"
+            --indexer-identity-resource-id "${{ needs.infra-staging.outputs.indexer-identity-resource-id }}" \
+            --indexer-identity-client-id "${{ needs.infra-staging.outputs.indexer-identity-client-id }}" \
+            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ needs.infra-staging.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ needs.infra-staging.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ needs.infra-staging.outputs.api-center-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }} OPENAI_API_VERSION=${{ vars.OPENAI_API_VERSION }}" \
             --governance-image-tag ${{ needs.build-containers.outputs.image-tag }} \
-            --governance-identity-resource-id "${{ steps.infra.outputs.governance-identity-resource-id }}" \
-            --governance-identity-client-id "${{ steps.infra.outputs.governance-identity-client-id }}" \
-            --governance-env-vars "API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}"
+            --governance-identity-resource-id "${{ needs.infra-staging.outputs.governance-identity-resource-id }}" \
+            --governance-identity-client-id "${{ needs.infra-staging.outputs.governance-identity-client-id }}" \
+            --governance-env-vars "API_CENTER_ENDPOINT=${{ needs.infra-staging.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-staging.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-staging.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }}"
 
   deploy-prod:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [build-containers]
+    needs: [build-containers, infra-prod]
     if: github.event.inputs.environment == 'prod'
     environment:
       name: prod
@@ -340,80 +207,28 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Get deployment outputs
-        id: infra
-        run: |
-          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
-          INFRA_DEPLOYMENT="deploy-infra-prod-current"
-
-          # Wait for any in-progress infra deployment to settle before reading outputs.
-          MAX_WAIT_SECS=1800
-          WAITED=0
-          INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
-            --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
-          while [ "$INFRA_STATE" = "Running" ] && [ "$WAITED" -lt "$MAX_WAIT_SECS" ]; do
-            echo "Infrastructure deployment '$INFRA_DEPLOYMENT' is in progress. Waiting 30s (${WAITED}s elapsed)..."
-            sleep 30
-            WAITED=$((WAITED + 30))
-            INFRA_STATE=$(az deployment group show --resource-group "$RG" --name "$INFRA_DEPLOYMENT" \
-              --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
-          done
-          if [ "$INFRA_STATE" = "NotFound" ]; then
-            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' not found. Run deploy-infra.yml first."
-            exit 1
-          fi
-          if [ "$INFRA_STATE" != "Succeeded" ]; then
-            echo "::error::Infrastructure deployment '$INFRA_DEPLOYMENT' is in state '$INFRA_STATE'. Expected Succeeded."
-            exit 1
-          fi
-
-          echo "Using infrastructure deployment: $INFRA_DEPLOYMENT"
-          DEPLOYMENT=$(az deployment group show \
-            --resource-group "$RG" \
-            --name "$INFRA_DEPLOYMENT" \
-            --query properties.outputs)
-          echo "container-apps-env=$(echo $DEPLOYMENT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
-          echo "frontend-app=$(echo $DEPLOYMENT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
-          echo "bff-app=$(echo $DEPLOYMENT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
-          echo "acr-server=$(echo $DEPLOYMENT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
-          echo "redis-host=$(echo $DEPLOYMENT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
-          echo "ai-search-endpoint=$(echo $DEPLOYMENT | jq -r '.aiSearchEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "openai-endpoint=$(echo $DEPLOYMENT | jq -r '.openAiEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "foundry-endpoint=$(echo $DEPLOYMENT | jq -r '.foundryEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "api-center-endpoint=$(echo $DEPLOYMENT | jq -r '.apiCenterEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "cosmos-db-endpoint=$(echo $DEPLOYMENT | jq -r '.cosmosDbEndpoint.value')" >> $GITHUB_OUTPUT
-          echo "cosmos-db-database-name=$(echo $DEPLOYMENT | jq -r '.cosmosDbDatabaseName.value')" >> $GITHUB_OUTPUT
-          echo "appinsights-connection-string=$(echo $DEPLOYMENT | jq -r '.appInsightsConnectionString.value')" >> $GITHUB_OUTPUT
-          echo "frontend-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.frontendIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "bff-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "bff-identity-client-id=$(echo $DEPLOYMENT | jq -r '.bffIdentityClientId.value')" >> $GITHUB_OUTPUT
-          echo "indexer-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.indexerIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "indexer-identity-client-id=$(echo $DEPLOYMENT | jq -r '.indexerIdentityClientId.value')" >> $GITHUB_OUTPUT
-          echo "governance-identity-resource-id=$(echo $DEPLOYMENT | jq -r '.governanceIdentityResourceId.value')" >> $GITHUB_OUTPUT
-          echo "governance-identity-client-id=$(echo $DEPLOYMENT | jq -r '.governanceIdentityClientId.value')" >> $GITHUB_OUTPUT
-
       - name: Deploy Container Apps
         run: |
           chmod +x scripts/deploy-container-apps.sh
           ./scripts/deploy-container-apps.sh \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --environment-id ${{ steps.infra.outputs.container-apps-env }} \
-            --frontend-app ${{ steps.infra.outputs.frontend-app }} \
-            --bff-app ${{ steps.infra.outputs.bff-app }} \
-            --acr-server ${{ steps.infra.outputs.acr-server }} \
-            --frontend-identity-resource-id "${{ steps.infra.outputs.frontend-identity-resource-id }}" \
-            --bff-identity-resource-id "${{ steps.infra.outputs.bff-identity-resource-id }}" \
-            --bff-identity-client-id "${{ steps.infra.outputs.bff-identity-client-id }}" \
-            --redis-host ${{ steps.infra.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ steps.infra.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
-            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}" \
+            --environment-id ${{ needs.infra-prod.outputs.container-apps-env }} \
+            --frontend-app ${{ needs.infra-prod.outputs.frontend-app }} \
+            --bff-app ${{ needs.infra-prod.outputs.bff-app }} \
+            --acr-server ${{ needs.infra-dev.outputs.acr-login-server }} \
+            --frontend-identity-resource-id "${{ needs.infra-prod.outputs.frontend-identity-resource-id }}" \
+            --bff-identity-resource-id "${{ needs.infra-prod.outputs.bff-identity-resource-id }}" \
+            --bff-identity-client-id "${{ needs.infra-prod.outputs.bff-identity-client-id }}" \
+            --redis-host ${{ needs.infra-prod.outputs.redis-host }} \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-prod.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-prod.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-prod.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-prod.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-prod.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-prod.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }}" \
+            --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }}" \
             --frontend-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --indexer-image-tag ${{ needs.build-containers.outputs.image-tag }} \
-            --indexer-identity-resource-id "${{ steps.infra.outputs.indexer-identity-resource-id }}" \
-            --indexer-identity-client-id "${{ steps.infra.outputs.indexer-identity-client-id }}" \
-            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ steps.infra.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ steps.infra.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }} OPENAI_API_VERSION=${{ vars.OPENAI_API_VERSION }}"
+            --indexer-identity-resource-id "${{ needs.infra-prod.outputs.indexer-identity-resource-id }}" \
+            --indexer-identity-client-id "${{ needs.infra-prod.outputs.indexer-identity-client-id }}" \
+            --indexer-env-vars "AI_SEARCH_ENDPOINT=${{ needs.infra-prod.outputs.ai-search-endpoint }} OPENAI_ENDPOINT=${{ needs.infra-prod.outputs.openai-endpoint }} API_CENTER_ENDPOINT=${{ needs.infra-prod.outputs.api-center-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }} OPENAI_API_VERSION=${{ vars.OPENAI_API_VERSION }}" \
             --governance-image-tag ${{ needs.build-containers.outputs.image-tag }} \
-            --governance-identity-resource-id "${{ steps.infra.outputs.governance-identity-resource-id }}" \
-            --governance-identity-client-id "${{ steps.infra.outputs.governance-identity-client-id }}" \
-            --governance-env-vars "API_CENTER_ENDPOINT=${{ steps.infra.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ steps.infra.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ steps.infra.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ steps.infra.outputs.appinsights-connection-string }}"
+            --governance-identity-resource-id "${{ needs.infra-prod.outputs.governance-identity-resource-id }}" \
+            --governance-identity-client-id "${{ needs.infra-prod.outputs.governance-identity-client-id }}" \
+            --governance-env-vars "API_CENTER_ENDPOINT=${{ needs.infra-prod.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-prod.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-prod.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }}"

@@ -17,6 +17,73 @@ on:
           - dev
           - staging
           - prod
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: string
+    outputs:
+      acr-name:
+        description: 'Container registry name'
+        value: ${{ jobs.deploy.outputs.acr-name }}
+      acr-login-server:
+        description: 'Container registry login server URL'
+        value: ${{ jobs.deploy.outputs.acr-login-server }}
+      container-apps-env:
+        description: 'Container Apps environment resource ID'
+        value: ${{ jobs.deploy.outputs.container-apps-env }}
+      frontend-app:
+        description: 'Frontend Container App name'
+        value: ${{ jobs.deploy.outputs.frontend-app }}
+      bff-app:
+        description: 'BFF Container App name'
+        value: ${{ jobs.deploy.outputs.bff-app }}
+      redis-host:
+        description: 'Redis cache hostname'
+        value: ${{ jobs.deploy.outputs.redis-host }}
+      ai-search-endpoint:
+        description: 'Azure AI Search endpoint'
+        value: ${{ jobs.deploy.outputs.ai-search-endpoint }}
+      openai-endpoint:
+        description: 'Azure OpenAI endpoint'
+        value: ${{ jobs.deploy.outputs.openai-endpoint }}
+      foundry-endpoint:
+        description: 'Azure AI Foundry endpoint'
+        value: ${{ jobs.deploy.outputs.foundry-endpoint }}
+      api-center-endpoint:
+        description: 'Azure API Center endpoint'
+        value: ${{ jobs.deploy.outputs.api-center-endpoint }}
+      cosmos-db-endpoint:
+        description: 'Cosmos DB endpoint'
+        value: ${{ jobs.deploy.outputs.cosmos-db-endpoint }}
+      cosmos-db-database-name:
+        description: 'Cosmos DB database name'
+        value: ${{ jobs.deploy.outputs.cosmos-db-database-name }}
+      appinsights-connection-string:
+        description: 'Application Insights connection string'
+        value: ${{ jobs.deploy.outputs.appinsights-connection-string }}
+      frontend-identity-resource-id:
+        description: 'Frontend managed identity resource ID'
+        value: ${{ jobs.deploy.outputs.frontend-identity-resource-id }}
+      bff-identity-resource-id:
+        description: 'BFF managed identity resource ID'
+        value: ${{ jobs.deploy.outputs.bff-identity-resource-id }}
+      bff-identity-client-id:
+        description: 'BFF managed identity client ID'
+        value: ${{ jobs.deploy.outputs.bff-identity-client-id }}
+      indexer-identity-resource-id:
+        description: 'Indexer managed identity resource ID'
+        value: ${{ jobs.deploy.outputs.indexer-identity-resource-id }}
+      indexer-identity-client-id:
+        description: 'Indexer managed identity client ID'
+        value: ${{ jobs.deploy.outputs.indexer-identity-client-id }}
+      governance-identity-resource-id:
+        description: 'Governance worker managed identity resource ID'
+        value: ${{ jobs.deploy.outputs.governance-identity-resource-id }}
+      governance-identity-client-id:
+        description: 'Governance worker managed identity client ID'
+        value: ${{ jobs.deploy.outputs.governance-identity-client-id }}
 
 permissions:
   id-token: write
@@ -47,16 +114,35 @@ jobs:
             --name validate-infra-${{ github.run_number }} \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
-            --parameters infra/parameters/dev.bicepparam
+            --parameters infra/parameters/${{ inputs.environment || 'dev' }}.bicepparam
 
-  deploy-dev:
-    name: Deploy to Dev
+  deploy:
+    name: Deploy to ${{ inputs.environment || 'dev' }}
     runs-on: ubuntu-latest
     needs: validate
-    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'dev'
     environment:
-      name: dev
-      url: ${{ steps.deploy.outputs.frontendUrl }}
+      name: ${{ inputs.environment || 'dev' }}
+    outputs:
+      acr-name: ${{ steps.outputs.outputs.acr-name }}
+      acr-login-server: ${{ steps.outputs.outputs.acr-login-server }}
+      container-apps-env: ${{ steps.outputs.outputs.container-apps-env }}
+      frontend-app: ${{ steps.outputs.outputs.frontend-app }}
+      bff-app: ${{ steps.outputs.outputs.bff-app }}
+      redis-host: ${{ steps.outputs.outputs.redis-host }}
+      ai-search-endpoint: ${{ steps.outputs.outputs.ai-search-endpoint }}
+      openai-endpoint: ${{ steps.outputs.outputs.openai-endpoint }}
+      foundry-endpoint: ${{ steps.outputs.outputs.foundry-endpoint }}
+      api-center-endpoint: ${{ steps.outputs.outputs.api-center-endpoint }}
+      cosmos-db-endpoint: ${{ steps.outputs.outputs.cosmos-db-endpoint }}
+      cosmos-db-database-name: ${{ steps.outputs.outputs.cosmos-db-database-name }}
+      appinsights-connection-string: ${{ steps.outputs.outputs.appinsights-connection-string }}
+      frontend-identity-resource-id: ${{ steps.outputs.outputs.frontend-identity-resource-id }}
+      bff-identity-resource-id: ${{ steps.outputs.outputs.bff-identity-resource-id }}
+      bff-identity-client-id: ${{ steps.outputs.outputs.bff-identity-client-id }}
+      indexer-identity-resource-id: ${{ steps.outputs.outputs.indexer-identity-resource-id }}
+      indexer-identity-client-id: ${{ steps.outputs.outputs.indexer-identity-client-id }}
+      governance-identity-resource-id: ${{ steps.outputs.outputs.governance-identity-resource-id }}
+      governance-identity-client-id: ${{ steps.outputs.outputs.governance-identity-client-id }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -68,70 +154,35 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy infrastructure
-        id: deploy
+      - name: Deploy infrastructure and capture outputs
+        id: outputs
         run: |
-          az deployment group create \
-            --name deploy-infra-dev-current \
+          ENV="${{ inputs.environment || 'dev' }}"
+          RESULT=$(az deployment group create \
+            --name deploy-infra-${ENV}-current \
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
-            --parameters infra/parameters/dev.bicepparam \
-            --query properties.outputs
+            --parameters infra/parameters/${ENV}.bicepparam \
+            --query properties.outputs \
+            -o json)
 
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: validate
-    if: github.event.inputs.environment == 'staging'
-    environment:
-      name: staging
-      url: ${{ steps.deploy.outputs.frontendUrl }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Azure Login (OIDC)
-        uses: azure/login@v3
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deploy infrastructure
-        id: deploy
-        run: |
-          az deployment group create \
-            --name deploy-infra-staging-current \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --template-file infra/main.bicep \
-            --parameters infra/parameters/staging.bicepparam \
-            --query properties.outputs
-
-  deploy-prod:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: validate
-    if: github.event.inputs.environment == 'prod'
-    environment:
-      name: prod
-      url: ${{ steps.deploy.outputs.frontendUrl }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Azure Login (OIDC)
-        uses: azure/login@v3
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deploy infrastructure
-        id: deploy
-        run: |
-          az deployment group create \
-            --name deploy-infra-prod-current \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --template-file infra/main.bicep \
-            --parameters infra/parameters/prod.bicepparam \
-            --query properties.outputs
+          echo "acr-name=$(echo $RESULT | jq -r '.acrName.value')" >> $GITHUB_OUTPUT
+          echo "acr-login-server=$(echo $RESULT | jq -r '.acrLoginServer.value')" >> $GITHUB_OUTPUT
+          echo "container-apps-env=$(echo $RESULT | jq -r '.containerAppsEnvironmentId.value')" >> $GITHUB_OUTPUT
+          echo "frontend-app=$(echo $RESULT | jq -r '.frontendAppName.value')" >> $GITHUB_OUTPUT
+          echo "bff-app=$(echo $RESULT | jq -r '.bffAppName.value')" >> $GITHUB_OUTPUT
+          echo "redis-host=$(echo $RESULT | jq -r '.redisCacheHostName.value')" >> $GITHUB_OUTPUT
+          echo "ai-search-endpoint=$(echo $RESULT | jq -r '.aiSearchEndpoint.value')" >> $GITHUB_OUTPUT
+          echo "openai-endpoint=$(echo $RESULT | jq -r '.openAiEndpoint.value')" >> $GITHUB_OUTPUT
+          echo "foundry-endpoint=$(echo $RESULT | jq -r '.foundryEndpoint.value')" >> $GITHUB_OUTPUT
+          echo "api-center-endpoint=$(echo $RESULT | jq -r '.apiCenterEndpoint.value')" >> $GITHUB_OUTPUT
+          echo "cosmos-db-endpoint=$(echo $RESULT | jq -r '.cosmosDbEndpoint.value')" >> $GITHUB_OUTPUT
+          echo "cosmos-db-database-name=$(echo $RESULT | jq -r '.cosmosDbDatabaseName.value')" >> $GITHUB_OUTPUT
+          echo "appinsights-connection-string=$(echo $RESULT | jq -r '.appInsightsConnectionString.value')" >> $GITHUB_OUTPUT
+          echo "frontend-identity-resource-id=$(echo $RESULT | jq -r '.frontendIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-resource-id=$(echo $RESULT | jq -r '.bffIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "bff-identity-client-id=$(echo $RESULT | jq -r '.bffIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "indexer-identity-resource-id=$(echo $RESULT | jq -r '.indexerIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "indexer-identity-client-id=$(echo $RESULT | jq -r '.indexerIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "governance-identity-resource-id=$(echo $RESULT | jq -r '.governanceIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "governance-identity-client-id=$(echo $RESULT | jq -r '.governanceIdentityClientId.value')" >> $GITHUB_OUTPUT
