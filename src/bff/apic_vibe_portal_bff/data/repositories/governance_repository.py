@@ -52,7 +52,12 @@ class GovernanceRepository(BaseRepository):
             Snapshot documents, one per distinct API, ordered by ``timestamp``
             descending.  An empty list is returned when no snapshots exist.
         """
-        query = "SELECT * FROM c WHERE (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted = false) ORDER BY c.timestamp DESC"
+        query = (
+            "SELECT c.id, c.apiId, c.complianceScore, c.timestamp, c.findings, "
+            "c.isDeleted, c.schemaVersion FROM c "
+            "WHERE (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted = false) "
+            "ORDER BY c.timestamp DESC"
+        )
         items = list(
             self._container.query_items(
                 query=query,

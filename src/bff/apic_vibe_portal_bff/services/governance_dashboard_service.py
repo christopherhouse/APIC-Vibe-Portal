@@ -470,7 +470,7 @@ class GovernanceDashboardService:
                     "score": score,
                     "category": category.value,
                     "criticalFailures": critical_failures,
-                    "lastChecked": snapshot.get("timestamp", datetime.now(UTC).isoformat().replace("+00:00", "Z")),
+                    "lastChecked": snapshot.get("timestamp", ""),
                 }
             )
 
