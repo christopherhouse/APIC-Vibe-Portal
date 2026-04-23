@@ -96,6 +96,7 @@ var resourceNames = {
   frontendIdentity: '${namePrefix}-id-frontend-${environmentName}-${uniqueSuffix}'
   bffIdentity: '${namePrefix}-id-bff-${environmentName}-${uniqueSuffix}'
   indexerIdentity: '${namePrefix}-id-indexer-${environmentName}-${uniqueSuffix}'
+  governanceIdentity: '${namePrefix}-id-governance-${environmentName}-${uniqueSuffix}'
   keyVault: '${kvPrefix}${kvSuffix}' // Max 24 chars: 10 (prefix) + 13 (suffix) = 23
   containerRegistry: '${namePrefix}acr${environmentName}${uniqueSuffix}'
   containerAppsEnv: '${namePrefix}-cae-${environmentName}-${uniqueSuffix}'
@@ -169,6 +170,16 @@ module indexerIdentity 'modules/managed-identity.bicep' = {
   }
 }
 
+// Governance Snapshot Container Apps Job identity (AcrPull + Cosmos DB read/write)
+module governanceIdentity 'modules/managed-identity.bicep' = {
+  name: 'governance-identity-${deployment().name}'
+  params: {
+    location: location
+    managedIdentityName: resourceNames.governanceIdentity
+    tags: tags
+  }
+}
+
 // ============================================================================
 // MODULE 3: Key Vault
 // ============================================================================
@@ -200,6 +211,7 @@ module containerRegistry 'modules/acr.bicep' = {
     frontendManagedIdentityPrincipalId: frontendIdentity.outputs.principalId
     bffManagedIdentityPrincipalId: bffIdentity.outputs.principalId
     indexerManagedIdentityPrincipalId: indexerIdentity.outputs.principalId
+    governanceManagedIdentityPrincipalId: governanceIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
@@ -285,6 +297,7 @@ module cosmosDb 'modules/cosmosdb.bicep' = {
     location: cosmosDbLocation
     cosmosDbAccountName: resourceNames.cosmosDb
     managedIdentityPrincipalId: bffIdentity.outputs.principalId
+    governanceIdentityPrincipalId: governanceIdentity.outputs.principalId
     additionalLocations: cosmosDbLocations
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
@@ -384,6 +397,12 @@ output indexerIdentityResourceId string = indexerIdentity.outputs.id
 
 @description('Indexer Container Apps Job Managed Identity Client ID')
 output indexerIdentityClientId string = indexerIdentity.outputs.clientId
+
+@description('Governance Snapshot Container Apps Job Managed Identity resource ID')
+output governanceIdentityResourceId string = governanceIdentity.outputs.id
+
+@description('Governance Snapshot Container Apps Job Managed Identity Client ID')
+output governanceIdentityClientId string = governanceIdentity.outputs.clientId
 
 @description('Log Analytics Workspace ID')
 output logAnalyticsWorkspaceId string = monitoring.outputs.logAnalyticsWorkspaceId
