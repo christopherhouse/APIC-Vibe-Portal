@@ -62,7 +62,7 @@ resource loadTest 'Microsoft.LoadTestService/loadTests@2022-12-01' = {
 // Grant the load test's system-assigned identity "Key Vault Secrets User"
 // so the ALT data-plane can read Key Vault secret URIs in the test config.
 resource keyVaultSecretsUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, loadTest.identity.principalId, 'Key Vault Secrets User')
+  name: guid(keyVault.id, loadTest.id, 'Key Vault Secrets User')
   scope: keyVault
   properties: {
     roleDefinitionId: subscriptionResourceId(
