@@ -12,6 +12,7 @@ snapshot for that date.
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, date, datetime
 from typing import Any
 
@@ -153,11 +154,16 @@ class GovernanceScannerService:
     def _build_snapshot_document(self, api_id: str, result: ComplianceResult) -> dict[str, Any]:
         """Construct a Cosmos DB governance snapshot document.
 
-        The document ``id`` is ``{api_id}-{today}`` so that one upsert per
+        The document ``id`` is ``{sanitized_api_id}-{today}`` so that one upsert per
         day per API is idempotent (re-running overwrites the same document).
+
+        Cosmos DB document IDs may not contain ``/``, ``\\``, ``?``, or ``#``.
+        Any such characters in *api_id* are replaced with ``_`` before building
+        the snapshot ID.
         """
         today = date.today().isoformat()
-        snapshot_id = f"{api_id}-{today}"
+        safe_api_id = re.sub(r"[/\\?#]", "_", api_id)
+        snapshot_id = f"{safe_api_id}-{today}"
         now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
         findings = [

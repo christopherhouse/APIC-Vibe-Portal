@@ -103,6 +103,15 @@ class TestScanAll:
         assert doc["id"].startswith("my-api-")
         assert date.today().isoformat() in doc["id"]
 
+    def test_snapshot_id_sanitizes_invalid_cosmos_chars(self):
+        """API IDs with /, \\, ?, # must be sanitized in the document ID."""
+        api = _make_api("workspace/api-with/slashes")
+        scanner, _, container = _make_scanner(apis=[api])
+        scanner.scan_all()
+        doc = container.upsert_item.call_args[0][0]
+        assert "/" not in doc["id"]
+        assert doc["id"].startswith("workspace_api-with_slashes-")
+
     def test_apis_without_name_are_skipped(self):
         apis = [{"title": "No Name"}]
         scanner, _, container = _make_scanner(apis=apis)
