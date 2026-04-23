@@ -118,10 +118,10 @@ The main template should output:
 
 ### Status History
 
-| Date       | Status         | Author              | Notes                                                                                                               |
-| ---------- | -------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| —          | 🔲 Not Started | —                   | Task created                                                                                                        |
-| 2026-04-14 | ✅ Complete    | Claude (Sonnet 4.5) | All Bicep templates created and validated successfully. Main orchestrator + 10 modules + 3 environment param files. |
+| Date       | Status         | Author              | Notes                                                                                                                                                         |
+| ---------- | -------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —                   | Task created                                                                                                                                                  |
+| 2026-04-14 | ✅ Complete    | Claude (Sonnet 4.5) | All Bicep templates created and validated successfully. Main orchestrator + 10 modules + 3 environment param files.                                           |
 | 2026-04-22 | ✅ Complete    | GitHub Copilot      | Added `governanceIdentity` managed identity; granted AcrPull (ACR) and Cosmos DB Built-in Data Contributor (Cosmos DB) for governance snapshot container job. |
 
 ### Technical Decisions
