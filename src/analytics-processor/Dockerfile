@@ -6,7 +6,7 @@
 # ============================================================================
 
 # Build stage
-FROM mcr.microsoft.com/azure-functions/python:4-python3.13-slim AS builder
+FROM mcr.microsoft.com/azure-functions/python:4-python3.14 AS builder
 
 WORKDIR /home/site/wwwroot
 
@@ -30,7 +30,7 @@ RUN uv sync --frozen --no-dev 2>/dev/null || uv sync --no-dev
 RUN .venv/bin/python -m compileall -b .
 
 # Production stage
-FROM mcr.microsoft.com/azure-functions/python:4-python3.13-slim AS production
+FROM mcr.microsoft.com/azure-functions/python:4-python3.14 AS production
 
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true
