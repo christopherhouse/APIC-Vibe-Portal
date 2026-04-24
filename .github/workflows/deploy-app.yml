@@ -63,6 +63,8 @@ jobs:
             dockerfile: ./src/indexer/Dockerfile
           - component: governance-worker
             dockerfile: ./src/governance-worker/Dockerfile
+          - component: analytics-processor
+            dockerfile: ./src/analytics-processor/Dockerfile
     outputs:
       # All matrix variants produce the same git-ref-based tag, so last-writer is stable.
       image-tag: ${{ steps.meta.outputs.version }}
@@ -132,7 +134,7 @@ jobs:
             --bff-identity-resource-id "${{ needs.infra-dev.outputs.bff-identity-resource-id }}" \
             --bff-identity-client-id "${{ needs.infra-dev.outputs.bff-identity-client-id }}" \
             --redis-host ${{ needs.infra-dev.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-dev.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-dev.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-dev.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-dev.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-dev.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-dev.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }}" \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-dev.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-dev.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-dev.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-dev.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-dev.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-dev.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }} SERVICE_BUS_NAMESPACE=${{ needs.infra-dev.outputs.service-bus-fqns }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }}" \
             --frontend-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-containers.outputs.image-tag }} \
@@ -144,6 +146,25 @@ jobs:
             --governance-identity-resource-id "${{ needs.infra-dev.outputs.governance-identity-resource-id }}" \
             --governance-identity-client-id "${{ needs.infra-dev.outputs.governance-identity-client-id }}" \
             --governance-env-vars "API_CENTER_ENDPOINT=${{ needs.infra-dev.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-dev.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-dev.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }}"
+
+      - name: Deploy Analytics Processor (Bicep)
+        run: |
+          az deployment group create \
+            --name deploy-analytics-processor-dev-${{ github.run_id }} \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file infra/modules/analytics-processor.bicep \
+            --parameters \
+              containerAppName="${{ needs.infra-dev.outputs.analytics-processor-app }}" \
+              containerAppsEnvironmentId="${{ needs.infra-dev.outputs.container-apps-env }}" \
+              acrLoginServer="${{ needs.infra-dev.outputs.acr-login-server }}" \
+              imageTag="${{ needs.build-containers.outputs.image-tag }}" \
+              managedIdentityResourceId="${{ needs.infra-dev.outputs.analytics-processor-identity-resource-id }}" \
+              managedIdentityClientId="${{ needs.infra-dev.outputs.analytics-processor-identity-client-id }}" \
+              storageAccountName="${{ needs.infra-dev.outputs.function-storage-name }}" \
+              appInsightsConnectionString="${{ needs.infra-dev.outputs.appinsights-connection-string }}" \
+              serviceBusNamespace="${{ needs.infra-dev.outputs.service-bus-fqns }}" \
+              cosmosDbEndpoint="${{ needs.infra-dev.outputs.cosmos-db-endpoint }}" \
+              tags='{"Environment":"dev","Application":"APIC-Vibe-Portal","ManagedBy":"Bicep","SecurityControl":"Ignore"}'
 
   deploy-staging:
     name: Deploy to Staging
@@ -176,7 +197,7 @@ jobs:
             --bff-identity-resource-id "${{ needs.infra-staging.outputs.bff-identity-resource-id }}" \
             --bff-identity-client-id "${{ needs.infra-staging.outputs.bff-identity-client-id }}" \
             --redis-host ${{ needs.infra-staging.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-staging.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-staging.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-staging.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-staging.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-staging.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-staging.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }}" \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-staging.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-staging.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-staging.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-staging.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-staging.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-staging.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }} SERVICE_BUS_NAMESPACE=${{ needs.infra-staging.outputs.service-bus-fqns }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }}" \
             --frontend-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-containers.outputs.image-tag }} \
@@ -188,6 +209,25 @@ jobs:
             --governance-identity-resource-id "${{ needs.infra-staging.outputs.governance-identity-resource-id }}" \
             --governance-identity-client-id "${{ needs.infra-staging.outputs.governance-identity-client-id }}" \
             --governance-env-vars "API_CENTER_ENDPOINT=${{ needs.infra-staging.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-staging.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-staging.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }}"
+
+      - name: Deploy Analytics Processor (Bicep)
+        run: |
+          az deployment group create \
+            --name deploy-analytics-processor-staging-${{ github.run_id }} \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file infra/modules/analytics-processor.bicep \
+            --parameters \
+              containerAppName="${{ needs.infra-staging.outputs.analytics-processor-app }}" \
+              containerAppsEnvironmentId="${{ needs.infra-staging.outputs.container-apps-env }}" \
+              acrLoginServer="${{ needs.infra-dev.outputs.acr-login-server }}" \
+              imageTag="${{ needs.build-containers.outputs.image-tag }}" \
+              managedIdentityResourceId="${{ needs.infra-staging.outputs.analytics-processor-identity-resource-id }}" \
+              managedIdentityClientId="${{ needs.infra-staging.outputs.analytics-processor-identity-client-id }}" \
+              storageAccountName="${{ needs.infra-staging.outputs.function-storage-name }}" \
+              appInsightsConnectionString="${{ needs.infra-staging.outputs.appinsights-connection-string }}" \
+              serviceBusNamespace="${{ needs.infra-staging.outputs.service-bus-fqns }}" \
+              cosmosDbEndpoint="${{ needs.infra-staging.outputs.cosmos-db-endpoint }}" \
+              tags='{"Environment":"staging","Application":"APIC-Vibe-Portal","ManagedBy":"Bicep","SecurityControl":"Ignore"}'
 
   deploy-prod:
     name: Deploy to Production
@@ -220,7 +260,7 @@ jobs:
             --bff-identity-resource-id "${{ needs.infra-prod.outputs.bff-identity-resource-id }}" \
             --bff-identity-client-id "${{ needs.infra-prod.outputs.bff-identity-client-id }}" \
             --redis-host ${{ needs.infra-prod.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-prod.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-prod.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-prod.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-prod.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-prod.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-prod.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }}" \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-prod.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-prod.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-prod.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-prod.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-prod.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-prod.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }} SERVICE_BUS_NAMESPACE=${{ needs.infra-prod.outputs.service-bus-fqns }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }}" \
             --frontend-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-containers.outputs.image-tag }} \
@@ -232,3 +272,22 @@ jobs:
             --governance-identity-resource-id "${{ needs.infra-prod.outputs.governance-identity-resource-id }}" \
             --governance-identity-client-id "${{ needs.infra-prod.outputs.governance-identity-client-id }}" \
             --governance-env-vars "API_CENTER_ENDPOINT=${{ needs.infra-prod.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-prod.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-prod.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }}"
+
+      - name: Deploy Analytics Processor (Bicep)
+        run: |
+          az deployment group create \
+            --name deploy-analytics-processor-prod-${{ github.run_id }} \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file infra/modules/analytics-processor.bicep \
+            --parameters \
+              containerAppName="${{ needs.infra-prod.outputs.analytics-processor-app }}" \
+              containerAppsEnvironmentId="${{ needs.infra-prod.outputs.container-apps-env }}" \
+              acrLoginServer="${{ needs.infra-dev.outputs.acr-login-server }}" \
+              imageTag="${{ needs.build-containers.outputs.image-tag }}" \
+              managedIdentityResourceId="${{ needs.infra-prod.outputs.analytics-processor-identity-resource-id }}" \
+              managedIdentityClientId="${{ needs.infra-prod.outputs.analytics-processor-identity-client-id }}" \
+              storageAccountName="${{ needs.infra-prod.outputs.function-storage-name }}" \
+              appInsightsConnectionString="${{ needs.infra-prod.outputs.appinsights-connection-string }}" \
+              serviceBusNamespace="${{ needs.infra-prod.outputs.service-bus-fqns }}" \
+              cosmosDbEndpoint="${{ needs.infra-prod.outputs.cosmos-db-endpoint }}" \
+              tags='{"Environment":"prod","Application":"APIC-Vibe-Portal","ManagedBy":"Bicep","SecurityControl":"Ignore"}'

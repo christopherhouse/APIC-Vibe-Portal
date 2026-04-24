@@ -84,6 +84,21 @@ on:
       governance-identity-client-id:
         description: 'Governance worker managed identity client ID'
         value: ${{ jobs.deploy.outputs.governance-identity-client-id }}
+      service-bus-fqns:
+        description: 'Service Bus fully qualified namespace'
+        value: ${{ jobs.deploy.outputs.service-bus-fqns }}
+      analytics-processor-app:
+        description: 'Analytics processor Container App name'
+        value: ${{ jobs.deploy.outputs.analytics-processor-app }}
+      analytics-processor-identity-resource-id:
+        description: 'Analytics processor managed identity resource ID'
+        value: ${{ jobs.deploy.outputs.analytics-processor-identity-resource-id }}
+      analytics-processor-identity-client-id:
+        description: 'Analytics processor managed identity client ID'
+        value: ${{ jobs.deploy.outputs.analytics-processor-identity-client-id }}
+      function-storage-name:
+        description: 'Function storage account name'
+        value: ${{ jobs.deploy.outputs.function-storage-name }}
 
 permissions:
   id-token: write
@@ -146,6 +161,11 @@ jobs:
       indexer-identity-client-id: ${{ steps.outputs.outputs.indexer-identity-client-id }}
       governance-identity-resource-id: ${{ steps.outputs.outputs.governance-identity-resource-id }}
       governance-identity-client-id: ${{ steps.outputs.outputs.governance-identity-client-id }}
+      service-bus-fqns: ${{ steps.outputs.outputs.service-bus-fqns }}
+      analytics-processor-app: ${{ steps.outputs.outputs.analytics-processor-app }}
+      analytics-processor-identity-resource-id: ${{ steps.outputs.outputs.analytics-processor-identity-resource-id }}
+      analytics-processor-identity-client-id: ${{ steps.outputs.outputs.analytics-processor-identity-client-id }}
+      function-storage-name: ${{ steps.outputs.outputs.function-storage-name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -189,3 +209,8 @@ jobs:
           echo "indexer-identity-client-id=$(echo $RESULT | jq -r '.indexerIdentityClientId.value')" >> $GITHUB_OUTPUT
           echo "governance-identity-resource-id=$(echo $RESULT | jq -r '.governanceIdentityResourceId.value')" >> $GITHUB_OUTPUT
           echo "governance-identity-client-id=$(echo $RESULT | jq -r '.governanceIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "service-bus-fqns=$(echo $RESULT | jq -r '.serviceBusFullyQualifiedNamespace.value')" >> $GITHUB_OUTPUT
+          echo "analytics-processor-app=$(echo $RESULT | jq -r '.analyticsProcessorAppName.value')" >> $GITHUB_OUTPUT
+          echo "analytics-processor-identity-resource-id=$(echo $RESULT | jq -r '.analyticsProcessorIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "analytics-processor-identity-client-id=$(echo $RESULT | jq -r '.analyticsProcessorIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "function-storage-name=$(echo $RESULT | jq -r '.functionStorageAccountName.value')" >> $GITHUB_OUTPUT

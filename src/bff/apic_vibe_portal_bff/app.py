@@ -23,6 +23,7 @@ from apic_vibe_portal_bff.middleware.request_logger import RequestLoggerMiddlewa
 from apic_vibe_portal_bff.routers import api_catalog, chat, health, search
 from apic_vibe_portal_bff.routers.admin_access_policies import router as admin_access_policies_router
 from apic_vibe_portal_bff.routers.admin_agents import router as admin_agents_router
+from apic_vibe_portal_bff.routers.analytics import close_analytics_service
 from apic_vibe_portal_bff.routers.analytics import router as analytics_router
 from apic_vibe_portal_bff.routers.api_catalog import CatalogApiError, catalog_api_error_handler
 from apic_vibe_portal_bff.routers.api_compare import router as compare_router
@@ -72,6 +73,8 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     thread.start()
     logger.info("Startup cache warm thread started")
     yield
+    # --- Shutdown ---
+    close_analytics_service()
 
 
 def create_app() -> FastAPI:

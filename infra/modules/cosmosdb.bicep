@@ -14,6 +14,9 @@ param managedIdentityPrincipalId string
 @description('Governance Snapshot Container Job Managed Identity Principal ID for Cosmos DB RBAC')
 param governanceIdentityPrincipalId string
 
+@description('Analytics Processor Managed Identity Principal ID for Cosmos DB RBAC')
+param analyticsProcessorIdentityPrincipalId string
+
 @description('Additional failover locations (empty for single-region serverless)')
 param additionalLocations array
 
@@ -215,6 +218,17 @@ resource cosmosDbGovernanceJobRole 'Microsoft.DocumentDB/databaseAccounts/sqlRol
   properties: {
     roleDefinitionId: '${cosmosDbAccount.id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002' // Built-in Data Contributor
     principalId: governanceIdentityPrincipalId
+    scope: cosmosDbAccount.id
+  }
+}
+
+// RBAC: Grant analytics processor managed identity "Cosmos DB Built-in Data Contributor" role
+resource cosmosDbAnalyticsProcessorRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-12-01-preview' = {
+  name: guid(cosmosDbAccount.id, analyticsProcessorIdentityPrincipalId, 'Cosmos DB Built-in Data Contributor')
+  parent: cosmosDbAccount
+  properties: {
+    roleDefinitionId: '${cosmosDbAccount.id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002' // Built-in Data Contributor
+    principalId: analyticsProcessorIdentityPrincipalId
     scope: cosmosDbAccount.id
   }
 }

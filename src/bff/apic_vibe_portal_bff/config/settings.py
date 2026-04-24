@@ -94,6 +94,20 @@ class Settings(BaseSettings):
         description="Cosmos DB container name for API access policies (security trimming)",
     )
 
+    # --- Azure Service Bus -----------------------------------------------
+    service_bus_namespace: str = Field(
+        default="",
+        description=(
+            "Azure Service Bus fully qualified namespace "
+            "(e.g. myns.servicebus.windows.net). When empty, analytics events "
+            "are written directly to Cosmos DB (no Service Bus decoupling)."
+        ),
+    )
+    service_bus_analytics_topic: str = Field(
+        default="analytics-events",
+        description="Service Bus topic name for analytics events",
+    )
+
     # --- Azure AI Foundry Agent Service ---------------------------------
     foundry_project_endpoint: str = Field(
         default="",
