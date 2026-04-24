@@ -45,3 +45,6 @@ COPY --from=builder /home/site/wwwroot/analytics_processor /home/site/wwwroot/an
 
 # Set the virtual environment as the Python path
 ENV PATH="/home/site/wwwroot/.venv/bin:$PATH"
+
+# Run as non-root (the Azure Functions base image provides UID 1000)
+USER 1000
