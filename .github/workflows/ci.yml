@@ -66,6 +66,14 @@ jobs:
         working-directory: src/governance-worker
         run: uv run ruff format --check .
 
+      - name: Lint Analytics Processor
+        working-directory: src/analytics-processor
+        run: uv run ruff check .
+
+      - name: Check Analytics Processor formatting
+        working-directory: src/analytics-processor
+        run: uv run ruff format --check .
+
   typecheck:
     name: TypeScript Type Check
     runs-on: ubuntu-latest
@@ -305,4 +313,50 @@ jobs:
 
       - name: Validate Governance Worker
         working-directory: src/governance-worker
+        run: uv run python -m compileall .
+
+  test-analytics-processor:
+    name: Test Analytics Processor
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install UV
+        run: pip install uv
+
+      - name: Install dependencies
+        working-directory: src/analytics-processor
+        run: uv sync
+
+      - name: Run Analytics Processor tests
+        working-directory: src/analytics-processor
+        run: uv run pytest
+
+  build-analytics-processor:
+    name: Build Analytics Processor
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install UV
+        run: pip install uv
+
+      - name: Install dependencies
+        working-directory: src/analytics-processor
+        run: uv sync
+
+      - name: Validate Analytics Processor
+        working-directory: src/analytics-processor
         run: uv run python -m compileall .

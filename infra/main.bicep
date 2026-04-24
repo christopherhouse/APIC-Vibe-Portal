@@ -97,6 +97,7 @@ var resourceNames = {
   bffIdentity: '${namePrefix}-id-bff-${environmentName}-${uniqueSuffix}'
   indexerIdentity: '${namePrefix}-id-indexer-${environmentName}-${uniqueSuffix}'
   governanceIdentity: '${namePrefix}-id-governance-${environmentName}-${uniqueSuffix}'
+  analyticsProcessorIdentity: '${namePrefix}-id-analytics-${environmentName}-${uniqueSuffix}'
   keyVault: '${kvPrefix}${kvSuffix}' // Max 24 chars: 10 (prefix) + 13 (suffix) = 23
   containerRegistry: '${namePrefix}acr${environmentName}${uniqueSuffix}'
   containerAppsEnv: '${namePrefix}-cae-${environmentName}-${uniqueSuffix}'
@@ -110,6 +111,9 @@ var resourceNames = {
   foundryProject: '${namePrefix}-project-${environmentName}'
   redisCache: '${namePrefix}-redis-${environmentName}-${uniqueSuffix}'
   loadTest: '${namePrefix}-lt-${environmentName}-${uniqueSuffix}'
+  serviceBus: '${namePrefix}-sb-${environmentName}-${uniqueSuffix}'
+  functionStorage: '${namePrefix}fnst${substring(environmentName, 0, 1)}${uniqueSuffix}'
+  analyticsProcessorApp: '${namePrefix}-analytics-${environmentName}'
 }
 
 // ============================================================================
@@ -180,6 +184,16 @@ module governanceIdentity 'modules/managed-identity.bicep' = {
   }
 }
 
+// Analytics Processor Container App identity (AcrPull + SB receive + Cosmos write + Storage)
+module analyticsProcessorIdentity 'modules/managed-identity.bicep' = {
+  name: 'analytics-processor-identity-${deployment().name}'
+  params: {
+    location: location
+    managedIdentityName: resourceNames.analyticsProcessorIdentity
+    tags: tags
+  }
+}
+
 // ============================================================================
 // MODULE 3: Key Vault
 // ============================================================================
@@ -212,6 +226,7 @@ module containerRegistry 'modules/acr.bicep' = {
     bffManagedIdentityPrincipalId: bffIdentity.outputs.principalId
     indexerManagedIdentityPrincipalId: indexerIdentity.outputs.principalId
     governanceManagedIdentityPrincipalId: governanceIdentity.outputs.principalId
+    analyticsProcessorManagedIdentityPrincipalId: analyticsProcessorIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
@@ -299,6 +314,7 @@ module cosmosDb 'modules/cosmosdb.bicep' = {
     cosmosDbAccountName: resourceNames.cosmosDb
     managedIdentityPrincipalId: bffIdentity.outputs.principalId
     governanceIdentityPrincipalId: governanceIdentity.outputs.principalId
+    analyticsProcessorIdentityPrincipalId: analyticsProcessorIdentity.outputs.principalId
     additionalLocations: cosmosDbLocations
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
@@ -364,6 +380,44 @@ module loadTesting 'modules/load-testing.bicep' = {
     tags: tags
   }
 }
+
+// ============================================================================
+// MODULE 13: Azure Service Bus (analytics event pipeline)
+// ============================================================================
+
+module serviceBus 'modules/service-bus.bicep' = {
+  name: 'service-bus-${deployment().name}'
+  params: {
+    location: location
+    serviceBusNamespaceName: resourceNames.serviceBus
+    senderPrincipalId: bffIdentity.outputs.principalId
+    receiverPrincipalId: analyticsProcessorIdentity.outputs.principalId
+    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
+    enablePrivateEndpoint: enablePrivateEndpoints
+    privateEndpointSubnetId: privateEndpointSubnetId
+    tags: tags
+  }
+}
+
+// ============================================================================
+// MODULE 14: Function App Storage Account (analytics processor host state)
+// ============================================================================
+
+module functionStorage 'modules/function-storage.bicep' = {
+  name: 'function-storage-${deployment().name}'
+  params: {
+    location: location
+    storageAccountName: resourceNames.functionStorage
+    analyticsProcessorPrincipalId: analyticsProcessorIdentity.outputs.principalId
+    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
+    tags: tags
+  }
+}
+
+// NOTE: Analytics Processor Container App (Module 15) is deployed separately
+// in deploy-app.yml AFTER images are built and pushed to ACR. This avoids a
+// chicken-and-egg problem where the Container App references an ACR image that
+// doesn't exist yet during initial infrastructure provisioning.
 
 // ============================================================================
 // OUTPUTS
@@ -495,3 +549,21 @@ output loadTestName string = loadTesting.outputs.name
 
 @description('Azure Load Testing data-plane endpoint')
 output loadTestDataPlaneUri string = loadTesting.outputs.dataPlaneUri
+
+@description('Function Storage Account Name (for analytics processor AzureWebJobsStorage)')
+output functionStorageAccountName string = functionStorage.outputs.name
+
+@description('Analytics Processor Managed Identity resource ID')
+output analyticsProcessorIdentityResourceId string = analyticsProcessorIdentity.outputs.id
+
+@description('Analytics Processor Managed Identity Client ID')
+output analyticsProcessorIdentityClientId string = analyticsProcessorIdentity.outputs.clientId
+
+@description('Service Bus Fully Qualified Namespace')
+output serviceBusFullyQualifiedNamespace string = serviceBus.outputs.fullyQualifiedNamespace
+
+@description('Service Bus Namespace Name')
+output serviceBusNamespaceName string = serviceBus.outputs.namespaceName
+
+@description('Analytics Processor Container App Name')
+output analyticsProcessorAppName string = resourceNames.analyticsProcessorApp

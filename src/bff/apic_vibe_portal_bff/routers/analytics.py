@@ -54,6 +54,7 @@ def _range_days(time_range: str) -> int:
 
 # Service singleton — created lazily on first request.
 _service_instance: AnalyticsService | None = None
+_sb_client: object | None = None  # ServiceBusClient (kept for lifecycle cleanup)
 
 logger = logging.getLogger(__name__)
 
@@ -65,15 +66,22 @@ def _get_service() -> AnalyticsService:
     is wired in here so that events are persisted to Cosmos DB in addition to
     being emitted as structured log entries.
 
+    When ``SERVICE_BUS_NAMESPACE`` is configured, a ``ServiceBusSender`` is
+    created for the analytics topic so that events are sent to Service Bus
+    (primary path) instead of writing directly to Cosmos.  The repository is
+    still provided for fallback writes and GET queries.
+
     If ``COSMOS_DB_ENDPOINT`` is not configured or the repository cannot be
     initialized, the service falls back to structured-log-only delivery so
     that analytics event ingestion degrades gracefully rather than returning
     HTTP 500 on every request.
     """
-    global _service_instance  # noqa: PLW0603
+    global _service_instance, _sb_client  # noqa: PLW0603
     if _service_instance is None:
         settings = get_settings()
         analytics_repo = None
+        sb_sender = None
+
         if settings.cosmos_db_endpoint.strip():
             try:
                 from apic_vibe_portal_bff.data.cosmos_client import get_container
@@ -85,8 +93,48 @@ def _get_service() -> AnalyticsService:
                 logger.exception("Failed to initialise analytics repository — events will be logged only")
         else:
             logger.info("COSMOS_DB_ENDPOINT not configured — analytics events will be logged only")
-        _service_instance = AnalyticsService(repository=analytics_repo)
+
+        if settings.service_bus_namespace.strip():
+            try:
+                from azure.identity import DefaultAzureCredential
+                from azure.servicebus import ServiceBusClient
+
+                credential = DefaultAzureCredential()
+                sb_client = ServiceBusClient(
+                    fully_qualified_namespace=settings.service_bus_namespace,
+                    credential=credential,
+                )
+                _sb_client = sb_client  # store for lifecycle cleanup
+                sb_sender = sb_client.get_topic_sender(topic_name=settings.service_bus_analytics_topic)
+                logger.info(
+                    "Service Bus sender initialised for topic '%s'",
+                    settings.service_bus_analytics_topic,
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "Failed to initialise Service Bus sender — events will fall back to direct Cosmos write"
+                )
+        else:
+            logger.info("SERVICE_BUS_NAMESPACE not configured — analytics events will write directly to Cosmos")
+
+        _service_instance = AnalyticsService(repository=analytics_repo, service_bus_sender=sb_sender)
     return _service_instance
+
+
+def close_analytics_service() -> None:
+    """Close the Service Bus client and sender, releasing AMQP connections.
+
+    Called from the FastAPI lifespan shutdown phase.
+    """
+    global _service_instance, _sb_client  # noqa: PLW0603
+    if _sb_client is not None:
+        try:
+            _sb_client.close()  # type: ignore[union-attr]
+        except Exception:  # noqa: BLE001
+            logger.warning("analytics.service_bus.close_failed", exc_info=True)
+        _sb_client = None
+    _service_instance = None
+    logger.info("analytics.service_bus.closed")
 
 
 AnalyticsServiceDep = Annotated[AnalyticsService, Depends(_get_service)]
@@ -175,7 +223,7 @@ async def post_analytics_events(
     - Returns ``202 Accepted`` with the count of accepted events.
     """
     raw_events = [envelope.model_dump() for envelope in body.events]
-    accepted = service.record_events(raw_events, user=user)
+    accepted = await asyncio.to_thread(service.record_events, raw_events, user)
     return AnalyticsEventBatchResponse(accepted=accepted)
 
 

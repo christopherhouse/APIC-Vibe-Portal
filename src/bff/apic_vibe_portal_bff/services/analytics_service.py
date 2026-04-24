@@ -13,6 +13,7 @@ when one is injected at construction time.
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import re
 import uuid
@@ -23,6 +24,8 @@ from apic_vibe_portal_bff.data.models.analytics import AnalyticsEventDocument
 from apic_vibe_portal_bff.middleware.auth import AuthenticatedUser
 
 if TYPE_CHECKING:
+    from azure.servicebus import ServiceBusSender
+
     from apic_vibe_portal_bff.data.repositories.analytics_repository import AnalyticsRepository
 
 logger = logging.getLogger(__name__)
@@ -100,19 +103,34 @@ class AnalyticsService:
 
     Analytics events arrive from the frontend as batches.  Each event is
     enriched with server-side context, emitted as a structured log entry
-    captured by the OTel / Application Insights pipeline, and persisted to
-    the ``analytics-events`` Cosmos DB container when a repository is provided.
+    captured by the OTel / Application Insights pipeline, and persisted via
+    one of two paths:
+
+    1. **Service Bus (primary)** — when a ``ServiceBusSender`` is provided,
+       enriched events are batch-sent to the ``analytics-events`` topic.  A
+       downstream Function App consumes them and writes to Cosmos DB.
+    2. **Direct Cosmos DB (fallback)** — if Service Bus is unavailable or
+       not configured, events are written directly to Cosmos via the
+       repository, preserving the pre-decoupling behaviour.
 
     Parameters
     ----------
     repository:
         Optional :class:`~apic_vibe_portal_bff.data.repositories.analytics_repository.AnalyticsRepository`
-        used to persist events to Cosmos DB.  When ``None`` events are only
-        written to the structured log.
+        used to persist events to Cosmos DB (for reads and fallback writes).
+    service_bus_sender:
+        Optional ``ServiceBusSender`` for the analytics-events topic.
+        When provided, ``record_events`` sends enriched documents to
+        Service Bus instead of writing directly to Cosmos.
     """
 
-    def __init__(self, repository: AnalyticsRepository | None = None) -> None:
+    def __init__(
+        self,
+        repository: AnalyticsRepository | None = None,
+        service_bus_sender: ServiceBusSender | None = None,
+    ) -> None:
         self._repository = repository
+        self._service_bus_sender = service_bus_sender
 
     def record_events(
         self,
@@ -144,6 +162,7 @@ class AnalyticsService:
         """
         user_id_hash = hash_user_id(user.oid) if user else None
         recorded = 0
+        enriched_docs: list[dict[str, Any]] = []
 
         for envelope in events:
             try:
@@ -172,31 +191,76 @@ class AnalyticsService:
 
                 logger.info("analytics.event", extra=extra)
 
-                # Persist to Cosmos DB when a repository is wired in.
-                if self._repository is not None:
-                    api_id = str(event_payload.get("apiId", ""))
-                    # Build metadata: sanitized payload minus fields promoted to
-                    # top-level document fields (type, apiId), plus context fields.
-                    cosmos_metadata: dict[str, Any] = {k: v for k, v in sanitized.items() if k != "apiId"}
-                    if page_path:
-                        cosmos_metadata["pagePath"] = page_path
-                    if session_id is not None:
-                        cosmos_metadata["sessionId"] = session_id
-                    doc = AnalyticsEventDocument.new(
-                        event_id=str(uuid.uuid4()),
-                        event_type=event_type,
-                        user_id=user_id_hash or "",
-                        api_id=api_id,
-                        metadata=cosmos_metadata,
-                    )
-                    self._repository.create(doc.to_cosmos_dict())
-
+                # Build the Cosmos document for persistence (SB or direct).
+                api_id = str(event_payload.get("apiId", ""))
+                cosmos_metadata: dict[str, Any] = {k: v for k, v in sanitized.items() if k != "apiId"}
+                if page_path:
+                    cosmos_metadata["pagePath"] = page_path
+                if session_id is not None:
+                    cosmos_metadata["sessionId"] = session_id
+                doc = AnalyticsEventDocument.new(
+                    event_id=str(uuid.uuid4()),
+                    event_type=event_type,
+                    user_id=user_id_hash or "",
+                    api_id=api_id,
+                    metadata=cosmos_metadata,
+                )
+                enriched_docs.append(doc.to_cosmos_dict())
                 recorded += 1
 
             except Exception:  # noqa: BLE001
                 logger.warning("analytics.event.record_failed", exc_info=True)
 
+        # --- Persist enriched documents ---
+        if enriched_docs:
+            self._persist_events(enriched_docs)
+
         return recorded
+
+    def _persist_events(self, docs: list[dict[str, Any]]) -> None:
+        """Send documents to Service Bus (primary) or Cosmos DB (fallback)."""
+        if self._service_bus_sender is not None:
+            try:
+                self._send_to_service_bus(docs)
+                return
+            except Exception:  # noqa: BLE001
+                logger.warning(
+                    "analytics.service_bus.send_failed — falling back to direct Cosmos write",
+                    exc_info=True,
+                )
+
+        # Fallback: write directly to Cosmos DB
+        if self._repository is not None:
+            for doc in docs:
+                try:
+                    self._repository.create(doc)
+                except Exception:  # noqa: BLE001
+                    logger.warning("analytics.cosmos.write_failed", exc_info=True)
+
+    def _send_to_service_bus(self, docs: list[dict[str, Any]]) -> None:
+        """Batch-send documents to the Service Bus topic."""
+        from azure.servicebus import ServiceBusMessage
+
+        batch = self._service_bus_sender.create_message_batch()  # type: ignore[union-attr]
+        for doc in docs:
+            message = ServiceBusMessage(
+                body=json.dumps(doc),
+                content_type="application/json",
+                application_properties={"eventType": doc.get("eventType", "unknown")},
+            )
+            try:
+                batch.add_message(message)
+            except ValueError:
+                # ValueError is raised for two reasons:
+                # 1. Batch is full — send what we have and start a new batch.
+                # 2. Single message exceeds SB max size (256 KB Standard) — in
+                #    this case the retry also raises ValueError, which
+                #    propagates to _persist_events and triggers Cosmos fallback.
+                self._service_bus_sender.send_messages(batch)  # type: ignore[union-attr]
+                batch = self._service_bus_sender.create_message_batch()  # type: ignore[union-attr]
+                batch.add_message(message)
+        if len(batch) > 0:
+            self._service_bus_sender.send_messages(batch)  # type: ignore[union-attr]
 
     # ------------------------------------------------------------------
     # Aggregation queries (used by GET endpoints)

@@ -254,6 +254,84 @@ class TestAnalyticsServiceCosmosPersistence:
         repo = _make_mock_repo()
         repo.create.side_effect = RuntimeError("Cosmos unavailable")
         service = AnalyticsService(repository=repo)
-        # The exception should be caught and the event counted as failed.
+        # Enrichment succeeds, persistence failure is logged but doesn't affect
+        # the accepted count — events are "accepted" at enrichment time.
         result = service.record_events([_make_envelope("page_view")])
-        assert result == 0  # event was not recorded due to repo error
+        assert result == 1
+
+
+# ---------------------------------------------------------------------------
+# AnalyticsService — Service Bus path
+# ---------------------------------------------------------------------------
+
+
+def _make_mock_sb_sender() -> MagicMock:
+    """Return a mock ServiceBusSender with a mock batch."""
+    sender = MagicMock()
+    batch = MagicMock()
+    batch.__len__ = MagicMock(return_value=1)
+    sender.create_message_batch.return_value = batch
+    return sender
+
+
+class TestAnalyticsServiceServiceBus:
+    def test_sends_events_to_service_bus_when_configured(self) -> None:
+        sb_sender = _make_mock_sb_sender()
+        service = AnalyticsService(service_bus_sender=sb_sender)
+        result = service.record_events([_make_envelope("page_view")])
+        assert result == 1
+        sb_sender.send_messages.assert_called_once()
+
+    def test_sends_batch_to_service_bus(self) -> None:
+        sb_sender = _make_mock_sb_sender()
+        service = AnalyticsService(service_bus_sender=sb_sender)
+        service.record_events([_make_envelope("page_view"), _make_envelope("api_view")])
+        sb_sender.send_messages.assert_called_once()
+
+    def test_message_has_event_type_application_property(self) -> None:
+        sb_sender = _make_mock_sb_sender()
+        service = AnalyticsService(service_bus_sender=sb_sender)
+        service.record_events([_make_envelope("api_view")])
+        # The batch.add_message call receives a ServiceBusMessage
+        batch = sb_sender.create_message_batch.return_value
+        msg = batch.add_message.call_args[0][0]
+        assert msg.application_properties["eventType"] == "api_view"
+
+    def test_falls_back_to_cosmos_on_sb_failure(self) -> None:
+        sb_sender = _make_mock_sb_sender()
+        sb_sender.create_message_batch.side_effect = RuntimeError("SB down")
+        repo = _make_mock_repo()
+        service = AnalyticsService(repository=repo, service_bus_sender=sb_sender)
+        result = service.record_events([_make_envelope("page_view")])
+        assert result == 1
+        # Should have fallen back to Cosmos
+        assert repo.create.call_count == 1
+
+    def test_sb_preferred_over_cosmos_when_both_configured(self) -> None:
+        sb_sender = _make_mock_sb_sender()
+        repo = _make_mock_repo()
+        service = AnalyticsService(repository=repo, service_bus_sender=sb_sender)
+        service.record_events([_make_envelope("page_view")])
+        # SB should be used, NOT Cosmos
+        sb_sender.send_messages.assert_called_once()
+        repo.create.assert_not_called()
+
+    def test_no_sb_no_repo_still_logs(self) -> None:
+        service = AnalyticsService()
+        result = service.record_events([_make_envelope("page_view")])
+        assert result == 1
+
+    def test_falls_back_to_cosmos_when_single_message_exceeds_sb_max_size(self) -> None:
+        """When a message is too large for even an empty SB batch, the retry
+        add_message also raises ValueError. This should propagate to
+        _persist_events and trigger the Cosmos fallback."""
+        sb_sender = _make_mock_sb_sender()
+        batch = sb_sender.create_message_batch.return_value
+        # First add_message fails (message oversized), retry also fails
+        batch.add_message.side_effect = ValueError("Message too large")
+        repo = _make_mock_repo()
+        service = AnalyticsService(repository=repo, service_bus_sender=sb_sender)
+        result = service.record_events([_make_envelope("page_view")])
+        assert result == 1
+        # Should have fallen back to Cosmos
+        assert repo.create.call_count == 1
