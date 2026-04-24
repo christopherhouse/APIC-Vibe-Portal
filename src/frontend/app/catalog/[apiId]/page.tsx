@@ -124,6 +124,7 @@ export default function ApiDetailPage() {
             <Stack direction="row" spacing={2} sx={{ mb: 2, alignItems: 'center' }}>
               <SpecDownloadButton
                 specContent={specContent}
+                apiId={apiId}
                 apiName={api?.name ?? 'api'}
                 versionId={selectedVersionId}
               />

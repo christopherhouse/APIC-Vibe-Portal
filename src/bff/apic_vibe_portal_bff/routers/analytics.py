@@ -15,10 +15,11 @@ endpoints are restricted to ``Portal.Admin`` and ``Portal.Maintainer``.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field, field_validator
 
 from apic_vibe_portal_bff.config.settings import get_settings
@@ -199,7 +200,7 @@ async def get_analytics_summary(
     - chatInteractionsTrend: % change vs. previous period
     """
     days = _range_days(time_range)
-    return service.get_summary(days=days)
+    return await asyncio.to_thread(service.get_summary, days=days)
 
 
 @router.get("/usage-trends")
@@ -216,7 +217,7 @@ async def get_usage_trends(
     - dataPoints: list of {date, activeUsers, pageViews, searches, chatInteractions}
     """
     days = _range_days(time_range)
-    return service.get_usage_trends(days=days, time_range=time_range)
+    return await asyncio.to_thread(service.get_usage_trends, days=days, time_range=time_range)
 
 
 @router.get("/popular-apis")
@@ -224,7 +225,7 @@ async def get_popular_apis(
     _user: AnalyticsUserDep,
     service: AnalyticsServiceDep,
     time_range: TimeRange = "30d",
-    limit: int = 10,
+    limit: int = Query(default=10, ge=1, le=100),
 ) -> list[dict[str, Any]]:
     """Return the most viewed / downloaded APIs for the selected time range.
 
@@ -236,7 +237,7 @@ async def get_popular_apis(
     - chatMentionCount: Number of times referenced in chat
     """
     days = _range_days(time_range)
-    return service.get_popular_apis(days=days, limit=limit)
+    return await asyncio.to_thread(service.get_popular_apis, days=days, limit=limit)
 
 
 @router.get("/search-trends")
@@ -257,7 +258,7 @@ async def get_search_trends(
     - searchModeDistribution: {keyword, semantic, hybrid} usage counts
     """
     days = _range_days(time_range)
-    return service.get_search_trends(days=days)
+    return await asyncio.to_thread(service.get_search_trends, days=days)
 
 
 @router.get("/user-activity")
@@ -278,4 +279,4 @@ async def get_user_activity(
     - featureAdoption: {catalog, search, chat, compare, governance} usage counts
     """
     days = _range_days(time_range)
-    return service.get_user_activity(days=days)
+    return await asyncio.to_thread(service.get_user_activity, days=days)

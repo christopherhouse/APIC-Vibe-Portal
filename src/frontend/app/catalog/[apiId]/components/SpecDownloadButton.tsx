@@ -6,6 +6,7 @@ import { useAnalytics } from '@/lib/analytics/use-analytics';
 
 export interface SpecDownloadButtonProps {
   specContent: string | null;
+  apiId: string;
   apiName: string;
   versionId: string | null;
   disabled?: boolean;
@@ -17,6 +18,7 @@ export interface SpecDownloadButtonProps {
  */
 export default function SpecDownloadButton({
   specContent,
+  apiId,
   apiName,
   versionId,
   disabled,
@@ -49,7 +51,7 @@ export default function SpecDownloadButton({
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    track.specDownload({ apiId: apiName, format: extension as 'json' | 'yaml' });
+    track.specDownload({ apiId, format: extension as 'json' | 'yaml' });
   };
 
   return (

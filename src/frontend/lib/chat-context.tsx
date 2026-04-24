@@ -134,7 +134,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setIsStreaming(false);
       }
     },
-    [isStreaming, sessionId]
+    [isStreaming, sessionId, track]
   );
 
   const newConversation = useCallback(() => {

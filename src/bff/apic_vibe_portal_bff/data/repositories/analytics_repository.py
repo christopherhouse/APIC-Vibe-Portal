@@ -100,10 +100,11 @@ class AnalyticsRepository(BaseRepository):
         """Return per-day distinct user counts over *days* days."""
         since = (datetime.now(UTC) - timedelta(days=days)).isoformat().replace("+00:00", "Z")
         return self._query_cross_partition(
-            "SELECT SUBSTRING(c.timestamp, 0, 10) AS date, COUNT(1) AS count "
-            "FROM c WHERE c.timestamp >= @since AND c.userId != '' "
-            "AND (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted = false) "
-            "GROUP BY SUBSTRING(c.timestamp, 0, 10)",
+            "SELECT dates.date, COUNT(1) AS count FROM ("
+            "  SELECT DISTINCT c.userId, SUBSTRING(c.timestamp, 0, 10) AS date "
+            "  FROM c WHERE c.timestamp >= @since AND c.userId != '' "
+            "  AND (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted = false)"
+            ") AS dates GROUP BY dates.date",
             [{"name": "@since", "value": since}],
         )
 
@@ -121,7 +122,7 @@ class AnalyticsRepository(BaseRepository):
         rows.sort(key=lambda r: r.get("viewCount", 0), reverse=True)
         return rows[:limit]
 
-    def top_downloaded_apis(self, *, days: int) -> list[dict[str, Any]]:
+    def top_downloaded_apis(self, *, days: int) -> dict[str, int]:
         """Return download counts per API."""
         since = (datetime.now(UTC) - timedelta(days=days)).isoformat().replace("+00:00", "Z")
         rows = self._query_cross_partition(
@@ -132,7 +133,7 @@ class AnalyticsRepository(BaseRepository):
             "GROUP BY c.apiId",
             [{"name": "@since", "value": since}],
         )
-        return {r["apiId"]: r.get("downloadCount", 0) for r in rows}  # type: ignore[return-value]
+        return {r["apiId"]: r.get("downloadCount", 0) for r in rows}
 
     def chat_mention_counts(self, *, days: int) -> dict[str, int]:
         """Return chat interaction counts per session (proxy for API mentions)."""
