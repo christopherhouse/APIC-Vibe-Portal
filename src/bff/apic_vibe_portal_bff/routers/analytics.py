@@ -15,10 +15,11 @@ endpoints are restricted to ``Portal.Admin`` and ``Portal.Maintainer``.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field, field_validator
 
 from apic_vibe_portal_bff.config.settings import get_settings
@@ -181,6 +182,7 @@ async def post_analytics_events(
 @router.get("/summary")
 async def get_analytics_summary(
     _user: AnalyticsUserDep,
+    service: AnalyticsServiceDep,
     time_range: TimeRange = "30d",
 ) -> dict[str, Any]:
     """Return portal KPI summary for the selected time range.
@@ -198,25 +200,13 @@ async def get_analytics_summary(
     - chatInteractionsTrend: % change vs. previous period
     """
     days = _range_days(time_range)
-    # Placeholder implementation — replace with real aggregation from
-    # Application Insights / Cosmos DB analytics store in task 028.
-    return {
-        "totalUsers": 0,
-        "totalPageViews": 0,
-        "totalSearchQueries": 0,
-        "totalChatInteractions": 0,
-        "avgSessionDurationSeconds": 0.0,
-        "usersTrend": 0.0,
-        "pageViewsTrend": 0.0,
-        "searchQueriesTrend": 0.0,
-        "chatInteractionsTrend": 0.0,
-        "_rangeDays": days,
-    }
+    return await asyncio.to_thread(service.get_summary, days=days)
 
 
 @router.get("/usage-trends")
 async def get_usage_trends(
     _user: AnalyticsUserDep,
+    service: AnalyticsServiceDep,
     time_range: TimeRange = "30d",
 ) -> dict[str, Any]:
     """Return daily usage trend data points for the selected time range.
@@ -226,17 +216,16 @@ async def get_usage_trends(
     - range: The requested time range
     - dataPoints: list of {date, activeUsers, pageViews, searches, chatInteractions}
     """
-    return {
-        "range": time_range,
-        "dataPoints": [],
-    }
+    days = _range_days(time_range)
+    return await asyncio.to_thread(service.get_usage_trends, days=days, time_range=time_range)
 
 
 @router.get("/popular-apis")
 async def get_popular_apis(
     _user: AnalyticsUserDep,
+    service: AnalyticsServiceDep,
     time_range: TimeRange = "30d",
-    limit: int = 10,
+    limit: int = Query(default=10, ge=1, le=100),
 ) -> list[dict[str, Any]]:
     """Return the most viewed / downloaded APIs for the selected time range.
 
@@ -247,12 +236,14 @@ async def get_popular_apis(
     - downloadCount: Number of spec downloads
     - chatMentionCount: Number of times referenced in chat
     """
-    return []
+    days = _range_days(time_range)
+    return await asyncio.to_thread(service.get_popular_apis, days=days, limit=limit)
 
 
 @router.get("/search-trends")
 async def get_search_trends(
     _user: AnalyticsUserDep,
+    service: AnalyticsServiceDep,
     time_range: TimeRange = "30d",
 ) -> dict[str, Any]:
     """Return search analytics for the selected time range.
@@ -266,19 +257,14 @@ async def get_search_trends(
     - avgResultsPerSearch: Mean number of results per query
     - searchModeDistribution: {keyword, semantic, hybrid} usage counts
     """
-    return {
-        "dailyVolume": [],
-        "topQueries": [],
-        "zeroResultQueries": [],
-        "clickThroughRate": 0.0,
-        "avgResultsPerSearch": 0.0,
-        "searchModeDistribution": {"keyword": 0, "semantic": 0, "hybrid": 0},
-    }
+    days = _range_days(time_range)
+    return await asyncio.to_thread(service.get_search_trends, days=days)
 
 
 @router.get("/user-activity")
 async def get_user_activity(
     _user: AnalyticsUserDep,
+    service: AnalyticsServiceDep,
     time_range: TimeRange = "30d",
 ) -> dict[str, Any]:
     """Return user engagement data for the selected time range.
@@ -292,17 +278,5 @@ async def get_user_activity(
     - returningUserRate: % of returning vs. new users
     - featureAdoption: {catalog, search, chat, compare, governance} usage counts
     """
-    return {
-        "dailyActiveUsers": [],
-        "weeklyActiveUsers": [],
-        "avgSessionDurationSeconds": 0.0,
-        "avgPagesPerSession": 0.0,
-        "returningUserRate": 0.0,
-        "featureAdoption": {
-            "catalog": 0,
-            "search": 0,
-            "chat": 0,
-            "compare": 0,
-            "governance": 0,
-        },
-    }
+    days = _range_days(time_range)
+    return await asyncio.to_thread(service.get_user_activity, days=days)
