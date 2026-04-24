@@ -3,19 +3,34 @@ import SpecDownloadButton from '../SpecDownloadButton';
 
 describe('SpecDownloadButton', () => {
   it('renders download button', () => {
-    render(<SpecDownloadButton specContent='{"openapi":"3.0.0"}' apiId="test-api-1" apiName="test" versionId="v1" />);
+    render(
+      <SpecDownloadButton
+        specContent='{"openapi":"3.0.0"}'
+        apiId="test-api-1"
+        apiName="test"
+        versionId="v1"
+      />
+    );
     expect(screen.getByTestId('spec-download-button')).toBeInTheDocument();
     expect(screen.getByText('Download Spec')).toBeInTheDocument();
   });
 
   it('is disabled when specContent is null', () => {
-    render(<SpecDownloadButton specContent={null} apiId="test-api-1" apiName="test" versionId="v1" />);
+    render(
+      <SpecDownloadButton specContent={null} apiId="test-api-1" apiName="test" versionId="v1" />
+    );
     expect(screen.getByTestId('spec-download-button')).toBeDisabled();
   });
 
   it('is disabled when disabled prop is true', () => {
     render(
-      <SpecDownloadButton specContent='{"test": true}' apiId="test-api-1" apiName="test" versionId="v1" disabled />
+      <SpecDownloadButton
+        specContent='{"test": true}'
+        apiId="test-api-1"
+        apiName="test"
+        versionId="v1"
+        disabled
+      />
     );
     expect(screen.getByTestId('spec-download-button')).toBeDisabled();
   });
@@ -51,7 +66,12 @@ describe('SpecDownloadButton', () => {
       });
 
       render(
-        <SpecDownloadButton specContent='{"openapi":"3.0.0"}' apiId="petstore-api" apiName="petstore" versionId="v1" />
+        <SpecDownloadButton
+          specContent='{"openapi":"3.0.0"}'
+          apiId="petstore-api"
+          apiName="petstore"
+          versionId="v1"
+        />
       );
       fireEvent.click(screen.getByTestId('spec-download-button'));
       expect(createObjectURL).toHaveBeenCalled();

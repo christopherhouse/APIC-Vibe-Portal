@@ -27,6 +27,8 @@ permissions:
 jobs:
   load-test:
     name: Run BFF Load Test
+    # TEMPORARILY DISABLED until 2026-05-01 — see https://github.com/christopherhouse/APIC-Vibe-Portal/issues/227
+    if: false
     runs-on: ubuntu-latest
     # Only run if manually dispatched, or if the triggering workflow was a
     # push-based deploy (not a manual staging/prod dispatch) that succeeded.
