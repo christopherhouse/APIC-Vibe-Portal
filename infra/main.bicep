@@ -112,7 +112,7 @@ var resourceNames = {
   redisCache: '${namePrefix}-redis-${environmentName}-${uniqueSuffix}'
   loadTest: '${namePrefix}-lt-${environmentName}-${uniqueSuffix}'
   serviceBus: '${namePrefix}-sb-${environmentName}-${uniqueSuffix}'
-  functionStorage: '${namePrefix}fnst${substring(environmentName, 0, 1)}${uniqueSuffix}'
+  functionStorage: take('${namePrefix}analyticsfn${uniqueSuffix}', 24) // Storage for analytics Function App (max 24 chars)
   analyticsProcessorApp: '${namePrefix}-analytics-${environmentName}'
 }
 
