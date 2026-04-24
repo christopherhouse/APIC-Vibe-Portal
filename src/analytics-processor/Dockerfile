@@ -1,8 +1,8 @@
 # ============================================================================
 # Analytics Processor Dockerfile — Azure Functions on Container Apps
 #
-# Build context MUST be src/analytics-processor:
-#   docker build -t analytics-processor src/analytics-processor
+# Build context MUST be the repository root:
+#   docker build -t analytics-processor -f src/analytics-processor/Dockerfile .
 # ============================================================================
 
 # Build stage
@@ -10,18 +10,18 @@ FROM mcr.microsoft.com/azure-functions/python:4-python3.14 AS builder
 
 WORKDIR /home/site/wwwroot
 
-# Install UV
-RUN pip install --no-cache-dir uv
+# Install UV (copy standalone binary from official image)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Copy dependency files first (cache layer)
-COPY pyproject.toml ./
+COPY src/analytics-processor/pyproject.toml ./
 # Install uv.lock if it exists; otherwise generate it
-COPY uv.lock* ./
+COPY src/analytics-processor/uv.lock* ./
 RUN uv sync --frozen --no-dev --no-install-project 2>/dev/null || uv sync --no-dev --no-install-project
 
 # Copy source code
-COPY function_app.py host.json ./
-COPY analytics_processor/ analytics_processor/
+COPY src/analytics-processor/function_app.py src/analytics-processor/host.json ./
+COPY src/analytics-processor/analytics_processor/ analytics_processor/
 
 # Install the project itself
 RUN uv sync --frozen --no-dev 2>/dev/null || uv sync --no-dev
