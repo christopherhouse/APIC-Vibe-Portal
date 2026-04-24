@@ -197,3 +197,170 @@ class AnalyticsService:
                 logger.warning("analytics.event.record_failed", exc_info=True)
 
         return recorded
+
+    # ------------------------------------------------------------------
+    # Aggregation queries (used by GET endpoints)
+    # ------------------------------------------------------------------
+
+    def get_summary(self, *, days: int) -> dict[str, Any]:
+        """Return KPI summary: counts + trend percentages."""
+        if self._repository is None:
+            return self._empty_summary()
+
+        total_users = self._repository.count_distinct_users(days=days)
+        total_page_views = self._repository.count_events_by_type("page_view", days=days)
+        total_searches = self._repository.count_events_by_type("search_query", days=days)
+        total_chats = self._repository.count_events_by_type("chat_interaction", days=days)
+
+        # Previous period for trend calculation
+        prev_users = self._repository.count_distinct_users(days=days * 2)
+        prev_page_views = self._repository.count_events_by_type("page_view", days=days * 2)
+        prev_searches = self._repository.count_events_by_type("search_query", days=days * 2)
+        prev_chats = self._repository.count_events_by_type("chat_interaction", days=days * 2)
+
+        return {
+            "totalUsers": total_users,
+            "totalPageViews": total_page_views,
+            "totalSearchQueries": total_searches,
+            "totalChatInteractions": total_chats,
+            "avgSessionDurationSeconds": 0.0,
+            "usersTrend": _trend_pct(total_users, prev_users - total_users),
+            "pageViewsTrend": _trend_pct(total_page_views, prev_page_views - total_page_views),
+            "searchQueriesTrend": _trend_pct(total_searches, prev_searches - total_searches),
+            "chatInteractionsTrend": _trend_pct(total_chats, prev_chats - total_chats),
+        }
+
+    def get_usage_trends(self, *, days: int, time_range: str) -> dict[str, Any]:
+        """Return daily usage trend data points."""
+        if self._repository is None:
+            return {"range": time_range, "dataPoints": []}
+
+        pv_daily = {r["date"]: r["count"] for r in self._repository.daily_event_counts("page_view", days=days)}
+        search_daily = {r["date"]: r["count"] for r in self._repository.daily_event_counts("search_query", days=days)}
+        chat_daily = {r["date"]: r["count"] for r in self._repository.daily_event_counts("chat_interaction", days=days)}
+        user_daily = {r["date"]: r["count"] for r in self._repository.daily_active_users(days=days)}
+
+        all_dates = sorted(set(pv_daily) | set(search_daily) | set(chat_daily) | set(user_daily))
+        data_points = [
+            {
+                "date": d,
+                "activeUsers": user_daily.get(d, 0),
+                "pageViews": pv_daily.get(d, 0),
+                "searches": search_daily.get(d, 0),
+                "chatInteractions": chat_daily.get(d, 0),
+            }
+            for d in all_dates
+        ]
+        return {"range": time_range, "dataPoints": data_points}
+
+    def get_popular_apis(self, *, days: int, limit: int = 10) -> list[dict[str, Any]]:
+        """Return the most popular APIs by view count."""
+        if self._repository is None:
+            return []
+
+        top_apis = self._repository.top_viewed_apis(days=days, limit=limit)
+        downloads = self._repository.top_downloaded_apis(days=days)
+        chat_mentions = self._repository.chat_mention_counts(days=days)
+
+        return [
+            {
+                "apiId": api["apiId"],
+                "apiName": api["apiId"],
+                "viewCount": api.get("viewCount", 0),
+                "downloadCount": downloads.get(api["apiId"], 0) if isinstance(downloads, dict) else 0,
+                "chatMentionCount": chat_mentions.get(api["apiId"], 0),
+            }
+            for api in top_apis
+        ]
+
+    def get_search_trends(self, *, days: int) -> dict[str, Any]:
+        """Return search analytics data."""
+        if self._repository is None:
+            return self._empty_search_trends()
+
+        daily_volume = [
+            {"date": r["date"], "queryCount": r["count"], "zeroResultCount": 0}
+            for r in self._repository.search_daily_volume(days=days)
+        ]
+
+        return {
+            "dailyVolume": daily_volume,
+            "topQueries": [],
+            "zeroResultQueries": [],
+            "clickThroughRate": 0.0,
+            "avgResultsPerSearch": 0.0,
+            "searchModeDistribution": {"keyword": 0, "semantic": 0, "hybrid": 0},
+        }
+
+    def get_user_activity(self, *, days: int) -> dict[str, Any]:
+        """Return user engagement data."""
+        if self._repository is None:
+            return self._empty_user_activity()
+
+        daily_users = [{"date": r["date"], "count": r["count"]} for r in self._repository.daily_active_users(days=days)]
+
+        feature_counts = self._repository.feature_usage_counts(days=days)
+
+        return {
+            "dailyActiveUsers": daily_users,
+            "weeklyActiveUsers": [],
+            "avgSessionDurationSeconds": 0.0,
+            "avgPagesPerSession": 0.0,
+            "returningUserRate": 0.0,
+            "featureAdoption": {
+                "catalog": feature_counts.get("page_view", 0),
+                "search": feature_counts.get("search_query", 0),
+                "chat": feature_counts.get("chat_interaction", 0),
+                "compare": feature_counts.get("comparison_made", 0),
+                "governance": feature_counts.get("governance_viewed", 0),
+            },
+        }
+
+    @staticmethod
+    def _empty_summary() -> dict[str, Any]:
+        return {
+            "totalUsers": 0,
+            "totalPageViews": 0,
+            "totalSearchQueries": 0,
+            "totalChatInteractions": 0,
+            "avgSessionDurationSeconds": 0.0,
+            "usersTrend": 0.0,
+            "pageViewsTrend": 0.0,
+            "searchQueriesTrend": 0.0,
+            "chatInteractionsTrend": 0.0,
+        }
+
+    @staticmethod
+    def _empty_search_trends() -> dict[str, Any]:
+        return {
+            "dailyVolume": [],
+            "topQueries": [],
+            "zeroResultQueries": [],
+            "clickThroughRate": 0.0,
+            "avgResultsPerSearch": 0.0,
+            "searchModeDistribution": {"keyword": 0, "semantic": 0, "hybrid": 0},
+        }
+
+    @staticmethod
+    def _empty_user_activity() -> dict[str, Any]:
+        return {
+            "dailyActiveUsers": [],
+            "weeklyActiveUsers": [],
+            "avgSessionDurationSeconds": 0.0,
+            "avgPagesPerSession": 0.0,
+            "returningUserRate": 0.0,
+            "featureAdoption": {
+                "catalog": 0,
+                "search": 0,
+                "chat": 0,
+                "compare": 0,
+                "governance": 0,
+            },
+        }
+
+
+def _trend_pct(current: int, previous: int) -> float:
+    """Calculate percentage change from *previous* to *current*."""
+    if previous == 0:
+        return 0.0
+    return round(((current - previous) / previous) * 100, 1)

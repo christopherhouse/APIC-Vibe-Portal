@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useAnalytics } from '@/lib/analytics/use-analytics';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
@@ -69,6 +70,24 @@ export default function SearchPage() {
     searchMode,
     enabled: query.trim().length > 0,
   });
+
+  // ---------------------------------------------------------------------------
+  // Analytics tracking
+  // ---------------------------------------------------------------------------
+  const { track } = useAnalytics();
+  const prevLoadingRef = useRef(isLoading);
+
+  useEffect(() => {
+    // Track search query when loading transitions from true → false with a non-empty query
+    if (prevLoadingRef.current && !isLoading && query.trim().length > 0 && !error) {
+      track.searchQuery({
+        queryHash: '', // server will hash
+        queryLength: query.trim().length,
+        resultCount: totalCount,
+      });
+    }
+    prevLoadingRef.current = isLoading;
+  }, [isLoading, query, totalCount, error, track]);
 
   // ---------------------------------------------------------------------------
   // URL helpers

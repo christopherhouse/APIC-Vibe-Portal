@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
@@ -10,6 +10,7 @@ import Stack from '@mui/material/Stack';
 
 import { useApiDetail } from '@/hooks/use-api-detail';
 import { useAuth } from '@/lib/auth/use-auth';
+import { useAnalytics } from '@/lib/analytics/use-analytics';
 import { ApiKind } from '@apic-vibe-portal/shared';
 import ApiHeader from './components/ApiHeader';
 import ApiTabs, { type ApiTabValue } from './components/ApiTabs';
@@ -26,7 +27,9 @@ import CompareAddButton from '@/app/compare/components/CompareAddButton';
 export default function ApiDetailPage() {
   const params = useParams<{ apiId: string }>();
   const apiId = params.apiId;
+  const searchParams = useSearchParams();
   const { isAuthenticated } = useAuth();
+  const { track } = useAnalytics();
 
   const {
     api,
@@ -43,6 +46,24 @@ export default function ApiDetailPage() {
   } = useApiDetail(apiId, { enabled: isAuthenticated });
 
   const [activeTab, setActiveTab] = useState<ApiTabValue>('overview');
+
+  // Track API view once when the API data loads
+  const trackedRef = useRef(false);
+  useEffect(() => {
+    if (api && !isLoading && !trackedRef.current) {
+      trackedRef.current = true;
+      const referrer = searchParams.get('ref');
+      const source: 'catalog' | 'search' | 'chat' | 'compare' =
+        referrer === 'search'
+          ? 'search'
+          : referrer === 'chat'
+            ? 'chat'
+            : referrer === 'compare'
+              ? 'compare'
+              : 'catalog';
+      track.apiView({ apiId, source });
+    }
+  }, [api, isLoading, apiId, searchParams, track]);
 
   if (error && !api) {
     return (

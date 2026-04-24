@@ -13,6 +13,7 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
 import type { ChatMessage } from '@apic-vibe-portal/shared';
 import { streamChatMessage } from '@/lib/chat-api';
+import { useAnalytics } from '@/lib/analytics/use-analytics';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -53,9 +54,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const { track } = useAnalytics();
 
   // AbortController for cancelling in-flight requests
   const abortRef = useRef<AbortController | null>(null);
+  const messageCountRef = useRef(0);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -108,6 +111,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           prev.map((m) => (m.id === assistantId ? { ...finalMessage, id: assistantId } : m))
         );
         setSessionId(newSessionId);
+
+        messageCountRef.current += 2; // user + assistant
+        track.chatInteraction({
+          chatSessionId: newSessionId,
+          messageCount: messageCountRef.current,
+          agentUsed: 'default',
+        });
       } catch (err) {
         if ((err as Error).name === 'AbortError') {
           // Remove the placeholder on abort
@@ -133,6 +143,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setSessionId(null);
     setError(null);
     setIsStreaming(false);
+    messageCountRef.current = 0;
   }, []);
 
   const setPanelOpen = useCallback((open: boolean) => {

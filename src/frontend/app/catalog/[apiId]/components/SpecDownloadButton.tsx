@@ -2,6 +2,7 @@
 
 import Button from '@mui/material/Button';
 import DownloadIcon from '@mui/icons-material/Download';
+import { useAnalytics } from '@/lib/analytics/use-analytics';
 
 export interface SpecDownloadButtonProps {
   specContent: string | null;
@@ -20,6 +21,8 @@ export default function SpecDownloadButton({
   versionId,
   disabled,
 }: SpecDownloadButtonProps) {
+  const { track } = useAnalytics();
+
   const handleDownload = () => {
     if (!specContent) return;
 
@@ -45,6 +48,8 @@ export default function SpecDownloadButton({
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+
+    track.specDownload({ apiId: apiName, format: extension as 'json' | 'yaml' });
   };
 
   return (
