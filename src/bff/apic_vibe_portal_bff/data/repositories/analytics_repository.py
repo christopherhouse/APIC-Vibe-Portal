@@ -62,6 +62,20 @@ class AnalyticsRepository(BaseRepository):
         )
         return list(items)
 
+    def _query_single_partition(
+        self,
+        query: str,
+        partition_key: str,
+        parameters: list[dict[str, Any]] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Execute a query scoped to a single partition key value."""
+        items = self._container.query_items(
+            query=query,
+            parameters=parameters or [],
+            partition_key=partition_key,
+        )
+        return list(items)
+
     def count_events_by_type(self, event_type: str, *, days: int) -> int:
         """Count events of a given type within the last *days* days."""
         since = (datetime.now(UTC) - timedelta(days=days)).isoformat().replace("+00:00", "Z")
@@ -88,36 +102,47 @@ class AnalyticsRepository(BaseRepository):
     def daily_event_counts(self, event_type: str, *, days: int) -> list[dict[str, Any]]:
         """Return per-day counts for a given event type over *days* days."""
         since = (datetime.now(UTC) - timedelta(days=days)).isoformat().replace("+00:00", "Z")
-        return self._query_cross_partition(
+        return self._query_single_partition(
             "SELECT SUBSTRING(c.timestamp, 0, 10) AS date, COUNT(1) AS count "
             "FROM c WHERE c.eventType = @et AND c.timestamp >= @since "
             "AND (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted = false) "
             "GROUP BY SUBSTRING(c.timestamp, 0, 10)",
-            [{"name": "@et", "value": event_type}, {"name": "@since", "value": since}],
+            partition_key=event_type,
+            parameters=[{"name": "@et", "value": event_type}, {"name": "@since", "value": since}],
         )
 
     def daily_active_users(self, *, days: int) -> list[dict[str, Any]]:
-        """Return per-day distinct user counts over *days* days."""
+        """Return per-day distinct user counts over *days* days.
+
+        Cross-partition GROUP BY with aggregates is not supported by
+        Cosmos DB, so we fetch raw rows and aggregate client-side.
+        """
         since = (datetime.now(UTC) - timedelta(days=days)).isoformat().replace("+00:00", "Z")
-        return self._query_cross_partition(
-            "SELECT dates.date, COUNT(1) AS count FROM ("
-            "  SELECT DISTINCT c.userId, SUBSTRING(c.timestamp, 0, 10) AS date "
-            "  FROM c WHERE c.timestamp >= @since AND c.userId != '' "
-            "  AND (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted = false)"
-            ") AS dates GROUP BY dates.date",
+        rows = self._query_cross_partition(
+            "SELECT c.userId, SUBSTRING(c.timestamp, 0, 10) AS date "
+            "FROM c WHERE c.timestamp >= @since AND c.userId != '' "
+            "AND (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted = false)",
             [{"name": "@since", "value": since}],
         )
+        # Deduplicate (userId, date) pairs and count distinct users per day
+        from collections import defaultdict
+
+        day_users: dict[str, set[str]] = defaultdict(set)
+        for r in rows:
+            day_users[r["date"]].add(r["userId"])
+        return [{"date": d, "count": len(users)} for d, users in day_users.items()]
 
     def top_viewed_apis(self, *, days: int, limit: int = 10) -> list[dict[str, Any]]:
         """Return the most-viewed APIs (by api_view event count)."""
         since = (datetime.now(UTC) - timedelta(days=days)).isoformat().replace("+00:00", "Z")
-        rows = self._query_cross_partition(
+        rows = self._query_single_partition(
             "SELECT c.apiId, COUNT(1) AS viewCount "
             "FROM c WHERE c.eventType = 'api_view' AND c.timestamp >= @since "
             "AND c.apiId != '' "
             "AND (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted = false) "
             "GROUP BY c.apiId",
-            [{"name": "@since", "value": since}],
+            partition_key="api_view",
+            parameters=[{"name": "@since", "value": since}],
         )
         rows.sort(key=lambda r: r.get("viewCount", 0), reverse=True)
         return rows[:limit]
@@ -125,26 +150,28 @@ class AnalyticsRepository(BaseRepository):
     def top_downloaded_apis(self, *, days: int) -> dict[str, int]:
         """Return download counts per API."""
         since = (datetime.now(UTC) - timedelta(days=days)).isoformat().replace("+00:00", "Z")
-        rows = self._query_cross_partition(
+        rows = self._query_single_partition(
             "SELECT c.apiId, COUNT(1) AS downloadCount "
             "FROM c WHERE c.eventType = 'spec_download' AND c.timestamp >= @since "
             "AND c.apiId != '' "
             "AND (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted = false) "
             "GROUP BY c.apiId",
-            [{"name": "@since", "value": since}],
+            partition_key="spec_download",
+            parameters=[{"name": "@since", "value": since}],
         )
         return {r["apiId"]: r.get("downloadCount", 0) for r in rows}
 
     def chat_mention_counts(self, *, days: int) -> dict[str, int]:
         """Return chat interaction counts per session (proxy for API mentions)."""
         since = (datetime.now(UTC) - timedelta(days=days)).isoformat().replace("+00:00", "Z")
-        rows = self._query_cross_partition(
+        rows = self._query_single_partition(
             "SELECT c.apiId, COUNT(1) AS mentionCount "
             "FROM c WHERE c.eventType = 'chat_interaction' AND c.timestamp >= @since "
             "AND c.apiId != '' "
             "AND (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted = false) "
             "GROUP BY c.apiId",
-            [{"name": "@since", "value": since}],
+            partition_key="chat_interaction",
+            parameters=[{"name": "@since", "value": since}],
         )
         return {r["apiId"]: r.get("mentionCount", 0) for r in rows}
 
@@ -153,13 +180,19 @@ class AnalyticsRepository(BaseRepository):
         return self.daily_event_counts("search_query", days=days)
 
     def feature_usage_counts(self, *, days: int) -> dict[str, int]:
-        """Return counts per event type for feature adoption metrics."""
+        """Return counts per event type for feature adoption metrics.
+
+        Cross-partition GROUP BY with aggregates is not supported by
+        Cosmos DB, so we fetch raw rows and aggregate client-side.
+        """
         since = (datetime.now(UTC) - timedelta(days=days)).isoformat().replace("+00:00", "Z")
         rows = self._query_cross_partition(
-            "SELECT c.eventType, COUNT(1) AS count "
+            "SELECT c.eventType "
             "FROM c WHERE c.timestamp >= @since "
-            "AND (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted = false) "
-            "GROUP BY c.eventType",
+            "AND (NOT IS_DEFINED(c.isDeleted) OR c.isDeleted = false)",
             [{"name": "@since", "value": since}],
         )
-        return {r["eventType"]: r.get("count", 0) for r in rows}
+        from collections import Counter
+
+        counts = Counter(r["eventType"] for r in rows)
+        return dict(counts)
