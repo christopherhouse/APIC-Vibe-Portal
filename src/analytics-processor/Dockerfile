@@ -6,7 +6,11 @@
 # ============================================================================
 
 # Build stage
-FROM mcr.microsoft.com/azure-functions/python:4-python3.14 AS builder
+# NOTE: Python 3.13 is the latest GA version for Azure Functions.
+# Python 3.14 is still Preview and the base image has known issues with the
+# v2 programming model (function indexing silently fails).
+# See https://learn.microsoft.com/azure/azure-functions/supported-languages?pivots=programming-language-python
+FROM mcr.microsoft.com/azure-functions/python:4-python3.13 AS builder
 
 WORKDIR /home/site/wwwroot
 
@@ -37,7 +41,7 @@ RUN uv pip install --no-cache --no-deps --target .python_packages/lib/site-packa
 RUN /opt/python/3/bin/python3 -m compileall -b .
 
 # Production stage
-FROM mcr.microsoft.com/azure-functions/python:4-python3.14 AS production
+FROM mcr.microsoft.com/azure-functions/python:4-python3.13 AS production
 
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true \

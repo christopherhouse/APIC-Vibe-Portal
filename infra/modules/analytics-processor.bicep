@@ -55,7 +55,7 @@ param tags object = {
 // built and pushed to ACR — so the image always exists at deploy time.
 var containerImage = '${acrLoginServer}/analytics-processor:${imageTag}'
 
-resource analyticsProcessor 'Microsoft.App/containerApps@2024-03-01' = {
+resource analyticsProcessor 'Microsoft.App/containerApps@2024-10-02-preview' = {
   name: containerAppName
   location: location
   tags: tags
