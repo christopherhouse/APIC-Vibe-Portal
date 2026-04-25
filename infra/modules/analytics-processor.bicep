@@ -86,8 +86,10 @@ resource analyticsProcessor 'Microsoft.Web/sites@2024-04-01' = {
     siteConfig: {
       linuxFxVersion: 'DOCKER|${containerImage}'
       // Pull the image from ACR using the user-assigned managed identity.
+      // For Functions on ACA, this property requires the UAMI *resource ID*
+      // (not its clientId) per the Azure validation error 51021.
       acrUseManagedIdentityCreds: true
-      acrUserManagedIdentityID: managedIdentityClientId
+      acrUserManagedIdentityID: managedIdentityResourceId
       // App settings = Function host configuration. Identity-based connections
       // are configured per-binding using the documented "__credential" /
       // "__clientId" pattern. AZURE_CLIENT_ID is intentionally NOT set —
