@@ -104,6 +104,21 @@ resource analyticsProcessor 'Microsoft.App/containerApps@2024-03-01' = {
       scale: {
         minReplicas: 0
         maxReplicas: 10
+        rules: [
+          {
+            name: 'service-bus-scale-rule'
+            custom: {
+              type: 'azure-servicebus'
+              metadata: {
+                topicName: 'analytics-events'
+                subscriptionName: 'cosmos-writer'
+                namespace: serviceBusNamespace
+                messageCount: '5'
+              }
+              identity: managedIdentityResourceId
+            }
+          }
+        ]
       }
     }
   }
