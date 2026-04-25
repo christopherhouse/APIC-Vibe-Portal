@@ -51,5 +51,6 @@ COPY --from=builder /home/site/wwwroot/function_app.py /home/site/wwwroot/functi
 COPY --from=builder /home/site/wwwroot/host.json /home/site/wwwroot/host.json
 COPY --from=builder /home/site/wwwroot/analytics_processor /home/site/wwwroot/analytics_processor
 
-# Run as non-root (the Azure Functions base image provides UID 1000)
-USER 1000
+# NOTE: The Azure Functions host base image does NOT support non-root execution.
+# The host writes to /azure-functions-host/, temp dirs, and other root-owned paths
+# during startup. Running as non-root causes immediate process crash.
