@@ -66,11 +66,16 @@ jobs:
           - component: analytics-processor
             dockerfile: ./src/analytics-processor/Dockerfile
     outputs:
-      # All matrix variants produce the same git-ref-based tag, so last-writer is stable.
-      image-tag: ${{ steps.meta.outputs.version }}
+      # Immutable per-commit short SHA — every deploy gets a unique image
+      # reference so Container Apps detects a spec change and pulls fresh.
+      image-tag: ${{ steps.sha.outputs.short }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Compute short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Azure Login (OIDC)
         uses: azure/login@v3
@@ -87,10 +92,13 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ needs.infra-dev.outputs.acr-login-server }}/${{ matrix.component }}
+          # Primary deploy tag is the immutable short SHA. The branch tag is
+          # kept as a floating "latest for this branch" pointer for humans /
+          # debugging only — deploys never reference it.
           tags: |
+            type=raw,value=${{ steps.sha.outputs.short }}
             type=ref,event=branch
             type=ref,event=pr
-            type=sha,prefix={{branch}}-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
