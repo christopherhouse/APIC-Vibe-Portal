@@ -17,17 +17,24 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY src/analytics-processor/pyproject.toml ./
 # Install uv.lock if it exists; otherwise generate it
 COPY src/analytics-processor/uv.lock* ./
-RUN uv sync --frozen --no-dev --no-install-project 2>/dev/null || uv sync --no-dev --no-install-project
+
+# Install dependencies into the path the Azure Functions host expects.
+# The base image sets PYTHONPATH to .python_packages/lib/site-packages and
+# the worker uses /opt/python/3/bin/python3, so packages MUST go here
+# (NOT into a .venv which the host cannot see).
+RUN uv export --frozen --no-dev --no-emit-project 2>/dev/null > /tmp/requirements.txt || \
+    uv export --no-dev --no-emit-project > /tmp/requirements.txt && \
+    uv pip install --no-cache --target .python_packages/lib/site-packages -r /tmp/requirements.txt
 
 # Copy source code
 COPY src/analytics-processor/function_app.py src/analytics-processor/host.json ./
 COPY src/analytics-processor/analytics_processor/ analytics_processor/
 
-# Install the project itself
-RUN uv sync --frozen --no-dev 2>/dev/null || uv sync --no-dev
+# Install the project itself into the same target
+RUN uv pip install --no-cache --no-deps --target .python_packages/lib/site-packages .
 
 # Compile Python files
-RUN .venv/bin/python -m compileall -b .
+RUN /opt/python/3/bin/python3 -m compileall -b .
 
 # Production stage
 FROM mcr.microsoft.com/azure-functions/python:4-python3.14 AS production
@@ -37,14 +44,11 @@ ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
 
 WORKDIR /home/site/wwwroot
 
-# Copy virtual environment and compiled code from builder
-COPY --from=builder /home/site/wwwroot/.venv /home/site/wwwroot/.venv
+# Copy installed packages and code from builder
+COPY --from=builder /home/site/wwwroot/.python_packages /home/site/wwwroot/.python_packages
 COPY --from=builder /home/site/wwwroot/function_app.py /home/site/wwwroot/function_app.py
 COPY --from=builder /home/site/wwwroot/host.json /home/site/wwwroot/host.json
 COPY --from=builder /home/site/wwwroot/analytics_processor /home/site/wwwroot/analytics_processor
-
-# Set the virtual environment as the Python path
-ENV PATH="/home/site/wwwroot/.venv/bin:$PATH"
 
 # Run as non-root (the Azure Functions base image provides UID 1000)
 USER 1000
