@@ -96,6 +96,7 @@ resource analyticsProcessor 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'CosmosDBConnection__accountEndpoint', value: cosmosDbEndpoint }
             { name: 'CosmosDBConnection__clientId', value: managedIdentityClientId }
             { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
+            { name: 'ASPNETCORE_URLS', value: 'http://+:8080' }
             { name: 'AZURE_CLIENT_ID', value: managedIdentityClientId }
           ]
         }

@@ -40,7 +40,8 @@ RUN /opt/python/3/bin/python3 -m compileall -b .
 FROM mcr.microsoft.com/azure-functions/python:4-python3.14 AS production
 
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
-    AzureFunctionsJobHost__Logging__Console__IsEnabled=true
+    AzureFunctionsJobHost__Logging__Console__IsEnabled=true \
+    ASPNETCORE_URLS=http://+:8080
 
 WORKDIR /home/site/wwwroot
 
