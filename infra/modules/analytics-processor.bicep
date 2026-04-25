@@ -70,6 +70,14 @@ resource analyticsProcessor 'Microsoft.App/containerApps@2024-03-01' = {
     environmentId: containerAppsEnvironmentId
     configuration: {
       activeRevisionsMode: 'Single'
+      // Internal ingress is required even for non-HTTP triggered functions.
+      // The Container Apps platform communicates with the Functions host
+      // for function discovery, health probes, and lifecycle management.
+      ingress: {
+        external: false
+        targetPort: 8080
+        transport: 'auto'
+      }
       registries: [
         {
           server: acrLoginServer
@@ -113,7 +121,7 @@ resource analyticsProcessor 'Microsoft.App/containerApps@2024-03-01' = {
                 topicName: 'analytics-events'
                 subscriptionName: 'cosmos-writer'
                 namespace: serviceBusNamespace
-                messageCount: '5'
+                messageCount: '50'
               }
               identity: managedIdentityResourceId
             }
