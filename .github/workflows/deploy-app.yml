@@ -172,6 +172,7 @@ jobs:
               appInsightsConnectionString="${{ needs.infra-dev.outputs.appinsights-connection-string }}" \
               serviceBusNamespace="${{ needs.infra-dev.outputs.service-bus-fqns }}" \
               cosmosDbEndpoint="${{ needs.infra-dev.outputs.cosmos-db-endpoint }}" \
+              logAnalyticsWorkspaceId="${{ needs.infra-dev.outputs.log-analytics-workspace-id }}" \
               tags='{"Environment":"dev","Application":"APIC-Vibe-Portal","ManagedBy":"Bicep","SecurityControl":"Ignore"}'
 
   deploy-staging:
@@ -235,6 +236,7 @@ jobs:
               appInsightsConnectionString="${{ needs.infra-staging.outputs.appinsights-connection-string }}" \
               serviceBusNamespace="${{ needs.infra-staging.outputs.service-bus-fqns }}" \
               cosmosDbEndpoint="${{ needs.infra-staging.outputs.cosmos-db-endpoint }}" \
+              logAnalyticsWorkspaceId="${{ needs.infra-staging.outputs.log-analytics-workspace-id }}" \
               tags='{"Environment":"staging","Application":"APIC-Vibe-Portal","ManagedBy":"Bicep","SecurityControl":"Ignore"}'
 
   deploy-prod:
@@ -298,4 +300,5 @@ jobs:
               appInsightsConnectionString="${{ needs.infra-prod.outputs.appinsights-connection-string }}" \
               serviceBusNamespace="${{ needs.infra-prod.outputs.service-bus-fqns }}" \
               cosmosDbEndpoint="${{ needs.infra-prod.outputs.cosmos-db-endpoint }}" \
+              logAnalyticsWorkspaceId="${{ needs.infra-prod.outputs.log-analytics-workspace-id }}" \
               tags='{"Environment":"prod","Application":"APIC-Vibe-Portal","ManagedBy":"Bicep","SecurityControl":"Ignore"}'

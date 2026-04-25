@@ -1,10 +1,15 @@
 // ============================================================================
-// Analytics Processor Container App Module (kind: functionapp)
+// Analytics Processor Function App Module (Microsoft.Web/sites on ACA)
 // ============================================================================
-// Deploys the analytics-processor as a native Function App on Container Apps
-// using Microsoft.App/containerApps with kind=functionapp.
-// The Function is triggered by Service Bus messages and writes to Cosmos DB.
-// No HTTP ingress is needed — pure event consumer.
+// Deploys the analytics-processor as a classic Function App
+// (Microsoft.Web/sites kind=functionapp,linux,container,azurecontainerapps)
+// hosted on the existing Azure Container Apps managed environment.
+//
+// We picked this hosting mode (over Microsoft.App/containerApps with
+// kind=functionapp) because the App Service control plane is a battle-tested
+// path for identity-based AzureWebJobsStorage / Service Bus / Cosmos DB
+// connections; the kind=functionapp ACA path failed to initialise the
+// Functions host's external startup classes in this project.
 // ============================================================================
 
 @description('Azure region')
@@ -40,6 +45,12 @@ param serviceBusNamespace string
 @description('Cosmos DB account endpoint')
 param cosmosDbEndpoint string
 
+@description('Workload profile name on the ACA managed environment')
+param workloadProfileName string = 'Consumption'
+
+@description('Log Analytics Workspace resource ID for diagnostic settings')
+param logAnalyticsWorkspaceId string
+
 @description('Resource tags')
 param tags object = {
   Application: 'APIC-Vibe-Portal'
@@ -55,11 +66,11 @@ param tags object = {
 // built and pushed to ACR — so the image always exists at deploy time.
 var containerImage = '${acrLoginServer}/analytics-processor:${imageTag}'
 
-resource analyticsProcessor 'Microsoft.App/containerApps@2024-10-02-preview' = {
+resource analyticsProcessor 'Microsoft.Web/sites@2024-04-01' = {
   name: containerAppName
   location: location
   tags: tags
-  kind: 'functionapp'
+  kind: 'functionapp,linux,container,azurecontainerapps'
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -67,68 +78,66 @@ resource analyticsProcessor 'Microsoft.App/containerApps@2024-10-02-preview' = {
     }
   }
   properties: {
-    environmentId: containerAppsEnvironmentId
-    configuration: {
-      activeRevisionsMode: 'Single'
-      // Internal ingress is required even for non-HTTP triggered functions.
-      // The Container Apps platform communicates with the Functions host
-      // for function discovery, health probes, and lifecycle management.
-      ingress: {
-        external: false
-        targetPort: 8080
-        transport: 'auto'
-      }
-      registries: [
-        {
-          server: acrLoginServer
-          identity: managedIdentityResourceId
-        }
+    // Bind to the Container Apps managed environment (no serverFarmId).
+    managedEnvironmentId: containerAppsEnvironmentId
+    workloadProfileName: workloadProfileName
+    httpsOnly: true
+    clientAffinityEnabled: false
+    siteConfig: {
+      linuxFxVersion: 'DOCKER|${containerImage}'
+      // Pull the image from ACR using the user-assigned managed identity.
+      acrUseManagedIdentityCreds: true
+      acrUserManagedIdentityID: managedIdentityClientId
+      // App settings = Function host configuration. Identity-based connections
+      // are configured per-binding using the documented "__credential" /
+      // "__clientId" pattern. AZURE_CLIENT_ID is intentionally NOT set —
+      // each connection prefix carries its own identity client ID.
+      appSettings: [
+        // -------- Functions runtime --------
+        { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
+        { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
+
+        // -------- Telemetry --------
+        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
+
+        // -------- AzureWebJobsStorage (identity-based) --------
+        { name: 'AzureWebJobsStorage__blobServiceUri', value: 'https://${storageAccountName}.blob.${environment().suffixes.storage}' }
+        { name: 'AzureWebJobsStorage__queueServiceUri', value: 'https://${storageAccountName}.queue.${environment().suffixes.storage}' }
+        { name: 'AzureWebJobsStorage__tableServiceUri', value: 'https://${storageAccountName}.table.${environment().suffixes.storage}' }
+        { name: 'AzureWebJobsStorage__credential', value: 'managedidentity' }
+        { name: 'AzureWebJobsStorage__clientId', value: managedIdentityClientId }
+
+        // -------- Service Bus trigger (identity-based) --------
+        { name: 'ServiceBusConnection__fullyQualifiedNamespace', value: serviceBusNamespace }
+        { name: 'ServiceBusConnection__credential', value: 'managedidentity' }
+        { name: 'ServiceBusConnection__clientId', value: managedIdentityClientId }
+
+        // -------- Cosmos DB output binding (identity-based) --------
+        { name: 'CosmosDBConnection__accountEndpoint', value: cosmosDbEndpoint }
+        { name: 'CosmosDBConnection__credential', value: 'managedidentity' }
+        { name: 'CosmosDBConnection__clientId', value: managedIdentityClientId }
       ]
     }
-    template: {
-      containers: [
-        {
-          name: 'analytics-processor'
-          image: containerImage
-          resources: {
-            cpu: json('0.25')
-            memory: '0.5Gi'
-          }
-          env: [
-            // Identity-based connection to AzureWebJobsStorage. We use the
-            // explicit *ServiceUri form (not __accountName) because the
-            // shorthand has compatibility issues on Container Apps with
-            // kind=functionapp — see
-            // https://learn.microsoft.com/azure/azure-functions/functions-reference#connecting-to-host-storage-with-an-identity
-            { name: 'AzureWebJobsStorage__blobServiceUri', value: 'https://${storageAccountName}.blob.${environment().suffixes.storage}' }
-            { name: 'AzureWebJobsStorage__queueServiceUri', value: 'https://${storageAccountName}.queue.${environment().suffixes.storage}' }
-            { name: 'AzureWebJobsStorage__tableServiceUri', value: 'https://${storageAccountName}.table.${environment().suffixes.storage}' }
-            { name: 'AzureWebJobsStorage__credential', value: 'managedidentity' }
-            { name: 'AzureWebJobsStorage__clientId', value: managedIdentityClientId }
-            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
-            { name: 'ServiceBusConnection__fullyQualifiedNamespace', value: serviceBusNamespace }
-            { name: 'ServiceBusConnection__credential', value: 'managedidentity' }
-            { name: 'ServiceBusConnection__clientId', value: managedIdentityClientId }
-            { name: 'CosmosDBConnection__accountEndpoint', value: cosmosDbEndpoint }
-            { name: 'CosmosDBConnection__credential', value: 'managedidentity' }
-            { name: 'CosmosDBConnection__clientId', value: managedIdentityClientId }
-            { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
-            { name: 'ASPNETCORE_URLS', value: 'http://+:8080' }
-            // NOTE: do NOT set AZURE_CLIENT_ID here. Per Microsoft docs:
-            // "Use of the Azure SDK's EnvironmentCredential environment
-            // variables is not recommended due to the potentially unintentional
-            // impact on other connections. They also are not fully supported
-            // when deployed to Azure Functions."
-            // Each connection (AzureWebJobsStorage, ServiceBusConnection,
-            // CosmosDBConnection) gets its identity from its own __clientId.
-          ]
-        }
-      ]
-      scale: {
-        minReplicas: 0
-        maxReplicas: 10
-      }
-    }
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Diagnostic settings — required by project policy. Sends function host logs,
+// platform logs, and metrics to Log Analytics for centralised observability.
+// ----------------------------------------------------------------------------
+resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'send-to-log-analytics'
+  scope: analyticsProcessor
+  properties: {
+    workspaceId: logAnalyticsWorkspaceId
+    logs: [
+      { category: 'FunctionAppLogs', enabled: true }
+      { category: 'AppServiceConsoleLogs', enabled: true }
+      { category: 'AppServicePlatformLogs', enabled: true }
+    ]
+    metrics: [
+      { category: 'AllMetrics', enabled: true }
+    ]
   }
 }
 
@@ -136,8 +145,11 @@ resource analyticsProcessor 'Microsoft.App/containerApps@2024-10-02-preview' = {
 // OUTPUTS
 // ============================================================================
 
-@description('Analytics processor Container App resource ID')
+@description('Analytics processor Function App resource ID')
 output id string = analyticsProcessor.id
 
-@description('Analytics processor Container App name')
+@description('Analytics processor Function App name')
 output name string = analyticsProcessor.name
+
+@description('Analytics processor Function App default hostname')
+output defaultHostName string = analyticsProcessor.properties.defaultHostName

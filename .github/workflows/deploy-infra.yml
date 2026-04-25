@@ -99,6 +99,9 @@ on:
       function-storage-name:
         description: 'Function storage account name'
         value: ${{ jobs.deploy.outputs.function-storage-name }}
+      log-analytics-workspace-id:
+        description: 'Log Analytics Workspace resource ID'
+        value: ${{ jobs.deploy.outputs.log-analytics-workspace-id }}
 
 permissions:
   id-token: write
@@ -166,6 +169,7 @@ jobs:
       analytics-processor-identity-resource-id: ${{ steps.outputs.outputs.analytics-processor-identity-resource-id }}
       analytics-processor-identity-client-id: ${{ steps.outputs.outputs.analytics-processor-identity-client-id }}
       function-storage-name: ${{ steps.outputs.outputs.function-storage-name }}
+      log-analytics-workspace-id: ${{ steps.outputs.outputs.log-analytics-workspace-id }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -214,3 +218,4 @@ jobs:
           echo "analytics-processor-identity-resource-id=$(echo $RESULT | jq -r '.analyticsProcessorIdentityResourceId.value')" >> $GITHUB_OUTPUT
           echo "analytics-processor-identity-client-id=$(echo $RESULT | jq -r '.analyticsProcessorIdentityClientId.value')" >> $GITHUB_OUTPUT
           echo "function-storage-name=$(echo $RESULT | jq -r '.functionStorageAccountName.value')" >> $GITHUB_OUTPUT
+          echo "log-analytics-workspace-id=$(echo $RESULT | jq -r '.logAnalyticsWorkspaceId.value')" >> $GITHUB_OUTPUT
