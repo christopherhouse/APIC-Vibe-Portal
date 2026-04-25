@@ -1,6 +1,13 @@
 {
   "version": "2.0",
   "logging": {
+    "logLevel": {
+      "default": "Information",
+      "Host.Startup": "Debug",
+      "Host.Aggregator": "Trace",
+      "Microsoft.Azure.WebJobs.Hosting": "Debug",
+      "Microsoft": "Information"
+    },
     "applicationInsights": {
       "samplingSettings": {
         "isEnabled": true,
@@ -12,7 +19,7 @@
     "serviceBus": {
       "maxMessageBatchSize": 50,
       "autoCompleteMessages": true,
-      "maxAutoLockRenewalDurationInMinutes": 5,
+      "maxAutoLockRenewalDuration": "00:05:00",
       "prefetchCount": 100
     }
   },

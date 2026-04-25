@@ -114,7 +114,13 @@ resource analyticsProcessor 'Microsoft.App/containerApps@2024-10-02-preview' = {
             { name: 'CosmosDBConnection__clientId', value: managedIdentityClientId }
             { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
             { name: 'ASPNETCORE_URLS', value: 'http://+:8080' }
-            { name: 'AZURE_CLIENT_ID', value: managedIdentityClientId }
+            // NOTE: do NOT set AZURE_CLIENT_ID here. Per Microsoft docs:
+            // "Use of the Azure SDK's EnvironmentCredential environment
+            // variables is not recommended due to the potentially unintentional
+            // impact on other connections. They also are not fully supported
+            // when deployed to Azure Functions."
+            // Each connection (AzureWebJobsStorage, ServiceBusConnection,
+            // CosmosDBConnection) gets its identity from its own __clientId.
           ]
         }
       ]
