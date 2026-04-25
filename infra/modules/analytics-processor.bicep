@@ -95,13 +95,22 @@ resource analyticsProcessor 'Microsoft.App/containerApps@2024-10-02-preview' = {
             memory: '0.5Gi'
           }
           env: [
-            { name: 'AzureWebJobsStorage__accountName', value: storageAccountName }
+            // Identity-based connection to AzureWebJobsStorage. We use the
+            // explicit *ServiceUri form (not __accountName) because the
+            // shorthand has compatibility issues on Container Apps with
+            // kind=functionapp — see
+            // https://learn.microsoft.com/azure/azure-functions/functions-reference#connecting-to-host-storage-with-an-identity
+            { name: 'AzureWebJobsStorage__blobServiceUri', value: 'https://${storageAccountName}.blob.${environment().suffixes.storage}' }
+            { name: 'AzureWebJobsStorage__queueServiceUri', value: 'https://${storageAccountName}.queue.${environment().suffixes.storage}' }
+            { name: 'AzureWebJobsStorage__tableServiceUri', value: 'https://${storageAccountName}.table.${environment().suffixes.storage}' }
             { name: 'AzureWebJobsStorage__credential', value: 'managedidentity' }
             { name: 'AzureWebJobsStorage__clientId', value: managedIdentityClientId }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
             { name: 'ServiceBusConnection__fullyQualifiedNamespace', value: serviceBusNamespace }
+            { name: 'ServiceBusConnection__credential', value: 'managedidentity' }
             { name: 'ServiceBusConnection__clientId', value: managedIdentityClientId }
             { name: 'CosmosDBConnection__accountEndpoint', value: cosmosDbEndpoint }
+            { name: 'CosmosDBConnection__credential', value: 'managedidentity' }
             { name: 'CosmosDBConnection__clientId', value: managedIdentityClientId }
             { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
             { name: 'ASPNETCORE_URLS', value: 'http://+:8080' }
