@@ -100,10 +100,11 @@ resource analyticsProcessor 'Microsoft.Web/sites@2024-04-01' = {
         { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
 
         // -------- Container registry (required for linux,container) --------
-        // Required by App Service even when MI-based ACR pull is configured
-        // via acrUseManagedIdentityCreds. The platform validates the URL
-        // is well-formed (must include https:// scheme).
-        { name: 'DOCKER_REGISTRY_SERVER_URL', value: 'https://${acrLoginServer}' }
+        // For Functions on Azure Container Apps, the underlying ACA registry
+        // validator requires a hostname-only value (no scheme), even though
+        // classic App Service expected `https://...`. The ACA error
+        // ContainerAppInvalidRegistryServerValue is the binding constraint.
+        { name: 'DOCKER_REGISTRY_SERVER_URL', value: acrLoginServer }
 
         // -------- Telemetry --------
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
