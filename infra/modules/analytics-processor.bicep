@@ -110,9 +110,12 @@ resource analyticsProcessor 'Microsoft.Web/sites@2024-04-01' = {
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
 
         // -------- AzureWebJobsStorage (identity-based) --------
-        { name: 'AzureWebJobsStorage__blobServiceUri', value: 'https://${storageAccountName}.blob.${environment().suffixes.storage}' }
-        { name: 'AzureWebJobsStorage__queueServiceUri', value: 'https://${storageAccountName}.queue.${environment().suffixes.storage}' }
-        { name: 'AzureWebJobsStorage__tableServiceUri', value: 'https://${storageAccountName}.table.${environment().suffixes.storage}' }
+        // Use the __accountName shorthand so the host derives blob/queue/table
+        // endpoints internally with the constructor signature its diagnostic
+        // event TableServiceClient factory expects. Setting the per-service
+        // *ServiceUri keys causes "Unable to find matching constructor" errors
+        // in the host's diagnostic logger.
+        { name: 'AzureWebJobsStorage__accountName', value: storageAccountName }
         { name: 'AzureWebJobsStorage__credential', value: 'managedidentity' }
         { name: 'AzureWebJobsStorage__clientId', value: managedIdentityClientId }
 

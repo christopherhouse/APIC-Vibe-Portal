@@ -17,9 +17,10 @@ import logging
 import re
 import time
 from datetime import UTC, datetime
-from typing import Any, List
+from typing import Any, List  # noqa: UP035  # Functions Python worker rejects PEP 585 generics in binding annotations
 
 import azure.functions as func
+from azure.functions import Document, DocumentList
 
 app = func.FunctionApp()
 
@@ -191,8 +192,8 @@ _total_failed = 0
     create_if_not_exists=False,
 )
 def process_analytics_events(
-    messages: List[func.ServiceBusMessage],
-    documents: func.Out[List[str]],
+    messages: List[func.ServiceBusMessage],  # noqa: UP006  # Functions worker rejects PEP 585 generics here
+    documents: func.Out[DocumentList],
 ) -> None:
     """Process a batch of Service Bus messages and write them to Cosmos DB.
 
@@ -233,7 +234,7 @@ def process_analytics_events(
             )
 
     if output_docs:
-        documents.set(output_docs)
+        documents.set(DocumentList([Document.from_json(d) for d in output_docs]))
 
     _total_processed += len(output_docs)
     _total_failed += failed
