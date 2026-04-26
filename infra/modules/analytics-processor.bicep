@@ -83,6 +83,27 @@ resource analyticsProcessor 'Microsoft.Web/sites@2024-04-01' = {
     workloadProfileName: workloadProfileName
     httpsOnly: true
     clientAffinityEnabled: false
+    // functionAppConfig is required for ACA-hosted Function Apps so the
+    // Azure portal can read the runtime/scale info (otherwise the Overview
+    // blade shows "Runtime version: Error" and the Functions list is empty).
+    // Deployment storage is intentionally omitted because the app is
+    // delivered as a container image (linuxFxVersion below) — there is no
+    // packaged ZIP for the host to deploy.
+    functionAppConfig: {
+      runtime: {
+        name: 'python'
+        version: '3.13'
+      }
+      scaleAndConcurrency: {
+        maximumInstanceCount: 100
+        instanceMemoryMB: 2048
+      }
+    }
+    // Per-instance resource sizing for the container running on ACA.
+    resourceConfig: {
+      cpu: 1
+      memory: '2Gi'
+    }
     siteConfig: {
       linuxFxVersion: 'DOCKER|${containerImage}'
       // Pull the image from ACR using the user-assigned managed identity.
