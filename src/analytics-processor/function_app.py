@@ -17,7 +17,7 @@ import logging
 import re
 import time
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, List
 
 import azure.functions as func
 
@@ -191,8 +191,8 @@ _total_failed = 0
     create_if_not_exists=False,
 )
 def process_analytics_events(
-    messages: list[func.ServiceBusMessage],
-    documents: func.Out[list[str]],
+    messages: List[func.ServiceBusMessage],
+    documents: func.Out[List[str]],
 ) -> None:
     """Process a batch of Service Bus messages and write them to Cosmos DB.
 
