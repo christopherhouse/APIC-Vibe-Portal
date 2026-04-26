@@ -182,7 +182,7 @@ _total_failed = 0
     topic_name="analytics-events",
     subscription_name="cosmos-writer",
     connection="ServiceBusConnection",
-    is_batched=True,
+    cardinality="many",
 )
 @app.cosmos_db_output(
     arg_name="documents",
