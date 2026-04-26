@@ -12,6 +12,11 @@ from function_app import (
 )
 
 
+def _doc_to_dict(doc) -> dict:
+    """Convert an azure.functions.Document to a plain dict via its JSON form."""
+    return json.loads(doc.to_json())
+
+
 def _make_sb_message(body: dict | str) -> MagicMock:
     """Create a mock ServiceBusMessage."""
     msg = MagicMock()
@@ -49,7 +54,7 @@ class TestProcessAnalyticsEvents:
         output.set.assert_called_once()
         result = output.set.call_args[0][0]
         assert len(result) == 1
-        assert json.loads(result[0])["id"] == "evt-001"
+        assert _doc_to_dict(result[0])["id"] == "evt-001"
 
     def test_processes_batch_of_messages(self) -> None:
         docs = [{**_make_cosmos_document(), "id": f"evt-{i}"} for i in range(5)]
@@ -75,7 +80,7 @@ class TestProcessAnalyticsEvents:
         output.set.assert_called_once()
         result = output.set.call_args[0][0]
         assert len(result) == 1
-        assert json.loads(result[0])["id"] == "evt-001"
+        assert _doc_to_dict(result[0])["id"] == "evt-001"
 
     def test_handles_empty_batch(self) -> None:
         output = MagicMock()
@@ -90,7 +95,7 @@ class TestProcessAnalyticsEvents:
 
         process_analytics_events(messages, output)
 
-        result = json.loads(output.set.call_args[0][0][0])
+        result = _doc_to_dict(output.set.call_args[0][0][0])
         assert result["eventType"] == "page_view"
         assert result["userId"] == "hashed-user-id"
         assert result["metadata"]["pagePath"] == "/api/test"
@@ -134,7 +139,7 @@ class TestProcessAnalyticsEvents:
 
         process_analytics_events(messages, output)
 
-        result = json.loads(output.set.call_args[0][0][0])
+        result = _doc_to_dict(output.set.call_args[0][0][0])
         assert "injectedField" not in result
         assert "__proto__" not in result
         assert result["id"] == "evt-001"
@@ -146,7 +151,7 @@ class TestProcessAnalyticsEvents:
 
         process_analytics_events(messages, output)
 
-        result = json.loads(output.set.call_args[0][0][0])
+        result = _doc_to_dict(output.set.call_args[0][0][0])
         assert "\x00" not in result["userId"]
         assert "\x07" not in result["userId"]
         assert result["userId"] == "useridhere"
@@ -158,7 +163,7 @@ class TestProcessAnalyticsEvents:
 
         process_analytics_events(messages, output)
 
-        result = json.loads(output.set.call_args[0][0][0])
+        result = _doc_to_dict(output.set.call_args[0][0][0])
         assert result["metadata"]["path"] == "/ok"
         assert result["metadata"]["note"] == "value"
 
@@ -169,7 +174,7 @@ class TestProcessAnalyticsEvents:
 
         process_analytics_events(messages, output)
 
-        result = json.loads(output.set.call_args[0][0][0])
+        result = _doc_to_dict(output.set.call_args[0][0][0])
         assert result["metadata"] == {}
 
     def test_rejects_empty_id(self) -> None:
@@ -188,7 +193,7 @@ class TestProcessAnalyticsEvents:
 
         process_analytics_events(messages, output)
 
-        result = json.loads(output.set.call_args[0][0][0])
+        result = _doc_to_dict(output.set.call_args[0][0][0])
         assert "schemaVersion" not in result
         assert "isDeleted" not in result
         assert "ttl" not in result
