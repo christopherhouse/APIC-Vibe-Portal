@@ -83,27 +83,16 @@ resource analyticsProcessor 'Microsoft.Web/sites@2024-04-01' = {
     workloadProfileName: workloadProfileName
     httpsOnly: true
     clientAffinityEnabled: false
-    // functionAppConfig is required for ACA-hosted Function Apps so the
-    // Azure portal can read the runtime/scale info (otherwise the Overview
-    // blade shows "Runtime version: Error" and the Functions list is empty).
-    // Deployment storage is intentionally omitted because the app is
-    // delivered as a container image (linuxFxVersion below) — there is no
-    // packaged ZIP for the host to deploy.
-    functionAppConfig: {
-      runtime: {
-        name: 'python'
-        version: '3.13'
-      }
-      scaleAndConcurrency: {
-        maximumInstanceCount: 100
-        instanceMemoryMB: 2048
-      }
-    }
-    // Per-instance resource sizing for the container running on ACA.
-    resourceConfig: {
-      cpu: 1
-      memory: '2Gi'
-    }
+    // NOTE: `functionAppConfig` (runtime / scaleAndConcurrency / deployment) is
+    // a Flex Consumption property and is silently ignored for the
+    // `functionapp,linux,container,azurecontainerapps` kind — the RP returns
+    // null on read regardless of what we send. ACA-hosted Function Apps are
+    // configured purely through siteConfig.linuxFxVersion (the container image)
+    // and the Container Apps environment. The Azure portal Functions blade
+    // ("Runtime version: Error", empty Functions list) is a known cosmetic
+    // limitation for this hosting kind — the App Service Functions blade does
+    // not fully introspect ACA-hosted apps. Use the Container App resource
+    // blade or Application Insights for management/observability.
     siteConfig: {
       linuxFxVersion: 'DOCKER|${containerImage}'
       // Pull the image from ACR using the user-assigned managed identity.
