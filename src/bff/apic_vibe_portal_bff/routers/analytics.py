@@ -80,7 +80,6 @@ def _get_service() -> AnalyticsService:
     if _service_instance is None:
         settings = get_settings()
         analytics_repo = None
-        sb_sender = None
 
         if settings.cosmos_db_endpoint.strip():
             try:
@@ -94,6 +93,7 @@ def _get_service() -> AnalyticsService:
         else:
             logger.info("COSMOS_DB_ENDPOINT not configured — analytics events will be logged only")
 
+        sender_factory = None
         if settings.service_bus_namespace.strip():
             try:
                 from azure.identity import DefaultAzureCredential
@@ -105,19 +105,26 @@ def _get_service() -> AnalyticsService:
                     credential=credential,
                 )
                 _sb_client = sb_client  # store for lifecycle cleanup
-                sb_sender = sb_client.get_topic_sender(topic_name=settings.service_bus_analytics_topic)
+                topic_name = settings.service_bus_analytics_topic
+
+                # Open a fresh sender per send call. Caching a long-lived
+                # sender singleton causes 'NoneType' object has no attribute
+                # 'create_sender_link' errors after AMQP idle timeouts.
+                def sender_factory() -> Any:
+                    return sb_client.get_topic_sender(topic_name=topic_name)
+
                 logger.info(
-                    "Service Bus sender initialised for topic '%s'",
-                    settings.service_bus_analytics_topic,
+                    "Service Bus sender factory initialised for topic '%s'",
+                    topic_name,
                 )
             except Exception:  # noqa: BLE001
                 logger.exception(
-                    "Failed to initialise Service Bus sender — events will fall back to direct Cosmos write"
+                    "Failed to initialise Service Bus client — events will fall back to direct Cosmos write"
                 )
         else:
             logger.info("SERVICE_BUS_NAMESPACE not configured — analytics events will write directly to Cosmos")
 
-        _service_instance = AnalyticsService(repository=analytics_repo, service_bus_sender=sb_sender)
+        _service_instance = AnalyticsService(repository=analytics_repo, sender_factory=sender_factory)
     return _service_instance
 
 

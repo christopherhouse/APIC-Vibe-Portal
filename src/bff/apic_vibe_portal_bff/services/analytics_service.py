@@ -17,6 +17,8 @@ import json
 import logging
 import re
 import uuid
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -27,6 +29,14 @@ if TYPE_CHECKING:
     from azure.servicebus import ServiceBusSender
 
     from apic_vibe_portal_bff.data.repositories.analytics_repository import AnalyticsRepository
+
+# A factory that returns a fresh ServiceBusSender as a context manager.
+# Using a per-call sender (rather than caching one) avoids the
+# ``'NoneType' object has no attribute 'create_sender_link'`` failure mode
+# that occurs when a long-lived sender's AMQP session is dropped due to
+# idle timeout or transient network issues — the underlying pyamqp client
+# does not reliably re-establish the link on a stale sender.
+ServiceBusSenderFactory = Callable[[], AbstractContextManager["ServiceBusSender"]]
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +116,7 @@ class AnalyticsService:
     captured by the OTel / Application Insights pipeline, and persisted via
     one of two paths:
 
-    1. **Service Bus (primary)** — when a ``ServiceBusSender`` is provided,
+    1. **Service Bus (primary)** — when a sender factory is provided,
        enriched events are batch-sent to the ``analytics-events`` topic.  A
        downstream Function App consumes them and writes to Cosmos DB.
     2. **Direct Cosmos DB (fallback)** — if Service Bus is unavailable or
@@ -118,19 +128,21 @@ class AnalyticsService:
     repository:
         Optional :class:`~apic_vibe_portal_bff.data.repositories.analytics_repository.AnalyticsRepository`
         used to persist events to Cosmos DB (for reads and fallback writes).
-    service_bus_sender:
-        Optional ``ServiceBusSender`` for the analytics-events topic.
-        When provided, ``record_events`` sends enriched documents to
-        Service Bus instead of writing directly to Cosmos.
+    sender_factory:
+        Optional zero-arg callable returning a ``ServiceBusSender`` as a
+        context manager (e.g. ``lambda: client.get_topic_sender(topic_name=...)``).
+        A fresh sender is opened for each send call so that AMQP sessions
+        are not reused across requests; this avoids stale-sender failures
+        after idle timeouts or transient network drops.
     """
 
     def __init__(
         self,
         repository: AnalyticsRepository | None = None,
-        service_bus_sender: ServiceBusSender | None = None,
+        sender_factory: ServiceBusSenderFactory | None = None,
     ) -> None:
         self._repository = repository
-        self._service_bus_sender = service_bus_sender
+        self._sender_factory = sender_factory
 
     def record_events(
         self,
@@ -219,7 +231,7 @@ class AnalyticsService:
 
     def _persist_events(self, docs: list[dict[str, Any]]) -> None:
         """Send documents to Service Bus (primary) or Cosmos DB (fallback)."""
-        if self._service_bus_sender is not None:
+        if self._sender_factory is not None:
             try:
                 self._send_to_service_bus(docs)
                 return
@@ -238,29 +250,36 @@ class AnalyticsService:
                     logger.warning("analytics.cosmos.write_failed", exc_info=True)
 
     def _send_to_service_bus(self, docs: list[dict[str, Any]]) -> None:
-        """Batch-send documents to the Service Bus topic."""
+        """Batch-send documents to the Service Bus topic.
+
+        A fresh sender is obtained from the factory and used inside a
+        ``with`` block so that the AMQP link is opened and closed for this
+        operation only, sidestepping the stale-session bug in pyamqp.
+        """
         from azure.servicebus import ServiceBusMessage
 
-        batch = self._service_bus_sender.create_message_batch()  # type: ignore[union-attr]
-        for doc in docs:
-            message = ServiceBusMessage(
-                body=json.dumps(doc),
-                content_type="application/json",
-                application_properties={"eventType": doc.get("eventType", "unknown")},
-            )
-            try:
-                batch.add_message(message)
-            except ValueError:
-                # ValueError is raised for two reasons:
-                # 1. Batch is full — send what we have and start a new batch.
-                # 2. Single message exceeds SB max size (256 KB Standard) — in
-                #    this case the retry also raises ValueError, which
-                #    propagates to _persist_events and triggers Cosmos fallback.
-                self._service_bus_sender.send_messages(batch)  # type: ignore[union-attr]
-                batch = self._service_bus_sender.create_message_batch()  # type: ignore[union-attr]
-                batch.add_message(message)
-        if len(batch) > 0:
-            self._service_bus_sender.send_messages(batch)  # type: ignore[union-attr]
+        assert self._sender_factory is not None  # noqa: S101 - guarded by caller
+        with self._sender_factory() as sender:
+            batch = sender.create_message_batch()
+            for doc in docs:
+                message = ServiceBusMessage(
+                    body=json.dumps(doc),
+                    content_type="application/json",
+                    application_properties={"eventType": doc.get("eventType", "unknown")},
+                )
+                try:
+                    batch.add_message(message)
+                except ValueError:
+                    # ValueError is raised for two reasons:
+                    # 1. Batch is full — send what we have and start a new batch.
+                    # 2. Single message exceeds SB max size (256 KB Standard) — in
+                    #    this case the retry also raises ValueError, which
+                    #    propagates to _persist_events and triggers Cosmos fallback.
+                    sender.send_messages(batch)
+                    batch = sender.create_message_batch()
+                    batch.add_message(message)
+            if len(batch) > 0:
+                sender.send_messages(batch)
 
     # ------------------------------------------------------------------
     # Aggregation queries (used by GET endpoints)

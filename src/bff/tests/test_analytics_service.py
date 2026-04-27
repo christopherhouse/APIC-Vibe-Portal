@@ -274,23 +274,32 @@ def _make_mock_sb_sender() -> MagicMock:
     return sender
 
 
+def _make_factory(sender: MagicMock) -> MagicMock:
+    """Wrap a mock sender in a factory that returns it as a context manager."""
+    cm = MagicMock()
+    cm.__enter__ = MagicMock(return_value=sender)
+    cm.__exit__ = MagicMock(return_value=False)
+    factory = MagicMock(return_value=cm)
+    return factory
+
+
 class TestAnalyticsServiceServiceBus:
     def test_sends_events_to_service_bus_when_configured(self) -> None:
         sb_sender = _make_mock_sb_sender()
-        service = AnalyticsService(service_bus_sender=sb_sender)
+        service = AnalyticsService(sender_factory=_make_factory(sb_sender))
         result = service.record_events([_make_envelope("page_view")])
         assert result == 1
         sb_sender.send_messages.assert_called_once()
 
     def test_sends_batch_to_service_bus(self) -> None:
         sb_sender = _make_mock_sb_sender()
-        service = AnalyticsService(service_bus_sender=sb_sender)
+        service = AnalyticsService(sender_factory=_make_factory(sb_sender))
         service.record_events([_make_envelope("page_view"), _make_envelope("api_view")])
         sb_sender.send_messages.assert_called_once()
 
     def test_message_has_event_type_application_property(self) -> None:
         sb_sender = _make_mock_sb_sender()
-        service = AnalyticsService(service_bus_sender=sb_sender)
+        service = AnalyticsService(sender_factory=_make_factory(sb_sender))
         service.record_events([_make_envelope("api_view")])
         # The batch.add_message call receives a ServiceBusMessage
         batch = sb_sender.create_message_batch.return_value
@@ -301,7 +310,7 @@ class TestAnalyticsServiceServiceBus:
         sb_sender = _make_mock_sb_sender()
         sb_sender.create_message_batch.side_effect = RuntimeError("SB down")
         repo = _make_mock_repo()
-        service = AnalyticsService(repository=repo, service_bus_sender=sb_sender)
+        service = AnalyticsService(repository=repo, sender_factory=_make_factory(sb_sender))
         result = service.record_events([_make_envelope("page_view")])
         assert result == 1
         # Should have fallen back to Cosmos
@@ -310,7 +319,7 @@ class TestAnalyticsServiceServiceBus:
     def test_sb_preferred_over_cosmos_when_both_configured(self) -> None:
         sb_sender = _make_mock_sb_sender()
         repo = _make_mock_repo()
-        service = AnalyticsService(repository=repo, service_bus_sender=sb_sender)
+        service = AnalyticsService(repository=repo, sender_factory=_make_factory(sb_sender))
         service.record_events([_make_envelope("page_view")])
         # SB should be used, NOT Cosmos
         sb_sender.send_messages.assert_called_once()
@@ -330,7 +339,7 @@ class TestAnalyticsServiceServiceBus:
         # First add_message fails (message oversized), retry also fails
         batch.add_message.side_effect = ValueError("Message too large")
         repo = _make_mock_repo()
-        service = AnalyticsService(repository=repo, service_bus_sender=sb_sender)
+        service = AnalyticsService(repository=repo, sender_factory=_make_factory(sb_sender))
         result = service.record_events([_make_envelope("page_view")])
         assert result == 1
         # Should have fallen back to Cosmos
