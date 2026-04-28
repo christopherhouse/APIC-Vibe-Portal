@@ -25,8 +25,9 @@ Azure Cache for Redis (cache)
 - Agent Layer (Foundry)
 - Search Layer (AI Search)
 - Observability (App Insights)
-- Persistence (Cosmos DB serverless — chat sessions, governance snapshots, analytics)
+- Persistence (Cosmos DB serverless — chat sessions, governance snapshots, analytics, backup metadata)
 - **Response Cache (Azure Cache for Redis)** — caches API Center read results in the BFF to reduce latency and API Center call volume; falls back to an in-memory cache for local development when `REDIS_HOST` is not set
+- **Backup (Container Apps Job)** — scheduled hourly job that exports the full Azure API Center state (APIs, specs, metadata) to a ZIP archive in Azure Blob Storage; retention managed via GFS policy (hourly/daily/monthly/annual); admin-only UI for browsing backup history
 
 ## Caching
 
@@ -79,11 +80,13 @@ The BFF uses **Azure Cache for Redis** (`Microsoft.Cache/redis`) as a response c
 - Per-container User-Assigned Managed Identities (UAMI) — each Container App has its own UAMI for least-privilege access:
   - **Frontend UAMI** (`{prefix}-id-frontend-{env}-{suffix}`): AcrPull on ACR only
   - **BFF UAMI** (`{prefix}-id-bff-{env}-{suffix}`): AcrPull on ACR plus RBAC roles on Key Vault, API Center, AI Search, OpenAI, Cosmos DB, Foundry, and Redis
+  - **Backup Job UAMI** (`{prefix}-id-backup-{env}-{suffix}`): AcrPull on ACR, API Center Data Reader, Storage Blob Data Contributor on backup storage, Cosmos DB Built-in Data Contributor
 - Redis authenticated via Entra MI only (no embedded connection strings or access keys)
 
 ## Deployment
 
 - Azure Container Apps (each with a dedicated UAMI)
+- Azure Container Apps Jobs (backup job — hourly cron schedule)
 - ACR (image pull via per-container UAMI `--registry-identity` using ARM resource IDs)
 - Key Vault
 

@@ -103,9 +103,10 @@ Complete usage analytics, metadata scoring, performance optimization, and launch
 
 ### Feature Additions
 
-| #                                       | Task                      | Status | Key Dependencies |
-| --------------------------------------- | ------------------------- | ------ | ---------------- |
-| [033](033-mcp-inspector-integration.md) | MCP Inspector Integration | 🔄     | 010, 012, 020    |
+| #                                       | Task                       | Status | Key Dependencies          |
+| --------------------------------------- | -------------------------- | ------ | ------------------------- |
+| [033](033-mcp-inspector-integration.md) | MCP Inspector Integration  | 🔄     | 010, 012, 020             |
+| [034](034-api-center-backup.md)         | Azure API Center Backup    | 🔲     | 002, 005, 006, 008, 009, 016, 020 |
 
 ---
 
