@@ -109,6 +109,19 @@ Complete usage analytics, metadata scoring, performance optimization, and launch
 | [034](034-api-center-backup.md)         | Azure API Center Backup    | ✅     | 002, 005, 006, 008, 009, 016, 020 |
 | [035](035-api-center-backup-remediation.md) | API Center Backup Remediation | ✅ | 034                       |
 
+### MCP Registry Expansion
+
+| #                                              | Task                                     | Status | Key Dependencies                  |
+| ---------------------------------------------- | ---------------------------------------- | ------ | --------------------------------- |
+| [036](036-mcp-capability-indexing.md)          | MCP Capability Indexing                  | 🔲     | 009, 013, 016, 033                |
+| [037](037-mcp-governance-rules.md)             | MCP Governance & Best-Practices Rules    | 🔲     | 023, 025, 036                     |
+| [038](038-mcp-capability-drift-detection.md)   | MCP Capability Drift Detection           | 🔲     | 019, 036, 037                     |
+| [039](039-mcp-invocation-audit-log.md)         | MCP Invocation Audit Log                 | 🔲     | 016, 019, 020, 028, 033           |
+| [040](040-mcp-server-comparison.md)            | MCP Server Comparison                    | 🔲     | 024, 036, 037, 038, 039           |
+| [041](041-mcp-playground-and-sessions.md)      | MCP Playground & Saved Sessions          | 🔲     | 016, 020, 033, 039                |
+| [042](042-mcp-discovery-endpoint.md)           | MCP Discovery Endpoint for AI Agents     | 🔲     | 008, 019, 020, 036, 037           |
+| [043](043-mcp-self-service-publishing.md)      | MCP Server Self-Service Publishing       | 🔲     | 009, 020, 023, 036, 037           |
+
 ---
 
 ## Dependency Graph
