@@ -17,6 +17,9 @@ param indexerManagedIdentityPrincipalId string
 @description('Governance Worker Container Job Managed Identity Principal ID for RBAC')
 param governanceManagedIdentityPrincipalId string
 
+@description('Backup Container Job Managed Identity Principal ID for RBAC')
+param backupManagedIdentityPrincipalId string
+
 @description('Resource tags')
 param tags object
 
@@ -126,6 +129,19 @@ resource apiCenterDataReaderRoleGovernance 'Microsoft.Authorization/roleAssignme
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'c7244dfb-f447-457d-b2ba-3999044d1706') // Azure API Center Data Reader
     principalId: governanceManagedIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// RBAC: Grant backup job identity "Azure API Center Data Reader" — required for
+// the data-plane REST API used by the backup job to enumerate APIs, versions,
+// definitions, deployments, and environments and export specifications.
+resource apiCenterDataReaderRoleBackup 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(apiCenter.id, backupManagedIdentityPrincipalId, 'Azure API Center Data Reader')
+  scope: apiCenter
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'c7244dfb-f447-457d-b2ba-3999044d1706') // Azure API Center Data Reader
+    principalId: backupManagedIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
 }

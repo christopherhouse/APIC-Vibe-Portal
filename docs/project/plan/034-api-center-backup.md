@@ -1,6 +1,6 @@
 # Task 034 — Azure API Center Backup
 
-> 🔲 **Status: Not Started**
+> ✅ **Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -177,20 +177,20 @@ src/backup-job/
 
 #### Configuration (Environment Variables)
 
-| Variable | Description | Default |
-| --- | --- | --- |
-| `AZURE_CLIENT_ID` | Managed identity client ID | — |
-| `APIC_SUBSCRIPTION_ID` | API Center subscription ID | — |
-| `APIC_RESOURCE_GROUP` | API Center resource group | — |
-| `APIC_SERVICE_NAME` | API Center service name | — |
-| `BACKUP_STORAGE_ACCOUNT_URL` | Blob storage account URL | — |
-| `BACKUP_CONTAINER_NAME` | Blob container name | `apic-backups` |
-| `COSMOS_ENDPOINT` | Cosmos DB endpoint | — |
-| `COSMOS_DATABASE` | Cosmos DB database name | — |
-| `RETENTION_HOURLY` | Number of hourly backups to retain | `24` |
-| `RETENTION_DAILY` | Number of daily backups to retain | `30` |
-| `RETENTION_MONTHLY` | Number of monthly backups to retain | `12` |
-| `RETENTION_ANNUAL` | Number of annual backups to retain | `3` |
+| Variable                     | Description                         | Default        |
+| ---------------------------- | ----------------------------------- | -------------- |
+| `AZURE_CLIENT_ID`            | Managed identity client ID          | —              |
+| `APIC_SUBSCRIPTION_ID`       | API Center subscription ID          | —              |
+| `APIC_RESOURCE_GROUP`        | API Center resource group           | —              |
+| `APIC_SERVICE_NAME`          | API Center service name             | —              |
+| `BACKUP_STORAGE_ACCOUNT_URL` | Blob storage account URL            | —              |
+| `BACKUP_CONTAINER_NAME`      | Blob container name                 | `apic-backups` |
+| `COSMOS_ENDPOINT`            | Cosmos DB endpoint                  | —              |
+| `COSMOS_DATABASE`            | Cosmos DB database name             | —              |
+| `RETENTION_HOURLY`           | Number of hourly backups to retain  | `24`           |
+| `RETENTION_DAILY`            | Number of daily backups to retain   | `30`           |
+| `RETENTION_MONTHLY`          | Number of monthly backups to retain | `12`           |
+| `RETENTION_ANNUAL`           | Number of annual backups to retain  | `3`            |
 
 #### Backup Process
 
@@ -225,6 +225,7 @@ Retention operates on a grandfather-father-son (GFS) scheme:
 A single backup can satisfy multiple retention tiers (e.g., the last backup on Dec 31 counts as hourly, daily, monthly, and annual). Backups that don't fall into any retention tier are deleted (both the blob and the Cosmos DB metadata record).
 
 The retention service:
+
 1. Lists all backup metadata from Cosmos DB (ordered by timestamp descending)
 2. Tags each backup with the retention tiers it satisfies
 3. Identifies backups that satisfy no tier
@@ -234,11 +235,11 @@ The retention service:
 
 Add a new container to the existing Cosmos DB database:
 
-| Property | Value |
-| --- | --- |
-| Container name | `backup-metadata` |
-| Partition key | `/sourceServiceName` |
-| Unique key | `/backupId` |
+| Property       | Value                |
+| -------------- | -------------------- |
+| Container name | `backup-metadata`    |
+| Partition key  | `/sourceServiceName` |
+| Unique key     | `/backupId`          |
 
 #### Document Schema
 
@@ -281,11 +282,11 @@ src/bff/tests/
 
 All endpoints require the **admin** role (enforced via RBAC middleware).
 
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/api/admin/backups` | List backups (paginated, sorted by timestamp desc) |
-| `GET` | `/api/admin/backups/{backup_id}` | Get backup details |
-| `GET` | `/api/admin/backups/{backup_id}/download` | Generate SAS URL for backup download |
+| Method | Path                                      | Description                                        |
+| ------ | ----------------------------------------- | -------------------------------------------------- |
+| `GET`  | `/api/admin/backups`                      | List backups (paginated, sorted by timestamp desc) |
+| `GET`  | `/api/admin/backups/{backup_id}`          | Get backup details                                 |
+| `GET`  | `/api/admin/backups/{backup_id}/download` | Generate SAS URL for backup download               |
 
 #### `GET /api/admin/backups` Response
 
@@ -479,21 +480,38 @@ Add to `.github/workflows/ci.yml`:
 
 ### Status History
 
-| Date | Status         | Author | Notes        |
-| ---- | -------------- | ------ | ------------ |
-| —    | 🔲 Not Started | —      | Task created |
+| Date       | Status         | Author              | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------- | -------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —          | 🔲 Not Started | —                   | Task created                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 2026-04-28 | ✅ Complete    | GitHub Copilot agent | Implemented end-to-end backup feature: dedicated backup storage account + lifecycle + RBAC, Cosmos `backup-metadata` container, dedicated backup managed identity, `src/backup-job/` Python container (UV) implementing GFS retention, BFF `/api/admin/backups` endpoints with user-delegation SAS downloads, frontend `/admin/backup` admin page (MUI + Jest + Playwright), `scripts/deploy-container-apps.sh` job creation, and CI workflow updates. All quality checks green. |
 
 ### Technical Decisions
 
-_(To be filled during implementation)_
+- **Dedicated backup storage account.** Separate `*backup*` storage account (vs. reusing `function-storage`) so lifecycle rules, network access, and retention can be governed independently of Functions runtime artifacts.
+- **User-delegation SAS for downloads.** BFF requests a user-delegation key from the storage account and signs a per-download SAS (`BlobSasPermissions(read=True)`) instead of using account keys. Keeps the deployment key-less and aligned with managed-identity-only auth.
+- **Dedicated backup managed identity.** Backup job uses its own UAMI with least-privilege role assignments (`AcrPull`, `Azure API Center Data Reader`, Cosmos DB custom backup role, `Storage Blob Data Contributor` on the backup container). The BFF MI gets `Storage Blob Data Reader` + `Storage Blob Delegator` only.
+- **GFS retention as a pure function.** `compute_retention_tiers(backups, policy)` returns `(keepers, to_delete)` so the bucket logic is unit-testable in isolation; `RetentionService.apply()` is the side-effecting wrapper that updates Cosmos `retentionTiers` and deletes pruned blobs/docs. Backups with empty tier lists are deleted.
+- **Backup job re-uses `apic_client` as an editable path dependency** (mirrors the indexer/governance-worker pattern), avoiding code duplication of the API Center data-plane client.
+- **Cron at top of every hour** (`0 * * * *`) with `replicaTimeout=1800s` and `parallelism=1`/`replicaCompletionCount=1` to guarantee at most one backup is running at a time.
+- **Backup ID format** `apic-backup-<ISO timestamp with `:` replaced by `-`>` keeps IDs blob-name-safe and chronologically sortable.
+- **BFF backup router registered after `admin_agents_router`** and protected with `require_role("Portal.Admin")` on every endpoint.
+- **Frontend page mirrors `/admin/agents` pattern** (client component, `useAuth()` admin guard, MSAL-aware `apiClient`, MUI table + skeleton + dialog + status chips). Download is performed via `window.open(url, '_blank', 'noopener,noreferrer')` so the browser receives the SAS URL directly without proxying bytes through the BFF.
+- **MUI v7 prop discipline.** Layout/typography style props (`flexWrap`, `justifyContent`, `alignItems`, `display`, `fontFamily`, `fontWeight`) are passed via `sx` to satisfy the stricter v7 typings caught by `tsc`.
 
 ### Deviations from Plan
 
-_(To be filled during implementation)_
+- **Custom metadata schemas placeholder.** The current `apic_client.ApiCenterDataPlaneClient` does not expose a `list_metadata_schemas` method, so `metadata/custom-metadata-schemas.json` is written as a documented placeholder (`{"note": "...", "schemas": []}`). This is captured in the manifest counts and can be backfilled when the SDK exposes the operation.
+- **Restore tooling is intentionally out of scope** (per the spec). The ZIP is structured to allow future restore work but no restore CLI is shipped in this task.
 
 ### Validation Results
 
-_(To be filled during implementation)_
+- **Backup job (`src/backup-job/`)** — `uv run ruff check .`, `uv run ruff format --check .`, `uv run pytest` (12 passed), `uv run python -m compileall .` all green.
+- **BFF (`src/bff/`)** — `uv run ruff check .`, `uv run ruff format --check .`, full `uv run pytest` (1222 passed including 7 new `test_backup_routes` tests).
+- **Frontend (`src/frontend/` + `src/shared/`)** — `npm run lint` clean. `npx tsc --noEmit` clean. `npm run build --workspace=@apic-vibe-portal/frontend` succeeds and includes `/admin/backup` route. `npm run test --workspace=@apic-vibe-portal/frontend -- --testPathPatterns=BackupAdminPage` (5 passed).
+  - Pre-existing failures in `lib/__tests__/utils.test.ts` (`formatDate` timezone assumptions) reproduce on the unmodified base branch and are unrelated to this task.
+- **Format check.** `npx prettier --write` applied to all newly authored backup files; remaining repo-wide format warnings are pre-existing and out of scope.
+- **E2E.** Playwright spec `src/frontend/e2e/admin-backup.spec.ts` added; runs in CI via the existing `e2e-frontend` job.
+- **Infra & CI.** Bicep modules updated (`backup-storage.bicep`, `main.bicep`, `acr.bicep`, `api-center.bicep`, `cosmosdb.bicep`); `.github/workflows/ci.yml` gained `lint`, `test-backup-job`, and `build-backup-job` stages; `scripts/deploy-container-apps.sh` accepts `--backup-image-tag/--backup-identity-resource-id/--backup-identity-client-id/--backup-env-vars` and provisions/updates the backup Container Apps Job on an hourly cron.
 
 ## Coding Agent Prompt
 

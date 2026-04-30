@@ -27,7 +27,11 @@
 #     --governance-image-tag <governance-tag> \
 #     --governance-identity-resource-id <governance-uami-resource-id> \
 #     --governance-identity-client-id <governance-uami-client-id> \
-#     --governance-env-vars "KEY1=val1 KEY2=val2 ..."
+#     --governance-env-vars "KEY1=val1 KEY2=val2 ..." \
+#     --backup-image-tag <backup-tag> \
+#     --backup-identity-resource-id <backup-uami-resource-id> \
+#     --backup-identity-client-id <backup-uami-client-id> \
+#     --backup-env-vars "KEY1=val1 KEY2=val2 ..."
 #
 # Each Container App uses its own User-Assigned Managed Identity (UAMI) for
 # ACR image pull and Azure service access.  The --*-identity-resource-id flags
@@ -51,6 +55,10 @@ GOVERNANCE_ENV_VARS=""
 GOVERNANCE_IMAGE_TAG=""
 GOVERNANCE_IDENTITY_RESOURCE_ID=""
 GOVERNANCE_IDENTITY_CLIENT_ID=""
+BACKUP_ENV_VARS=""
+BACKUP_IMAGE_TAG=""
+BACKUP_IDENTITY_RESOURCE_ID=""
+BACKUP_IDENTITY_CLIENT_ID=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -139,6 +147,22 @@ while [[ $# -gt 0 ]]; do
       GOVERNANCE_ENV_VARS="$2"
       shift 2
       ;;
+    --backup-image-tag)
+      BACKUP_IMAGE_TAG="$2"
+      shift 2
+      ;;
+    --backup-identity-resource-id)
+      BACKUP_IDENTITY_RESOURCE_ID="$2"
+      shift 2
+      ;;
+    --backup-identity-client-id)
+      BACKUP_IDENTITY_CLIENT_ID="$2"
+      shift 2
+      ;;
+    --backup-env-vars)
+      BACKUP_ENV_VARS="$2"
+      shift 2
+      ;;
     *)
       echo "Unknown argument: $1"
       exit 1
@@ -211,6 +235,22 @@ if [[ -n "$GOVERNANCE_IMAGE_TAG" ]]; then
   fi
   if [[ -z "$GOVERNANCE_IDENTITY_CLIENT_ID" || "$GOVERNANCE_IDENTITY_CLIENT_ID" == "null" ]]; then
     echo "Error: GOVERNANCE_IDENTITY_CLIENT_ID is missing or 'null'. Re-run the deploy-infra workflow first."
+    exit 1
+  fi
+fi
+
+# Validate backup identity arguments when backup deployment is requested
+if [[ -n "$BACKUP_IMAGE_TAG" ]]; then
+  if [[ -z "$BACKUP_IDENTITY_RESOURCE_ID" || "$BACKUP_IDENTITY_RESOURCE_ID" == "null" ]]; then
+    echo "Error: BACKUP_IDENTITY_RESOURCE_ID is missing or 'null'. Re-run the deploy-infra workflow first."
+    exit 1
+  fi
+  if [[ ! "$BACKUP_IDENTITY_RESOURCE_ID" =~ ^/subscriptions/ ]]; then
+    echo "Error: BACKUP_IDENTITY_RESOURCE_ID does not look like a valid ARM resource ID: '$BACKUP_IDENTITY_RESOURCE_ID'"
+    exit 1
+  fi
+  if [[ -z "$BACKUP_IDENTITY_CLIENT_ID" || "$BACKUP_IDENTITY_CLIENT_ID" == "null" ]]; then
+    echo "Error: BACKUP_IDENTITY_CLIENT_ID is missing or 'null'. Re-run the deploy-infra workflow first."
     exit 1
   fi
 fi
@@ -466,6 +506,62 @@ if [[ -n "$GOVERNANCE_IMAGE_TAG" ]]; then
   echo "Governance Worker Job: $GOVERNANCE_JOB_NAME (cron: 0 */3 * * *)"
 fi
 
+# ============================================================================
+# Deploy Backup Container Apps Job (hourly cron)
+# ============================================================================
+if [[ -n "$BACKUP_IMAGE_TAG" ]]; then
+  echo ""
+  echo "Deploying API Center Backup Container Apps Job..."
+
+  # Derive the job name from the BFF app name pattern (replace -bff- with -backup-)
+  BACKUP_JOB_NAME="${BFF_APP_NAME/bff/backup}"
+
+  BACKUP_CORE_ENV_VARS=(
+    "AZURE_CLIENT_ID=${BACKUP_IDENTITY_CLIENT_ID}"
+  )
+
+  if [[ -n "$BACKUP_ENV_VARS" ]]; then
+    read -ra EXTRA_BACKUP_ENV_VARS <<< "$BACKUP_ENV_VARS"
+    BACKUP_CORE_ENV_VARS+=("${EXTRA_BACKUP_ENV_VARS[@]}")
+  fi
+
+  echo "Backup Job Name: $BACKUP_JOB_NAME"
+  echo "Backup Image: ${ACR_SERVER}/backup-job:${BACKUP_IMAGE_TAG}"
+  echo "Backup Env Vars (${#BACKUP_CORE_ENV_VARS[@]} vars): ${BACKUP_CORE_ENV_VARS[*]}"
+
+  if az containerapp job show --name "$BACKUP_JOB_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
+    echo "Updating existing Backup Container Apps Job..."
+    az containerapp job update \
+      --name "$BACKUP_JOB_NAME" \
+      --resource-group "$RESOURCE_GROUP" \
+      --image "${ACR_SERVER}/backup-job:${BACKUP_IMAGE_TAG}" \
+      --cpu 0.5 \
+      --memory 1Gi \
+      --set-env-vars "${BACKUP_CORE_ENV_VARS[@]}"
+  else
+    echo "Creating new Backup Container Apps Job..."
+    az containerapp job create \
+      --name "$BACKUP_JOB_NAME" \
+      --resource-group "$RESOURCE_GROUP" \
+      --environment "$ENVIRONMENT_ID" \
+      --image "${ACR_SERVER}/backup-job:${BACKUP_IMAGE_TAG}" \
+      --cpu 0.5 \
+      --memory 1Gi \
+      --trigger-type Schedule \
+      --cron-expression "0 * * * *" \
+      --replica-timeout 1800 \
+      --replica-retry-limit 1 \
+      --parallelism 1 \
+      --replica-completion-count 1 \
+      --registry-server "$ACR_SERVER" \
+      --mi-user-assigned "$BACKUP_IDENTITY_RESOURCE_ID" \
+      --registry-identity "$BACKUP_IDENTITY_RESOURCE_ID" \
+      --env-vars "${BACKUP_CORE_ENV_VARS[@]}"
+  fi
+
+  echo "Backup Job: $BACKUP_JOB_NAME (cron: 0 * * * *)"
+fi
+
 echo ""
 echo "============================================================================"
 echo "Deployment Complete"
@@ -477,5 +573,8 @@ if [[ -n "$INDEXER_IMAGE_TAG" ]]; then
 fi
 if [[ -n "$GOVERNANCE_IMAGE_TAG" ]]; then
   echo "Governance Worker Job: ${GOVERNANCE_JOB_NAME}"
+fi
+if [[ -n "$BACKUP_IMAGE_TAG" ]]; then
+  echo "Backup Job: ${BACKUP_JOB_NAME}"
 fi
 echo "============================================================================"

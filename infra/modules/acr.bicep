@@ -23,6 +23,9 @@ param governanceManagedIdentityPrincipalId string
 @description('Analytics Processor Managed Identity Principal ID for AcrPull RBAC')
 param analyticsProcessorManagedIdentityPrincipalId string
 
+@description('Backup Container Job Managed Identity Principal ID for AcrPull RBAC')
+param backupManagedIdentityPrincipalId string
+
 @description('Log Analytics Workspace ID for diagnostics')
 param logAnalyticsWorkspaceId string
 
@@ -104,6 +107,17 @@ resource acrPullRoleAnalyticsProcessor 'Microsoft.Authorization/roleAssignments@
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d') // AcrPull
     principalId: analyticsProcessorManagedIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// RBAC: Grant backup job managed identity "AcrPull" role
+resource acrPullRoleBackup 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(containerRegistry.id, backupManagedIdentityPrincipalId, 'AcrPull')
+  scope: containerRegistry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d') // AcrPull
+    principalId: backupManagedIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
 }

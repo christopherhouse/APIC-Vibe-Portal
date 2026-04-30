@@ -27,6 +27,7 @@ from apic_vibe_portal_bff.routers.analytics import close_analytics_service
 from apic_vibe_portal_bff.routers.analytics import router as analytics_router
 from apic_vibe_portal_bff.routers.api_catalog import CatalogApiError, catalog_api_error_handler
 from apic_vibe_portal_bff.routers.api_compare import router as compare_router
+from apic_vibe_portal_bff.routers.backup import router as backup_router
 from apic_vibe_portal_bff.routers.chat import ChatApiError, chat_api_error_handler
 from apic_vibe_portal_bff.routers.governance import router as governance_router
 from apic_vibe_portal_bff.routers.mcp_inspector import McpInspectorError, mcp_inspector_error_handler
@@ -108,6 +109,7 @@ def create_app() -> FastAPI:
     app.include_router(chat.router)
     app.include_router(admin_access_policies_router)
     app.include_router(admin_agents_router)
+    app.include_router(backup_router)
     app.include_router(compare_router)
     app.include_router(governance_router)
     app.include_router(analytics_router)
