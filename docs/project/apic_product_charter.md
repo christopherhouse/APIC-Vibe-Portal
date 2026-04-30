@@ -13,6 +13,7 @@ Enable developers to discover, understand, and use APIs faster.
 - Improve API discovery
 - Enable AI-assisted workflows
 - Provide governance visibility
+- Ensure operational resilience via automated API Center backup
 
 ## Success Metrics
 
@@ -34,10 +35,12 @@ Includes:
 - AI agents
 - Search
 - Analytics
+- API Center backup & disaster recovery (backup to blob storage, admin UI for backup management)
 
 Excludes:
 
 - API gateway functionality
+- API Center restore from backup (planned for future phase)
 
 ## Timeline
 

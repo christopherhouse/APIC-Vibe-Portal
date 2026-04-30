@@ -128,13 +128,58 @@ If the entire Azure environment is lost:
 **RTO (Recovery Time Objective)**: 4 hours  
 **RPO (Recovery Point Objective)**: 24 hours (based on daily backup schedule)
 
+## Validating the Backup Storage Lifecycle Policy
+
+The backup storage account (`backup-storage.bicep`) applies a lifecycle management policy
+that moves API Center backup blobs to **Cool** tier after 30 days and **Archive** tier
+after 90 days. Verify the policy is active and exercise restoration from each tier:
+
+```bash
+# 1. Confirm the lifecycle policy is present and enabled
+az storage account management-policy show \
+  --account-name <backup-storage-account> \
+  --resource-group <rg> \
+  --query "policy.rules[?enabled].{name:name,actions:definition.actions.baseBlob}"
+
+# 2. List blobs and inspect their access tier and last-modified time
+az storage blob list \
+  --account-name <backup-storage-account> \
+  --container-name api-center-backups \
+  --auth-mode login \
+  --query "[].{name:name, tier:properties.blobTier, modified:properties.lastModified}" \
+  -o table
+
+# 3. To restore an Archive-tier blob, rehydrate it to Cool or Hot first
+az storage blob set-tier \
+  --account-name <backup-storage-account> \
+  --container-name api-center-backups \
+  --name <blob-name> \
+  --tier Hot \
+  --rehydrate-priority Standard \
+  --auth-mode login
+# Rehydration from Archive can take up to 15 hours (Standard) or under an hour (High).
+
+# 4. Once rehydrated, download and validate the ZIP contents
+az storage blob download \
+  --account-name <backup-storage-account> \
+  --container-name api-center-backups \
+  --name <blob-name> \
+  --file ./restored-backup.zip \
+  --auth-mode login
+unzip -l ./restored-backup.zip
+```
+
+Run this drill at least once per quarter against a non-production blob to confirm the
+policy works end-to-end and that operators are familiar with rehydration latency.
+
 ## Testing Recovery Procedures
 
 Recovery procedures should be tested quarterly:
 
 1. **Cosmos DB restore test**: Restore to a non-production environment and verify data integrity
 2. **Index rebuild test**: Delete and rebuild the index in a staging environment; verify search works
-3. **Full DR drill**: Once a year, provision a new environment from scratch using the procedures above
+3. **Backup storage lifecycle test**: Verify Cool/Archive tier transitions and rehydration (see above)
+4. **Full DR drill**: Once a year, provision a new environment from scratch using the procedures above
 
 Document the results of each test in the team wiki.
 

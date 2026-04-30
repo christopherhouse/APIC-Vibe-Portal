@@ -21,6 +21,7 @@ import HelpIcon from '@mui/icons-material/Help';
 import SecurityIcon from '@mui/icons-material/Security';
 import GavelIcon from '@mui/icons-material/Gavel';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import BackupIcon from '@mui/icons-material/Backup';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import { useAuth } from '@/lib/auth/use-auth';
@@ -63,6 +64,11 @@ const strictAdminNavItems: NavItem[] = [
     label: 'Agent Management',
     icon: <SmartToyIcon />,
     href: '/admin/agents',
+  },
+  {
+    label: 'Backup',
+    icon: <BackupIcon />,
+    href: '/admin/backup',
   },
 ];
 

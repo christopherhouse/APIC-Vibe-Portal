@@ -17,6 +17,9 @@ param governanceIdentityPrincipalId string
 @description('Analytics Processor Managed Identity Principal ID for Cosmos DB RBAC')
 param analyticsProcessorIdentityPrincipalId string
 
+@description('Backup Container Job Managed Identity Principal ID for Cosmos DB RBAC')
+param backupIdentityPrincipalId string
+
 @description('Additional failover locations (empty for single-region serverless)')
 param additionalLocations array
 
@@ -200,6 +203,44 @@ resource analyticsEventsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlData
   }
 }
 
+// Backup metadata container — partitioned by sourceServiceName, no TTL (retention managed by backup job)
+resource backupMetadataContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-12-01-preview' = {
+  parent: database
+  name: 'backup-metadata'
+  properties: {
+    resource: {
+      id: 'backup-metadata'
+      partitionKey: {
+        paths: ['/sourceServiceName']
+        kind: 'Hash'
+        version: 2
+      }
+      defaultTtl: -1
+      uniqueKeyPolicy: {
+        uniqueKeys: [
+          { paths: ['/backupId'] }
+        ]
+      }
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+        includedPaths: [
+          { path: '/*' }
+        ]
+        excludedPaths: [
+          { path: '/"_etag"/?' }
+        ]
+        compositeIndexes: [
+          [
+            { path: '/sourceServiceName', order: 'ascending' }
+            { path: '/timestamp', order: 'descending' }
+          ]
+        ]
+      }
+    }
+  }
+}
+
 // RBAC: Grant managed identity "Cosmos DB Built-in Data Contributor" role
 resource cosmosDbDataContributorRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-12-01-preview' = {
   name: guid(cosmosDbAccount.id, managedIdentityPrincipalId, 'Cosmos DB Built-in Data Contributor')
@@ -230,6 +271,44 @@ resource cosmosDbAnalyticsProcessorRole 'Microsoft.DocumentDB/databaseAccounts/s
     roleDefinitionId: '${cosmosDbAccount.id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002' // Built-in Data Contributor
     principalId: analyticsProcessorIdentityPrincipalId
     scope: cosmosDbAccount.id
+  }
+}
+
+// Custom Cosmos DB SQL role: scoped data-plane access used by the backup
+// job. Grants only the operations needed (read metadata, item CRUD, query)
+// without the broader privileges of the Built-in Data Contributor role —
+// see plan/035-api-center-backup-remediation.md (finding C4).
+resource backupMetadataRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions@2024-12-01-preview' = {
+  name: guid(cosmosDbAccount.id, 'BackupMetadataContainerWriter')
+  parent: cosmosDbAccount
+  properties: {
+    roleName: 'Backup Metadata Container Writer'
+    type: 'CustomRole'
+    assignableScopes: [
+      cosmosDbAccount.id
+    ]
+    permissions: [
+      {
+        dataActions: [
+          'Microsoft.DocumentDB/databaseAccounts/readMetadata'
+          'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/*'
+          'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/executeQuery'
+          'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/readChangeFeed'
+        ]
+      }
+    ]
+  }
+}
+
+// RBAC: Grant backup job managed identity the custom role, scoped to the
+// backup-metadata container only (least privilege).
+resource cosmosDbBackupJobRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-12-01-preview' = {
+  name: guid(cosmosDbAccount.id, backupIdentityPrincipalId, 'BackupMetadataContainerWriter')
+  parent: cosmosDbAccount
+  properties: {
+    roleDefinitionId: backupMetadataRole.id
+    principalId: backupIdentityPrincipalId
+    scope: '${cosmosDbAccount.id}/dbs/${database.name}/colls/${backupMetadataContainer.name}'
   }
 }
 

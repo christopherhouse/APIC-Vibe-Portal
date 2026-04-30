@@ -98,6 +98,7 @@ var resourceNames = {
   indexerIdentity: '${namePrefix}-id-indexer-${environmentName}-${uniqueSuffix}'
   governanceIdentity: '${namePrefix}-id-governance-${environmentName}-${uniqueSuffix}'
   analyticsProcessorIdentity: '${namePrefix}-id-analytics-${environmentName}-${uniqueSuffix}'
+  backupIdentity: '${namePrefix}-id-backup-${environmentName}-${uniqueSuffix}'
   keyVault: '${kvPrefix}${kvSuffix}' // Max 24 chars: 10 (prefix) + 13 (suffix) = 23
   containerRegistry: '${namePrefix}acr${environmentName}${uniqueSuffix}'
   containerAppsEnv: '${namePrefix}-cae-${environmentName}-${uniqueSuffix}'
@@ -114,6 +115,7 @@ var resourceNames = {
   serviceBus: '${namePrefix}-sb-${environmentName}-${uniqueSuffix}'
   functionStorage: take('${namePrefix}analyticsfn${uniqueSuffix}', 24) // Storage for analytics Function App (max 24 chars)
   analyticsProcessorApp: '${namePrefix}-analytics-${environmentName}'
+  backupStorage: take('${namePrefix}bk${environmentName}${uniqueSuffix}', 24) // Storage for API Center backups (max 24 chars)
 }
 
 // ============================================================================
@@ -194,6 +196,16 @@ module analyticsProcessorIdentity 'modules/managed-identity.bicep' = {
   }
 }
 
+// Backup Container Apps Job identity (AcrPull + API Center read + Cosmos write + Backup Storage write)
+module backupIdentity 'modules/managed-identity.bicep' = {
+  name: 'backup-identity-${deployment().name}'
+  params: {
+    location: location
+    managedIdentityName: resourceNames.backupIdentity
+    tags: tags
+  }
+}
+
 // ============================================================================
 // MODULE 3: Key Vault
 // ============================================================================
@@ -227,6 +239,7 @@ module containerRegistry 'modules/acr.bicep' = {
     indexerManagedIdentityPrincipalId: indexerIdentity.outputs.principalId
     governanceManagedIdentityPrincipalId: governanceIdentity.outputs.principalId
     analyticsProcessorManagedIdentityPrincipalId: analyticsProcessorIdentity.outputs.principalId
+    backupManagedIdentityPrincipalId: backupIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
     privateEndpointSubnetId: privateEndpointSubnetId
@@ -261,6 +274,7 @@ module apiCenter 'modules/api-center.bicep' = {
     managedIdentityPrincipalId: bffIdentity.outputs.principalId
     indexerManagedIdentityPrincipalId: indexerIdentity.outputs.principalId
     governanceManagedIdentityPrincipalId: governanceIdentity.outputs.principalId
+    backupManagedIdentityPrincipalId: backupIdentity.outputs.principalId
     tags: tags
   }
 }
@@ -315,6 +329,7 @@ module cosmosDb 'modules/cosmosdb.bicep' = {
     managedIdentityPrincipalId: bffIdentity.outputs.principalId
     governanceIdentityPrincipalId: governanceIdentity.outputs.principalId
     analyticsProcessorIdentityPrincipalId: analyticsProcessorIdentity.outputs.principalId
+    backupIdentityPrincipalId: backupIdentity.outputs.principalId
     additionalLocations: cosmosDbLocations
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     enablePrivateEndpoint: enablePrivateEndpoints
@@ -409,6 +424,22 @@ module functionStorage 'modules/function-storage.bicep' = {
     location: location
     storageAccountName: resourceNames.functionStorage
     analyticsProcessorPrincipalId: analyticsProcessorIdentity.outputs.principalId
+    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
+    tags: tags
+  }
+}
+
+// ============================================================================
+// MODULE 15: Backup Storage Account (API Center backup ZIP archives)
+// ============================================================================
+
+module backupStorage 'modules/backup-storage.bicep' = {
+  name: 'backup-storage-${deployment().name}'
+  params: {
+    location: location
+    storageAccountName: resourceNames.backupStorage
+    backupIdentityPrincipalId: backupIdentity.outputs.principalId
+    bffIdentityPrincipalId: bffIdentity.outputs.principalId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     tags: tags
   }
@@ -567,3 +598,18 @@ output serviceBusNamespaceName string = serviceBus.outputs.namespaceName
 
 @description('Analytics Processor Container App Name')
 output analyticsProcessorAppName string = resourceNames.analyticsProcessorApp
+
+@description('Backup Container Apps Job Managed Identity resource ID')
+output backupIdentityResourceId string = backupIdentity.outputs.id
+
+@description('Backup Container Apps Job Managed Identity Client ID')
+output backupIdentityClientId string = backupIdentity.outputs.clientId
+
+@description('Backup Storage Account Name')
+output backupStorageAccountName string = backupStorage.outputs.name
+
+@description('Backup Storage Blob Endpoint')
+output backupStorageBlobEndpoint string = backupStorage.outputs.blobEndpoint
+
+@description('Backup Storage Container Name')
+output backupStorageContainerName string = backupStorage.outputs.containerName

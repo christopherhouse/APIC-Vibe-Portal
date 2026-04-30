@@ -93,6 +93,37 @@ class Settings(BaseSettings):
         default="api-access-policies",
         description="Cosmos DB container name for API access policies (security trimming)",
     )
+    cosmos_db_backup_container: str = Field(
+        default="backup-metadata",
+        description="Cosmos DB container name for API Center backup metadata",
+    )
+
+    # --- Backup storage --------------------------------------------------
+    backup_storage_account_url: str = Field(
+        default="",
+        description=(
+            "Backup blob storage account URL "
+            "(e.g. https://myacct.blob.core.windows.net). When empty, backup admin "
+            "endpoints will return 503."
+        ),
+    )
+    backup_container_name: str = Field(
+        default="apic-backups",
+        description="Blob container name holding backup ZIP archives",
+    )
+    backup_download_sas_ttl_minutes: int = Field(
+        default=60,
+        ge=1,
+        le=1440,
+        description="Time-to-live for the user-delegation SAS used for downloads",
+    )
+    apic_service_name: str = Field(
+        default="",
+        description=(
+            "API Center service name. Used as the Cosmos partition key when "
+            "listing backup metadata documents to avoid cross-partition fan-out."
+        ),
+    )
 
     # --- Azure Service Bus -----------------------------------------------
     service_bus_namespace: str = Field(
