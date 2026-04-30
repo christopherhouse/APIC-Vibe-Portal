@@ -40,6 +40,28 @@ def _add_otel_trace_context(logger: Any, method: str, event_dict: dict[str, Any]
     return event_dict
 
 
+# Third-party loggers that are extremely chatty at INFO/DEBUG. We pin them
+# to WARNING so per-request HTTP traffic, token acquisition, etc. don't
+# drown out our own structured backup_job.* events.
+_NOISY_LOGGERS: tuple[str, ...] = (
+    "azure",
+    "azure.core.pipeline.policies.http_logging_policy",
+    "azure.identity",
+    "azure.cosmos",
+    "azure.storage",
+    "azure.monitor.opentelemetry",
+    "httpx",
+    "httpcore",
+    "urllib3",
+    "opentelemetry",
+)
+
+
+def _silence_noisy_loggers() -> None:
+    for noisy in _NOISY_LOGGERS:
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+
+
 def _configure_logging(log_level: str) -> None:
     resolved_level = getattr(logging, log_level.upper(), logging.INFO)
 
@@ -55,12 +77,7 @@ def _configure_logging(log_level: str) -> None:
         wrapper_class=structlog.make_filtering_bound_logger(resolved_level),
     )
 
-    for noisy in (
-        "azure.core.pipeline.policies.http_logging_policy",
-        "azure.identity",
-        "httpx",
-    ):
-        logging.getLogger(noisy).setLevel(logging.WARNING)
+    _silence_noisy_loggers()
 
 
 def run() -> None:
@@ -69,6 +86,9 @@ def run() -> None:
     _configure_logging(settings.log_level)
 
     configure_telemetry(connection_string=settings.applicationinsights_connection_string or None)
+    # configure_azure_monitor() resets log levels on the root/azure loggers,
+    # so re-apply our suppressions afterwards.
+    _silence_noisy_loggers()
     tracer = get_tracer()
     log = structlog.get_logger()
 

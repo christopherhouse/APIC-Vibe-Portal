@@ -157,11 +157,14 @@ class BackupService:
             counts = ManifestCounts()
             tmp_path, size_bytes = self._build_zip_to_tempfile(now_iso=now_iso, counts=counts)
             try:
+                # Azure Blob metadata names must follow C# identifier rules
+                # (letters, digits, underscores only — no hyphens). See:
+                # https://learn.microsoft.com/azure/storage/blobs/storage-blob-container-properties-metadata
                 manifest_metadata = {
-                    "backup-timestamp": now_iso,
-                    "api-count": str(counts.apis),
-                    "entity-count": str(counts.total_entities),
-                    "backup-version": "1.0",
+                    "backup_timestamp": now_iso,
+                    "api_count": str(counts.apis),
+                    "entity_count": str(counts.total_entities),
+                    "backup_version": "1.0",
                 }
                 with open(tmp_path, "rb") as fh:
                     blob_url = self._storage.upload_backup_stream(

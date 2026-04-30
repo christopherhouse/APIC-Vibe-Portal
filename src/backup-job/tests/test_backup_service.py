@@ -62,8 +62,8 @@ def test_backup_service_produces_well_formed_zip(
     assert len(fake_container_client.uploads) == 1
     blob_name, payload = next(iter(fake_container_client.uploads.items()))
     assert blob_name.startswith("apic-backup-") and blob_name.endswith(".zip")
-    assert payload["metadata"]["api-count"] == "2"
-    assert payload["metadata"]["entity-count"] == str(result.metadata.counts.total_entities)
+    assert payload["metadata"]["api_count"] == "2"
+    assert payload["metadata"]["entity_count"] == str(result.metadata.counts.total_entities)
 
     with zipfile.ZipFile(io.BytesIO(payload["data"])) as zf:
         names = set(zf.namelist())
