@@ -1,6 +1,6 @@
 # Task 035 — API Center Backup Remediation
 
-> 🔲 **Status: Not Started**
+> ✅ **Status: Complete**
 >
 > _This is a living document. Status and implementation notes are updated as work progresses._
 
@@ -522,21 +522,55 @@ After completing this task, update [034-api-center-backup.md](034-api-center-bac
 
 ### Status History
 
-| Date       | Status         | Author | Notes                                                                                  |
-| ---------- | -------------- | ------ | -------------------------------------------------------------------------------------- |
-| 2026-04-30 | 🔲 Not Started | —      | Plan authored from code review of task 034. Fifteen findings tracked across C/M/N tiers. |
+| Date       | Status         | Author        | Notes                                                                                                                  |
+| ---------- | -------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 2026-04-30 | 🔲 Not Started | —             | Plan authored from code review of task 034. Fifteen findings tracked across C/M/N tiers.                                |
+| 2026-04-30 | ✅ Complete    | Copilot agent | All 15 findings (C1–C5, M1–M5, N1–N5) implemented and validated. Backup-job, BFF, frontend, infra, and CI/CD updated. |
 
 ### Technical Decisions
 
-_To be recorded by the implementing agent._
+- **C1 — CI/CD wiring**: Added `backup-job` to the `build-containers` matrix in `deploy-app.yml`. Plumbed six new outputs (`api-center-name`, `backup-identity-resource-id`, `backup-identity-client-id`, `backup-storage-account-name`, `backup-storage-blob-endpoint`, `backup-storage-container-name`) through `deploy-infra.yml` (workflow_call outputs → job outputs → step outputs) and consumed them in `deploy-app.yml` for all three environments via `--backup-image-tag`, `--backup-identity-resource-id`, `--backup-identity-client-id`, and `--backup-env-vars` flags. The script's existing `BACKUP_*` branch creates/updates the Container Apps Job with hourly cron and managed-identity registry pull.
+- **C2 — Pagination contract**: Replaced ad-hoc `count` + `items` shape with `{ data, pagination: { continuationToken, hasMore } }` and a Cosmos `pager.by_page(continuation_token)` driver. The frontend renders an append-on-load-more pattern (no full-page refresh) so older backups stay visible after pagination.
+- **C3 — Failed-backup audit trail**: Wrapped `BackupJobService.run()` in a top-level try/except that persists a `status='failed'` `BackupMetadata` document containing `error=repr(exc)[:2000]` and `durationMs` before re-raising. The BFF list query now matches `status IN ('completed', 'failed')` so admins see fault history, and the frontend renders failed entries (no download button, error tooltip).
+- **C4 — RBAC scope**: Added a Cosmos custom SQL role `Backup Metadata Container Writer` (read metadata, items/*, executeQuery, readChangeFeed) scoped to `${cosmosDbAccount.id}/dbs/${database.name}/colls/${backupMetadataContainer.name}` so the backup job can only touch its own container. Replaced the previous broad role assignment.
+- **C5 — OOM risk on large catalogues**: Switched from in-memory `BytesIO` ZIP construction to `tempfile.mkstemp` + streaming upload via `BlockBlobClient.upload_blob(stream, length=size_bytes, max_concurrency=4)`. Bumped Container Apps Job to `--cpu 1.0 --memory 2Gi` in both create and update branches of `deploy-container-apps.sh`. Tempfile is unlinked in `finally`.
+- **M1 — BFF blob role**: Removed the `Storage Blob Data Reader` role assignment in `infra/modules/backup-storage.bicep`. The BFF now holds only `Storage Blob Delegator` to mint user-delegation SAS URLs; clients reach blob bytes via the SAS, not via the BFF principal.
+- **M2 — Source filter**: Added `apic_service_name: str = Field(default="")` to BFF settings. When set, `list_backups` calls `query_items(..., partition_key=settings.apic_service_name)` to avoid cross-partition fan-out. When unset, it logs `backup.listing.cross_partition_fallback` and falls back to cross-partition. Wired `APIC_SERVICE_NAME` into the BFF deploy `--bff-env-vars` for all three environments.
+- **M3 — Model strictness**: Added `model_config = {"populate_by_name": True, "extra": "ignore"}` to `BackupSummary` and made blob/size/count fields optional (defaults) plus `error: str | None`. Failed metadata documents validate cleanly without faking blob fields.
+- **M4 — Spec-extension heuristic**: Replaced the catch-all `.json` extension with `_detect_spec_extension(spec_content, definition)` that detects JSON (starts with `{`/`[`), WSDL/XML (`<` prefix with `definitions`/`schema`), AsyncAPI/OpenAPI YAML (`asyncapi:`/`openapi:`/`swagger:` markers), and GraphQL (`type Query`/`schema {` markers). Falls back to JSON.
+- **M5 — Download e2e**: Added a Playwright spec covering the 503 `BACKUP_NOT_CONFIGURED` failure path; the existing happy-path download test was updated to consume the new `{ data, pagination }` response shape.
+- **N1 — Manifest location**: Backup metadata documents now stamp `apicLocation` from the new `APIC_LOCATION` env var (wired in CI for all envs) so disaster-recovery scripts can target the correct region.
+- **N2 — Backup ID granularity**: ID is `apic-backup-<ISO timestamp>-<4-hex>` using `secrets.token_hex(2)`; eliminates the 1-second collision window if two runs ever overlap. Cosmos still uses the unique `id` as the document key.
+- **N3 — Error-class narrowing**: `MetadataService.save` now catches `CosmosResourceExistsError` specifically (instead of swallowing all `Exception`s) so duplicate-ID writes are detected and surfaced.
+- **N4 — Lifecycle verification**: Added a “Validating the Backup Storage Lifecycle Policy” section to `docs/operations/backup-recovery.md` describing how to confirm the Cool@30d / Archive@90d policy is active and how to drill rehydration end-to-end. Added a quarterly drill item.
+- **N5 — Layout-level admin gate**: Created `src/frontend/app/admin/layout.tsx` (`'use client'`) wrapping all `/admin/*` routes in `<AuthGuard requiredRoles={['Portal.Admin']}>` for defense-in-depth alongside route-level checks.
 
 ### Deviations from Plan
 
-_To be recorded by the implementing agent._
+- **Format-check noise**: `npm run format:check` reports ~408 pre-existing files needing reformat across the repo (entirely unrelated to this task). Touched files were individually reformatted with `prettier --write` and pass. No bulk reformat performed in scope.
+- **Timezone-flaky tests**: `src/frontend/lib/__tests__/utils.test.ts` (`formatDate`) fails 3 assertions due to host-timezone sensitivity — pre-existing, unrelated to this task.
+- **Docker build skipped locally**: Docker daemon was unavailable in the development environment. The backup-job `Dockerfile` was not modified; CI will build the image via the new `build-containers` matrix entry.
+- **Playwright e2e not run locally**: Requires running BFF + frontend dev servers and Azure resources. CI runs the e2e suite per repo policy. The new spec was syntax-validated via TypeScript and lint.
+- No deviations introduced from the original task 035 plan; all 15 findings implemented as specified.
 
 ### Validation Results
 
-_To be recorded by the implementing agent._
+| Check                                                       | Result                                                                                                                |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `cd src/backup-job; uv run ruff check .`                    | ✅ All checks passed.                                                                                                  |
+| `cd src/backup-job; uv run ruff format --check .`           | ✅ 19 files already formatted.                                                                                         |
+| `cd src/backup-job; uv run pytest -q`                       | ✅ 27 passed in 1.15s.                                                                                                 |
+| `cd src/backup-job; uv run python -m compileall .`          | ✅ Clean.                                                                                                              |
+| `cd src/bff; uv run ruff check .`                           | ✅ All checks passed.                                                                                                  |
+| `cd src/bff; uv run ruff format --check .`                  | ✅ 150 files already formatted (after reformatting `routers/backup.py` + `services/backup_service.py`).                |
+| `cd src/bff; uv run pytest -q`                              | ✅ 1224 passed in 12.59s.                                                                                              |
+| `cd src/bff; uv run python -m compileall .`                 | ✅ Clean.                                                                                                              |
+| `npm run lint`                                              | ✅ ESLint clean (frontend + shared workspaces).                                                                        |
+| `npx tsc --noEmit`                                          | ✅ No TypeScript errors.                                                                                               |
+| `npm run test --workspace=@apic-vibe-portal/frontend`       | ✅ 79/80 suites passed, 516/519 tests passed. The 3 failures are pre-existing timezone-flaky tests in `utils.test.ts`. |
+| `npm run build`                                             | ✅ Next.js build succeeded; shared package built (ESM + CJS).                                                          |
+| `az bicep build --file infra/main.bicep`                    | ✅ Compiled to `main.json` with only pre-existing warnings (api-center sku, unused cosmos param).                      |
+| YAML parse `deploy-infra.yml` + `deploy-app.yml`            | ✅ `pyyaml.safe_load` returned cleanly for both files.                                                                 |
 
 ## Coding Agent Prompt
 

@@ -106,7 +106,7 @@ def run() -> None:
         subscriptionId=settings.apic_subscription_id,
         resourceGroup=settings.apic_resource_group,
         serviceName=settings.apic_service_name,
-        location="",
+        location=settings.apic_location,
     )
 
     backup_service = BackupService(

@@ -107,7 +107,7 @@ Complete usage analytics, metadata scoring, performance optimization, and launch
 | --------------------------------------- | -------------------------- | ------ | ------------------------- |
 | [033](033-mcp-inspector-integration.md) | MCP Inspector Integration  | 🔄     | 010, 012, 020             |
 | [034](034-api-center-backup.md)         | Azure API Center Backup    | ✅     | 002, 005, 006, 008, 009, 016, 020 |
-| [035](035-api-center-backup-remediation.md) | API Center Backup Remediation | 🔲 | 034                       |
+| [035](035-api-center-backup-remediation.md) | API Center Backup Remediation | ✅ | 034                       |
 
 ---
 

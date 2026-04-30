@@ -53,7 +53,10 @@ describe('BackupAdminPage', () => {
 
   it('renders the page heading and refreshes for admins', async () => {
     mockUseAuth.mockReturnValue(adminUser);
-    mockFetchBackups.mockResolvedValue({ items: [sampleBackup], count: 1 });
+    mockFetchBackups.mockResolvedValue({
+      data: [sampleBackup],
+      pagination: { continuationToken: null, hasMore: false },
+    });
     render(<BackupAdminPage />);
     await waitFor(() => {
       expect(screen.getByText('API Center Backups')).toBeInTheDocument();
@@ -66,14 +69,42 @@ describe('BackupAdminPage', () => {
 
   it('shows the empty state when no backups exist', async () => {
     mockUseAuth.mockReturnValue(adminUser);
-    mockFetchBackups.mockResolvedValue({ items: [], count: 0 });
+    mockFetchBackups.mockResolvedValue({
+      data: [],
+      pagination: { continuationToken: null, hasMore: false },
+    });
     render(<BackupAdminPage />);
     expect(await screen.findByTestId('backup-empty')).toBeInTheDocument();
   });
 
+  it('appends backups when Load more is clicked', async () => {
+    mockUseAuth.mockReturnValue(adminUser);
+    const second = { ...sampleBackup, backupId: 'apic-backup-2026-04-28T11-00-00Z' };
+    mockFetchBackups
+      .mockResolvedValueOnce({
+        data: [sampleBackup],
+        pagination: { continuationToken: 'tok-1', hasMore: true },
+      })
+      .mockResolvedValueOnce({
+        data: [second],
+        pagination: { continuationToken: null, hasMore: false },
+      });
+    render(<BackupAdminPage />);
+    const loadMore = await screen.findByTestId('backup-load-more');
+    fireEvent.click(loadMore);
+    await waitFor(() =>
+      expect(screen.getByTestId(`backup-row-${second.backupId}`)).toBeInTheDocument()
+    );
+    expect(mockFetchBackups).toHaveBeenNthCalledWith(2, 50, 'tok-1');
+    expect(screen.queryByTestId('backup-load-more')).not.toBeInTheDocument();
+  });
+
   it('triggers a download via window.open when the action is invoked', async () => {
     mockUseAuth.mockReturnValue(adminUser);
-    mockFetchBackups.mockResolvedValue({ items: [sampleBackup], count: 1 });
+    mockFetchBackups.mockResolvedValue({
+      data: [sampleBackup],
+      pagination: { continuationToken: null, hasMore: false },
+    });
     mockFetchBackupDownload.mockResolvedValue({
       backupId: sampleBackup.backupId,
       downloadUrl: 'https://fake.blob/backup.zip?sas=token',

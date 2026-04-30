@@ -24,7 +24,7 @@ class BackupMetadata(BaseModel):
     error: str | None = None
     ttl: int = -1
 
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "extra": "ignore"}
 
     def to_document(self) -> dict:
         """Return the JSON-serializable dict to persist in Cosmos DB."""

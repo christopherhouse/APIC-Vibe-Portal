@@ -102,6 +102,24 @@ on:
       log-analytics-workspace-id:
         description: 'Log Analytics Workspace resource ID'
         value: ${{ jobs.deploy.outputs.log-analytics-workspace-id }}
+      api-center-name:
+        description: 'Azure API Center service name'
+        value: ${{ jobs.deploy.outputs.api-center-name }}
+      backup-identity-resource-id:
+        description: 'Backup job managed identity resource ID'
+        value: ${{ jobs.deploy.outputs.backup-identity-resource-id }}
+      backup-identity-client-id:
+        description: 'Backup job managed identity client ID'
+        value: ${{ jobs.deploy.outputs.backup-identity-client-id }}
+      backup-storage-account-name:
+        description: 'Backup blob storage account name'
+        value: ${{ jobs.deploy.outputs.backup-storage-account-name }}
+      backup-storage-blob-endpoint:
+        description: 'Backup blob storage account URL'
+        value: ${{ jobs.deploy.outputs.backup-storage-blob-endpoint }}
+      backup-storage-container-name:
+        description: 'Backup blob container name'
+        value: ${{ jobs.deploy.outputs.backup-storage-container-name }}
 
 permissions:
   id-token: write
@@ -170,6 +188,12 @@ jobs:
       analytics-processor-identity-client-id: ${{ steps.outputs.outputs.analytics-processor-identity-client-id }}
       function-storage-name: ${{ steps.outputs.outputs.function-storage-name }}
       log-analytics-workspace-id: ${{ steps.outputs.outputs.log-analytics-workspace-id }}
+      api-center-name: ${{ steps.outputs.outputs.api-center-name }}
+      backup-identity-resource-id: ${{ steps.outputs.outputs.backup-identity-resource-id }}
+      backup-identity-client-id: ${{ steps.outputs.outputs.backup-identity-client-id }}
+      backup-storage-account-name: ${{ steps.outputs.outputs.backup-storage-account-name }}
+      backup-storage-blob-endpoint: ${{ steps.outputs.outputs.backup-storage-blob-endpoint }}
+      backup-storage-container-name: ${{ steps.outputs.outputs.backup-storage-container-name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -219,3 +243,9 @@ jobs:
           echo "analytics-processor-identity-client-id=$(echo $RESULT | jq -r '.analyticsProcessorIdentityClientId.value')" >> $GITHUB_OUTPUT
           echo "function-storage-name=$(echo $RESULT | jq -r '.functionStorageAccountName.value')" >> $GITHUB_OUTPUT
           echo "log-analytics-workspace-id=$(echo $RESULT | jq -r '.logAnalyticsWorkspaceId.value')" >> $GITHUB_OUTPUT
+          echo "api-center-name=$(echo $RESULT | jq -r '.apiCenterName.value')" >> $GITHUB_OUTPUT
+          echo "backup-identity-resource-id=$(echo $RESULT | jq -r '.backupIdentityResourceId.value')" >> $GITHUB_OUTPUT
+          echo "backup-identity-client-id=$(echo $RESULT | jq -r '.backupIdentityClientId.value')" >> $GITHUB_OUTPUT
+          echo "backup-storage-account-name=$(echo $RESULT | jq -r '.backupStorageAccountName.value')" >> $GITHUB_OUTPUT
+          echo "backup-storage-blob-endpoint=$(echo $RESULT | jq -r '.backupStorageBlobEndpoint.value')" >> $GITHUB_OUTPUT
+          echo "backup-storage-container-name=$(echo $RESULT | jq -r '.backupStorageContainerName.value')" >> $GITHUB_OUTPUT

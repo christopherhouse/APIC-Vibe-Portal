@@ -18,7 +18,7 @@ param backupContainerName string = 'apic-backups'
 @description('Backup job Managed Identity Principal ID — needs Storage Blob Data Contributor RBAC')
 param backupIdentityPrincipalId string
 
-@description('BFF Managed Identity Principal ID — needs Storage Blob Data Reader + User Delegation Key RBAC for SAS generation')
+@description('BFF Managed Identity Principal ID — needs Storage Blob Delegator only (user-delegation SAS minting). Read access reaches clients via the SAS, not via this principal.')
 param bffIdentityPrincipalId string
 
 @description('Log Analytics Workspace ID for diagnostics')
@@ -33,7 +33,6 @@ param tags object
 
 // Built-in role IDs (https://learn.microsoft.com/azure/role-based-access-control/built-in-roles)
 var storageBlobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
-var storageBlobDataReaderRoleId = '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1'
 var storageBlobDelegatorRoleId = 'db58b8e5-c6ad-4a2a-8342-4190687cbf4a'
 
 // ============================================================================
@@ -123,18 +122,10 @@ resource backupJobBlobContributor 'Microsoft.Authorization/roleAssignments@2022-
   }
 }
 
-// RBAC: BFF identity needs read on blobs (for download endpoint metadata)
-resource bffBlobReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, bffIdentityPrincipalId, 'StorageBlobDataReader')
-  scope: storageAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataReaderRoleId)
-    principalId: bffIdentityPrincipalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-// RBAC: BFF identity needs Storage Blob Delegator to mint user-delegation SAS tokens
+// RBAC: BFF identity needs Storage Blob Delegator to mint user-delegation SAS tokens.
+// We deliberately do NOT grant Storage Blob Data Reader to the BFF: read access
+// is delivered to clients via the short-lived SAS rather than via the BFF
+// principal, so a Reader assignment would be unused (least privilege).
 resource bffBlobDelegator 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(storageAccount.id, bffIdentityPrincipalId, 'StorageBlobDelegator')
   scope: storageAccount

@@ -34,6 +34,9 @@ export default function BackupAdminPage() {
 
   const [backups, setBackups] = useState<BackupSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [continuationToken, setContinuationToken] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [detailOpen, setDetailOpen] = useState(false);
@@ -49,13 +52,31 @@ export default function BackupAdminPage() {
     setLoadError(null);
     try {
       const response = await fetchBackups();
-      setBackups(response.items);
+      setBackups(response.data);
+      setContinuationToken(response.pagination.continuationToken);
+      setHasMore(response.pagination.hasMore);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Failed to load backups.');
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (!continuationToken || isLoadingMore) return;
+    setIsLoadingMore(true);
+    setLoadError(null);
+    try {
+      const response = await fetchBackups(50, continuationToken);
+      setBackups((prev) => [...prev, ...response.data]);
+      setContinuationToken(response.pagination.continuationToken);
+      setHasMore(response.pagination.hasMore);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load more backups.');
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [continuationToken, isLoadingMore]);
 
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
@@ -141,6 +162,19 @@ export default function BackupAdminPage() {
         onViewDetails={handleViewDetails}
         onDownload={(b) => void handleDownload(b)}
       />
+
+      {hasMore && !isLoading && (
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+          <Button
+            variant="outlined"
+            onClick={() => void loadMore()}
+            disabled={isLoadingMore}
+            data-testid="backup-load-more"
+          >
+            {isLoadingMore ? 'Loading…' : 'Load more'}
+          </Button>
+        </Box>
+      )}
 
       {selectedBackup && (
         <BackupDetailDialog

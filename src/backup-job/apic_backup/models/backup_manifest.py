@@ -11,7 +11,7 @@ class ManifestSource(BaseModel):
     service_name: str = Field(..., alias="serviceName")
     location: str = ""
 
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "extra": "ignore"}
 
 
 class ManifestCounts(BaseModel):
@@ -20,6 +20,8 @@ class ManifestCounts(BaseModel):
     definitions: int = 0
     deployments: int = 0
     environments: int = 0
+
+    model_config = {"populate_by_name": True, "extra": "ignore"}
 
     @property
     def total_entities(self) -> int:
@@ -36,4 +38,4 @@ class BackupManifest(BaseModel):
     counts: ManifestCounts
     backup_job_version: str = Field("1.0.0", alias="backupJobVersion")
 
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "extra": "ignore"}

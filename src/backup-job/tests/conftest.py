@@ -57,16 +57,26 @@ def fake_container_client() -> Any:
         def upload_blob(
             self,
             name: str,
-            data: bytes,
+            data: Any,
             *,
             overwrite: bool = False,
             metadata: dict[str, str] | None = None,
             content_settings: Any | None = None,
+            length: int | None = None,
+            max_concurrency: int = 1,
         ) -> _FakeBlob:
+            del content_settings, max_concurrency
+            if hasattr(data, "read"):
+                payload = data.read()
+            elif isinstance(data, bytes | bytearray):
+                payload = bytes(data)
+            else:
+                payload = bytes(data)
             self.uploads[name] = {
-                "data": bytes(data),
+                "data": payload,
                 "metadata": dict(metadata or {}),
                 "overwrite": overwrite,
+                "length": length if length is not None else len(payload),
             }
             return _FakeBlob(name=name, url=f"https://fake.blob/{name}")
 
@@ -87,6 +97,14 @@ def fake_metadata_container() -> Any:
         def __init__(self) -> None:
             self.items: dict[str, dict] = {}
             self.deleted: list[str] = []
+
+        def create_item(self, body: dict) -> dict:
+            from azure.cosmos.exceptions import CosmosResourceExistsError
+
+            if body["id"] in self.items:
+                raise CosmosResourceExistsError(status_code=409, message=f"duplicate id {body['id']}")
+            self.items[body["id"]] = dict(body)
+            return body
 
         def upsert_item(self, body: dict) -> dict:
             self.items[body["id"]] = dict(body)

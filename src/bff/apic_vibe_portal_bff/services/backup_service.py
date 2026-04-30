@@ -58,18 +58,53 @@ class BackupService:
     # Listing
     # ------------------------------------------------------------------
 
-    def list_backups(self, *, limit: int = 50) -> list[dict[str, Any]]:
-        """Return backup metadata documents, newest first."""
-        query = "SELECT TOP @limit * FROM c WHERE c.status = 'completed' ORDER BY c.timestamp DESC"
-        params = [{"name": "@limit", "value": int(limit)}]
-        items = list(
-            self._container.query_items(
+    def list_backups(
+        self,
+        *,
+        limit: int = 50,
+        continuation_token: str | None = None,
+    ) -> tuple[list[dict[str, Any]], str | None, bool]:
+        """Return ``(items, next_continuation_token, has_more)``.
+
+        Includes both ``status='completed'`` and ``status='failed'`` documents
+        so admins can see why a recent backup didn't produce a downloadable
+        archive (see plan 035, finding C3).
+
+        When :pyattr:`apic_service_name` is configured the query is scoped to
+        that partition for efficiency. If the partition key is unset, we fall
+        back to a cross-partition query and emit a structured warning so the
+        deployment gap is noticed quickly.
+        """
+        query = "SELECT * FROM c WHERE c.status IN ('completed', 'failed') ORDER BY c.timestamp DESC"
+        partition_key = self._settings.apic_service_name or None
+        if partition_key:
+            pager = self._container.query_items(
                 query=query,
-                parameters=params,
-                enable_cross_partition_query=True,
+                partition_key=partition_key,
+                max_item_count=limit,
             )
-        )
-        return [self._enrich(item) for item in items]
+        else:
+            logger.warning(
+                "Backup listing falling back to cross-partition query: "
+                "APIC_SERVICE_NAME is not configured. Set it to scope the "
+                "query to a single Cosmos partition.",
+                extra={"event": "backup.listing.cross_partition_fallback"},
+            )
+            pager = self._container.query_items(
+                query=query,
+                enable_cross_partition_query=True,
+                max_item_count=limit,
+            )
+
+        page = pager.by_page(continuation_token)
+        try:
+            raw_items = list(next(page))  # type: ignore[arg-type]
+        except StopIteration:
+            raw_items = []
+
+        next_token: str | None = getattr(page, "continuation_token", None)
+        has_more = bool(next_token)
+        return [self._enrich(item) for item in raw_items], next_token, has_more
 
     def get_backup(self, backup_id: str) -> dict[str, Any]:
         """Return a single backup document or raise :class:`BackupNotFoundError`."""

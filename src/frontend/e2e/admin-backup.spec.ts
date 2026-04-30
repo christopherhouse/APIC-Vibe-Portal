@@ -49,7 +49,10 @@ const MOCK_BACKUP: BackupSummary = {
   durationMs: 1234,
 };
 
-const MOCK_LIST: BackupListResponse = { items: [MOCK_BACKUP], count: 1 };
+const MOCK_LIST: BackupListResponse = {
+  data: [MOCK_BACKUP],
+  pagination: { continuationToken: null, hasMore: false },
+};
 
 const MOCK_DOWNLOAD: BackupDownloadResponse = {
   backupId: MOCK_BACKUP.backupId,
@@ -127,7 +130,10 @@ test.describe('Admin Backup — Listing', () => {
   test('admin sees the empty state when no backups exist', async ({ page }) => {
     ensureScreenshotDir();
     await setMockUser(page, ADMIN_USER);
-    await mockBackupRoutes(page, { items: [], count: 0 });
+    await mockBackupRoutes(page, {
+      data: [],
+      pagination: { continuationToken: null, hasMore: false },
+    });
 
     await page.goto('/admin/backup');
 
@@ -162,5 +168,42 @@ test.describe('Admin Backup — Download', () => {
     await expect(page.getByTestId('backup-snackbar')).toContainText(/Download started/i);
     await popupPromise;
     await page.screenshot({ path: screenshotPath('backup-download'), fullPage: true });
+  });
+
+  test('shows error snackbar when backup storage is not configured (503)', async ({ page }) => {
+    ensureScreenshotDir();
+    await setMockUser(page, ADMIN_USER);
+    // Custom routing: list returns OK, download returns 503
+    await page.route('**/api/admin/backups*', async (route) => {
+      const url = route.request().url();
+      if (url.includes('/download')) {
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            detail: {
+              code: 'BACKUP_NOT_CONFIGURED',
+              message: 'Backup storage is not configured for this environment',
+            },
+          }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_LIST),
+      });
+    });
+
+    await page.goto('/admin/backup');
+    await expect(page.getByTestId(`backup-row-${MOCK_BACKUP.backupId}`)).toBeVisible();
+
+    await page.getByLabel(`Download ${MOCK_BACKUP.backupId}`).click();
+
+    await expect(page.getByTestId('backup-snackbar')).toContainText(
+      /BACKUP_NOT_CONFIGURED|not configured/i
+    );
+    await page.screenshot({ path: screenshotPath('backup-download-503'), fullPage: true });
   });
 });

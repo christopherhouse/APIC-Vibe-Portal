@@ -42,6 +42,10 @@ class BackupSettings(BaseSettings):
     apic_subscription_id: str = Field(default="", description="API Center subscription ID")
     apic_resource_group: str = Field(default="", description="API Center resource group")
     apic_service_name: str = Field(default="", description="API Center service name")
+    apic_location: str = Field(
+        default="",
+        description="Azure region of the API Center service (recorded in manifest.source.location)",
+    )
     api_center_endpoint: str = Field(
         default="",
         description="Azure API Center data-plane endpoint (https://...azure-apicenter.ms)",

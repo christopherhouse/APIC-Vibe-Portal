@@ -44,25 +44,37 @@ class BackupCounts(BaseModel):
     deployments: int = 0
     environments: int = 0
 
+    model_config = {"populate_by_name": True, "extra": "ignore"}
+
 
 class BackupSummary(BaseModel):
     backup_id: str = Field(..., alias="backupId")
     source_service_name: str = Field(..., alias="sourceServiceName")
     timestamp: str
-    blob_name: str = Field(..., alias="blobName")
-    size_bytes: int = Field(..., alias="sizeBytes")
-    size_formatted: str = Field(..., alias="sizeFormatted")
-    counts: BackupCounts
+    blob_name: str = Field(default="", alias="blobName")
+    size_bytes: int = Field(default=0, alias="sizeBytes")
+    size_formatted: str = Field(default="0.0 B", alias="sizeFormatted")
+    counts: BackupCounts = Field(default_factory=BackupCounts)
     retention_tiers: list[str] = Field(default_factory=list, alias="retentionTiers")
     status: str = "completed"
     duration_ms: int = Field(0, alias="durationMs")
+    error: str | None = None
+
+    model_config = {"populate_by_name": True, "extra": "ignore"}
+
+
+class BackupPagination(BaseModel):
+    continuation_token: str | None = Field(default=None, alias="continuationToken")
+    has_more: bool = Field(default=False, alias="hasMore")
 
     model_config = {"populate_by_name": True}
 
 
 class BackupListResponse(BaseModel):
-    items: list[BackupSummary]
-    count: int
+    data: list[BackupSummary]
+    pagination: BackupPagination
+
+    model_config = {"populate_by_name": True}
 
 
 class BackupDownloadResponse(BaseModel):
@@ -90,10 +102,14 @@ def _to_summary(doc: dict[str, Any]) -> BackupSummary:
 )
 def list_backups(
     limit: int = Query(default=50, ge=1, le=500),
+    continuation_token: str | None = Query(default=None, alias="continuationToken"),
     service: BackupService = Depends(get_backup_service),  # noqa: B008
 ) -> BackupListResponse:
-    items = [_to_summary(item) for item in service.list_backups(limit=limit)]
-    return BackupListResponse(items=items, count=len(items))
+    items, next_token, has_more = service.list_backups(limit=limit, continuation_token=continuation_token)
+    return BackupListResponse(
+        data=[_to_summary(item) for item in items],
+        pagination=BackupPagination(continuationToken=next_token, hasMore=has_more),
+    )
 
 
 @router.get(

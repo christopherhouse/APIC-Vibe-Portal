@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+from azure.cosmos.exceptions import CosmosResourceExistsError
+
 from apic_backup.models.backup_manifest import ManifestCounts
 from apic_backup.models.backup_metadata import BackupMetadata
 from apic_backup.services.metadata_service import BackupMetadataService
@@ -64,3 +67,47 @@ def test_update_retention_tiers_rewrites_field(fake_metadata_container) -> None:
 
     service.update_retention_tiers(md.backup_id, "apic-test", ["hourly", "daily"])
     assert fake_metadata_container.items[md.id]["retentionTiers"] == ["hourly", "daily"]
+
+
+def test_save_raises_on_duplicate_backup_id(fake_metadata_container) -> None:
+    """N2 — switching to create_item surfaces collisions instead of silently overwriting."""
+    service = BackupMetadataService(fake_metadata_container)
+    md = _metadata()
+    service.save(md)
+    with pytest.raises(CosmosResourceExistsError):
+        service.save(md)
+
+
+def test_list_recent_with_failures_includes_failed_documents(fake_metadata_container) -> None:
+    """C3 — admin listing must surface failed runs."""
+    service = BackupMetadataService(fake_metadata_container)
+    completed = _metadata("apic-backup-2026-04-28T12-00-00Z-aa")
+    failed = _metadata("apic-backup-2026-04-28T13-00-00Z-bb")
+    service.save(completed)
+    failed_doc = failed.to_document()
+    failed_doc["status"] = "failed"
+    failed_doc["error"] = "boom"
+    fake_metadata_container.items[failed_doc["id"]] = failed_doc
+
+    items = service.list_recent_with_failures("apic-test", limit=10)
+    statuses = sorted(i["status"] for i in items)
+    assert statuses == ["completed", "failed"]
+
+
+def test_backup_metadata_extra_fields_ignored() -> None:
+    """M3 — model_config extra='ignore' silently drops unknown fields."""
+    md = BackupMetadata.model_validate(
+        {
+            "id": "x",
+            "backupId": "x",
+            "sourceServiceName": "s",
+            "timestamp": "2026-04-28T12:00:00Z",
+            "blobUrl": "u",
+            "blobName": "n",
+            "sizeBytes": 1,
+            "counts": {},
+            "totallyMadeUpField": "ignored",
+        }
+    )
+    doc = md.to_document()
+    assert "totallyMadeUpField" not in doc

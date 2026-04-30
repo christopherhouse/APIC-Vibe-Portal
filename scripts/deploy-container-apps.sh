@@ -535,8 +535,8 @@ if [[ -n "$BACKUP_IMAGE_TAG" ]]; then
       --name "$BACKUP_JOB_NAME" \
       --resource-group "$RESOURCE_GROUP" \
       --image "${ACR_SERVER}/backup-job:${BACKUP_IMAGE_TAG}" \
-      --cpu 0.5 \
-      --memory 1Gi \
+      --cpu 1.0 \
+      --memory 2Gi \
       --set-env-vars "${BACKUP_CORE_ENV_VARS[@]}"
   else
     echo "Creating new Backup Container Apps Job..."
@@ -545,8 +545,8 @@ if [[ -n "$BACKUP_IMAGE_TAG" ]]; then
       --resource-group "$RESOURCE_GROUP" \
       --environment "$ENVIRONMENT_ID" \
       --image "${ACR_SERVER}/backup-job:${BACKUP_IMAGE_TAG}" \
-      --cpu 0.5 \
-      --memory 1Gi \
+      --cpu 1.0 \
+      --memory 2Gi \
       --trigger-type Schedule \
       --cron-expression "0 * * * *" \
       --replica-timeout 1800 \

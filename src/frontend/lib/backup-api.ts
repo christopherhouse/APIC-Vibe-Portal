@@ -27,11 +27,17 @@ export interface BackupSummary {
   retentionTiers: string[];
   status: string;
   durationMs: number;
+  error?: string | null;
+}
+
+export interface BackupPagination {
+  continuationToken: string | null;
+  hasMore: boolean;
 }
 
 export interface BackupListResponse {
-  items: BackupSummary[];
-  count: number;
+  data: BackupSummary[];
+  pagination: BackupPagination;
 }
 
 export interface BackupDownloadResponse {
@@ -40,9 +46,16 @@ export interface BackupDownloadResponse {
   expiresAt: string;
 }
 
-/** List recent backups, newest first. */
-export async function fetchBackups(limit = 50): Promise<BackupListResponse> {
-  return apiClient.get<BackupListResponse>(`${ADMIN_BACKUPS_BASE}?limit=${limit}`);
+/** List recent backups, newest first. Optionally provide a continuation token. */
+export async function fetchBackups(
+  limit = 50,
+  continuationToken?: string | null
+): Promise<BackupListResponse> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (continuationToken) {
+    params.set('continuationToken', continuationToken);
+  }
+  return apiClient.get<BackupListResponse>(`${ADMIN_BACKUPS_BASE}?${params.toString()}`);
 }
 
 /** Retrieve metadata for a single backup. */

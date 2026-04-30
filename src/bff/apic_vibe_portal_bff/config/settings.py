@@ -117,6 +117,13 @@ class Settings(BaseSettings):
         le=1440,
         description="Time-to-live for the user-delegation SAS used for downloads",
     )
+    apic_service_name: str = Field(
+        default="",
+        description=(
+            "API Center service name. Used as the Cosmos partition key when "
+            "listing backup metadata documents to avoid cross-partition fan-out."
+        ),
+    )
 
     # --- Azure Service Bus -----------------------------------------------
     service_bus_namespace: str = Field(

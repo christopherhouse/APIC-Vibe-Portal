@@ -65,6 +65,8 @@ jobs:
             dockerfile: ./src/governance-worker/Dockerfile
           - component: analytics-processor
             dockerfile: ./src/analytics-processor/Dockerfile
+          - component: backup-job
+            dockerfile: ./src/backup-job/Dockerfile
     outputs:
       # Immutable per-commit short SHA — every deploy gets a unique image
       # reference so Container Apps detects a spec change and pulls fresh.
@@ -142,7 +144,7 @@ jobs:
             --bff-identity-resource-id "${{ needs.infra-dev.outputs.bff-identity-resource-id }}" \
             --bff-identity-client-id "${{ needs.infra-dev.outputs.bff-identity-client-id }}" \
             --redis-host ${{ needs.infra-dev.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-dev.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-dev.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-dev.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-dev.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-dev.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-dev.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }} SERVICE_BUS_NAMESPACE=${{ needs.infra-dev.outputs.service-bus-fqns }}" \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-dev.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-dev.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-dev.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-dev.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-dev.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-dev.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }} SERVICE_BUS_NAMESPACE=${{ needs.infra-dev.outputs.service-bus-fqns }} APIC_SERVICE_NAME=${{ needs.infra-dev.outputs.api-center-name }} BACKUP_STORAGE_ACCOUNT_URL=${{ needs.infra-dev.outputs.backup-storage-blob-endpoint }} BACKUP_CONTAINER_NAME=${{ needs.infra-dev.outputs.backup-storage-container-name }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }}" \
             --frontend-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-containers.outputs.image-tag }} \
@@ -153,7 +155,11 @@ jobs:
             --governance-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --governance-identity-resource-id "${{ needs.infra-dev.outputs.governance-identity-resource-id }}" \
             --governance-identity-client-id "${{ needs.infra-dev.outputs.governance-identity-client-id }}" \
-            --governance-env-vars "API_CENTER_ENDPOINT=${{ needs.infra-dev.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-dev.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-dev.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }}"
+            --governance-env-vars "API_CENTER_ENDPOINT=${{ needs.infra-dev.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-dev.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-dev.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }}" \
+            --backup-image-tag ${{ needs.build-containers.outputs.image-tag }} \
+            --backup-identity-resource-id "${{ needs.infra-dev.outputs.backup-identity-resource-id }}" \
+            --backup-identity-client-id "${{ needs.infra-dev.outputs.backup-identity-client-id }}" \
+            --backup-env-vars "APIC_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }} APIC_RESOURCE_GROUP=${{ vars.AZURE_RESOURCE_GROUP }} APIC_SERVICE_NAME=${{ needs.infra-dev.outputs.api-center-name }} APIC_LOCATION=${{ vars.AZURE_LOCATION }} API_CENTER_ENDPOINT=${{ needs.infra-dev.outputs.api-center-endpoint }} BACKUP_STORAGE_ACCOUNT_URL=${{ needs.infra-dev.outputs.backup-storage-blob-endpoint }} BACKUP_CONTAINER_NAME=${{ needs.infra-dev.outputs.backup-storage-container-name }} COSMOS_ENDPOINT=${{ needs.infra-dev.outputs.cosmos-db-endpoint }} COSMOS_DATABASE=${{ needs.infra-dev.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-dev.outputs.appinsights-connection-string }}"
 
       - name: Deploy Analytics Processor (Bicep)
         run: |
@@ -206,7 +212,7 @@ jobs:
             --bff-identity-resource-id "${{ needs.infra-staging.outputs.bff-identity-resource-id }}" \
             --bff-identity-client-id "${{ needs.infra-staging.outputs.bff-identity-client-id }}" \
             --redis-host ${{ needs.infra-staging.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-staging.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-staging.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-staging.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-staging.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-staging.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-staging.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }} SERVICE_BUS_NAMESPACE=${{ needs.infra-staging.outputs.service-bus-fqns }}" \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-staging.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-staging.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-staging.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-staging.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-staging.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-staging.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }} SERVICE_BUS_NAMESPACE=${{ needs.infra-staging.outputs.service-bus-fqns }} APIC_SERVICE_NAME=${{ needs.infra-staging.outputs.api-center-name }} BACKUP_STORAGE_ACCOUNT_URL=${{ needs.infra-staging.outputs.backup-storage-blob-endpoint }} BACKUP_CONTAINER_NAME=${{ needs.infra-staging.outputs.backup-storage-container-name }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }}" \
             --frontend-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-containers.outputs.image-tag }} \
@@ -217,7 +223,11 @@ jobs:
             --governance-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --governance-identity-resource-id "${{ needs.infra-staging.outputs.governance-identity-resource-id }}" \
             --governance-identity-client-id "${{ needs.infra-staging.outputs.governance-identity-client-id }}" \
-            --governance-env-vars "API_CENTER_ENDPOINT=${{ needs.infra-staging.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-staging.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-staging.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }}"
+            --governance-env-vars "API_CENTER_ENDPOINT=${{ needs.infra-staging.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-staging.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-staging.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }}" \
+            --backup-image-tag ${{ needs.build-containers.outputs.image-tag }} \
+            --backup-identity-resource-id "${{ needs.infra-staging.outputs.backup-identity-resource-id }}" \
+            --backup-identity-client-id "${{ needs.infra-staging.outputs.backup-identity-client-id }}" \
+            --backup-env-vars "APIC_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }} APIC_RESOURCE_GROUP=${{ vars.AZURE_RESOURCE_GROUP }} APIC_SERVICE_NAME=${{ needs.infra-staging.outputs.api-center-name }} APIC_LOCATION=${{ vars.AZURE_LOCATION }} API_CENTER_ENDPOINT=${{ needs.infra-staging.outputs.api-center-endpoint }} BACKUP_STORAGE_ACCOUNT_URL=${{ needs.infra-staging.outputs.backup-storage-blob-endpoint }} BACKUP_CONTAINER_NAME=${{ needs.infra-staging.outputs.backup-storage-container-name }} COSMOS_ENDPOINT=${{ needs.infra-staging.outputs.cosmos-db-endpoint }} COSMOS_DATABASE=${{ needs.infra-staging.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-staging.outputs.appinsights-connection-string }}"
 
       - name: Deploy Analytics Processor (Bicep)
         run: |
@@ -270,7 +280,7 @@ jobs:
             --bff-identity-resource-id "${{ needs.infra-prod.outputs.bff-identity-resource-id }}" \
             --bff-identity-client-id "${{ needs.infra-prod.outputs.bff-identity-client-id }}" \
             --redis-host ${{ needs.infra-prod.outputs.redis-host }} \
-            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-prod.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-prod.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-prod.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-prod.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-prod.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-prod.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }} SERVICE_BUS_NAMESPACE=${{ needs.infra-prod.outputs.service-bus-fqns }}" \
+            --bff-env-vars "BFF_ENTRA_TENANT_ID=${{ vars.AZURE_TENANT_ID }} BFF_ENTRA_CLIENT_ID=${{ vars.BFF_ENTRA_CLIENT_ID }} BFF_ENTRA_AUDIENCE=${{ vars.BFF_ENTRA_AUDIENCE }} API_CENTER_ENDPOINT=${{ needs.infra-prod.outputs.api-center-endpoint }} AI_SEARCH_ENDPOINT=${{ needs.infra-prod.outputs.ai-search-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-prod.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-prod.outputs.cosmos-db-database-name }} OPENAI_ENDPOINT=${{ needs.infra-prod.outputs.foundry-endpoint }} FOUNDRY_PROJECT_ENDPOINT=${{ needs.infra-prod.outputs.foundry-endpoint }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }} SERVICE_BUS_NAMESPACE=${{ needs.infra-prod.outputs.service-bus-fqns }} APIC_SERVICE_NAME=${{ needs.infra-prod.outputs.api-center-name }} BACKUP_STORAGE_ACCOUNT_URL=${{ needs.infra-prod.outputs.backup-storage-blob-endpoint }} BACKUP_CONTAINER_NAME=${{ needs.infra-prod.outputs.backup-storage-container-name }}" \
             --frontend-env-vars "MSAL_CLIENT_ID=${{ vars.MSAL_CLIENT_ID }} MSAL_AUTHORITY=https://login.microsoftonline.com/${{ vars.AZURE_TENANT_ID }} MSAL_REDIRECT_URI=${{ vars.MSAL_REDIRECT_URI }} BFF_API_SCOPE=${{ vars.BFF_API_SCOPE }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }}" \
             --frontend-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --bff-image-tag ${{ needs.build-containers.outputs.image-tag }} \
@@ -281,7 +291,11 @@ jobs:
             --governance-image-tag ${{ needs.build-containers.outputs.image-tag }} \
             --governance-identity-resource-id "${{ needs.infra-prod.outputs.governance-identity-resource-id }}" \
             --governance-identity-client-id "${{ needs.infra-prod.outputs.governance-identity-client-id }}" \
-            --governance-env-vars "API_CENTER_ENDPOINT=${{ needs.infra-prod.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-prod.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-prod.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }}"
+            --governance-env-vars "API_CENTER_ENDPOINT=${{ needs.infra-prod.outputs.api-center-endpoint }} COSMOS_DB_ENDPOINT=${{ needs.infra-prod.outputs.cosmos-db-endpoint }} COSMOS_DB_DATABASE_NAME=${{ needs.infra-prod.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }}" \
+            --backup-image-tag ${{ needs.build-containers.outputs.image-tag }} \
+            --backup-identity-resource-id "${{ needs.infra-prod.outputs.backup-identity-resource-id }}" \
+            --backup-identity-client-id "${{ needs.infra-prod.outputs.backup-identity-client-id }}" \
+            --backup-env-vars "APIC_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }} APIC_RESOURCE_GROUP=${{ vars.AZURE_RESOURCE_GROUP }} APIC_SERVICE_NAME=${{ needs.infra-prod.outputs.api-center-name }} APIC_LOCATION=${{ vars.AZURE_LOCATION }} API_CENTER_ENDPOINT=${{ needs.infra-prod.outputs.api-center-endpoint }} BACKUP_STORAGE_ACCOUNT_URL=${{ needs.infra-prod.outputs.backup-storage-blob-endpoint }} BACKUP_CONTAINER_NAME=${{ needs.infra-prod.outputs.backup-storage-container-name }} COSMOS_ENDPOINT=${{ needs.infra-prod.outputs.cosmos-db-endpoint }} COSMOS_DATABASE=${{ needs.infra-prod.outputs.cosmos-db-database-name }} APPLICATIONINSIGHTS_CONNECTION_STRING=${{ needs.infra-prod.outputs.appinsights-connection-string }}"
 
       - name: Deploy Analytics Processor (Bicep)
         run: |

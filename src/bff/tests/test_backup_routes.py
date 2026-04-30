@@ -43,13 +43,28 @@ _SAMPLE = {
 
 
 class _StubBackupService:
-    def __init__(self, *, items: list[dict[str, Any]] | None = None, missing: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        items: list[dict[str, Any]] | None = None,
+        missing: bool = False,
+        pages: list[tuple[list[dict[str, Any]], str | None, bool]] | None = None,
+    ) -> None:
         self._items = items if items is not None else [_SAMPLE]
         self._missing = missing
         self.not_configured = False
+        # Optional explicit pagination scenarios keyed by continuation token
+        self._pages = pages
+        self.list_calls: list[tuple[int, str | None]] = []
 
-    def list_backups(self, *, limit: int = 50) -> list[dict[str, Any]]:
-        return self._items[:limit]
+    def list_backups(
+        self, *, limit: int = 50, continuation_token: str | None = None
+    ) -> tuple[list[dict[str, Any]], str | None, bool]:
+        self.list_calls.append((limit, continuation_token))
+        if self._pages is not None:
+            idx = 0 if continuation_token is None else int(continuation_token)
+            return self._pages[idx]
+        return self._items[:limit], None, False
 
     def get_backup(self, backup_id: str) -> dict[str, Any]:
         if self._missing:
@@ -94,10 +109,10 @@ class TestListBackups:
         resp = client.get("/api/admin/backups")
         assert resp.status_code == 200
         body = resp.json()
-        assert body["count"] == 1
-        assert body["items"][0]["backupId"] == _SAMPLE["backupId"]
-        assert body["items"][0]["sizeFormatted"] == "4.0 KB"
-        assert body["items"][0]["counts"]["apis"] == 2
+        assert body["data"][0]["backupId"] == _SAMPLE["backupId"]
+        assert body["data"][0]["sizeFormatted"] == "4.0 KB"
+        assert body["data"][0]["counts"]["apis"] == 2
+        assert body["pagination"] == {"continuationToken": None, "hasMore": False}
 
     def test_forbidden_for_non_admin(self, app: FastAPI) -> None:
         _wire_non_admin(app, _StubBackupService())
@@ -105,6 +120,31 @@ class TestListBackups:
 
         resp = client.get("/api/admin/backups")
         assert resp.status_code == 403
+
+    def test_supports_continuation_token_paging(self, app: FastAPI) -> None:
+        page_one = ([_SAMPLE], "1", True)
+        page_two = ([{**_SAMPLE, "backupId": "second"}], None, False)
+        svc = _StubBackupService(pages=[page_one, page_two])
+        _wire_admin(app, svc)
+        client = TestClient(app)
+
+        first = client.get("/api/admin/backups?limit=1").json()
+        assert first["pagination"] == {"continuationToken": "1", "hasMore": True}
+        assert first["data"][0]["backupId"] == _SAMPLE["backupId"]
+
+        second = client.get("/api/admin/backups?limit=1&continuationToken=1").json()
+        assert second["pagination"] == {"continuationToken": None, "hasMore": False}
+        assert second["data"][0]["backupId"] == "second"
+
+        assert svc.list_calls == [(1, None), (1, "1")]
+
+    def test_includes_failed_backups(self, app: FastAPI) -> None:
+        failed = {**_SAMPLE, "backupId": "failed-1", "status": "failed", "error": "boom"}
+        _wire_admin(app, _StubBackupService(items=[failed]))
+        client = TestClient(app)
+        body = client.get("/api/admin/backups").json()
+        assert body["data"][0]["status"] == "failed"
+        assert body["data"][0]["error"] == "boom"
 
 
 # ---------------------------------------------------------------------------
