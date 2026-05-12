@@ -3,7 +3,7 @@
 # ============================================================================
 
 # Build stage
-FROM node:25-alpine AS builder
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 
@@ -29,7 +29,7 @@ RUN npm run build --workspace=@apic-vibe-portal/shared
 RUN npm run build --workspace=@apic-vibe-portal/frontend
 
 # Production stage
-FROM node:25-alpine AS production
+FROM node:26-alpine AS production
 
 WORKDIR /app
 
