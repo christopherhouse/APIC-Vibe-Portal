@@ -42,7 +42,7 @@ jobs:
         run: docker build -t frontend:scan -f src/frontend/Dockerfile .
 
       - name: "Trivy: show CRITICAL/HIGH vulnerabilities (table)"
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: frontend:scan
           format: table
@@ -51,7 +51,7 @@ jobs:
           trivyignores: .trivyignore
 
       - name: "Trivy: generate SARIF report"
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         if: always()
         with:
           image-ref: frontend:scan
@@ -79,7 +79,7 @@ jobs:
         run: docker build -t bff:scan -f src/bff/Dockerfile .
 
       - name: "Trivy: show CRITICAL/HIGH vulnerabilities (table)"
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: bff:scan
           format: table
@@ -88,7 +88,7 @@ jobs:
           trivyignores: .trivyignore
 
       - name: "Trivy: generate SARIF report"
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         if: always()
         with:
           image-ref: bff:scan
@@ -116,7 +116,7 @@ jobs:
         run: docker build -t indexer:scan -f src/indexer/Dockerfile .
 
       - name: "Trivy: show CRITICAL/HIGH vulnerabilities (table)"
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: indexer:scan
           format: table
@@ -125,7 +125,7 @@ jobs:
           trivyignores: .trivyignore
 
       - name: "Trivy: generate SARIF report"
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         if: always()
         with:
           image-ref: indexer:scan
@@ -150,7 +150,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Run Trivy config scanner on Dockerfiles
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: .
